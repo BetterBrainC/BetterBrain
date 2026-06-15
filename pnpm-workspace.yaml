@@ -1,0 +1,7 @@
+# pnpm 11+ build-script allowlist (these deps ship compiled artifacts that
+# need their install scripts):  esbuild → vitest · sharp → Next image opt ·
+# unrs-resolver → eslint/oxc resolver.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

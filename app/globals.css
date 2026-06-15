@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Design tokens — the single source of truth (see docs/DESIGN-SYSTEM.md).
+   Direction: OOCA-inspired clean/light; brand = Better Brain navy + sky + the
+   single orange accent. Font vars are wired to next/font (app/fonts.ts).
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* BRAND */
+  --bb-navy:#1B3A6B; --bb-navy-700:#16315A; --bb-navy-900:#0F2645;
+  --primary:#2F7FF6; --primary-600:#1F6BE0; --primary-700:#1857BE; --primary-300:#8FBDFB;
+  --sky:#4AA3E0; --sky-600:#3990D0;
+  --teal:#14B8A6; --teal-600:#0E9E8E;           /* ACTIVE NAV accent only */
+  --accent:#F5A623; --accent-600:#DB8E10; --accent-700:#B5740B;  /* orange — sparing */
+  --silver:#9AA7B8;
+
+  /* SURFACES & NEUTRALS */
+  --bg:#F7FAFC; --surface:#FFFFFF; --surface-tint:#EAF2FF; --surface-tint-2:#F0F6FF;
+  --surface-sunken:#EEF3F8; --overlay:rgba(15,38,69,.48);
+  --text:#1F2A37; --text-muted:#6B7280; --text-faint:#9AA7B8;
+  --text-on-fill:#FFFFFF; --text-on-accent:#3A2A05;
+  --border:#E3E9F0; --border-strong:#CBD5E1; --border-focus:#2F7FF6;
+
+  /* STATUS triplets (-fg on -bg ≥ 4.5:1; -solid = dot/rail) */
+  --status-late-fg:#B5740B;       --status-late-bg:#FEF1DC;       --status-late-solid:#F5A623;     /* สาย */
+  --status-nocheckin-fg:#B42318;  --status-nocheckin-bg:#FEECEB;  --status-nocheckin-solid:#E5544B;/* ไม่ได้เช็คอิน */
+  --status-skipped-fg:#5B647A;    --status-skipped-bg:#EEF1F6;    --status-skipped-solid:#94A0B5;  /* งด */
+  --status-early-fg:#1857BE;      --status-early-bg:#EAF2FF;      --status-early-solid:#2F7FF6;    /* ออกก่อนเวลา */
+  --status-completed-fg:#0E7C6B;  --status-completed-bg:#DDF4EF;  --status-completed-solid:#14B8A6;/* จบเคส */
+  --status-hold-fg:#8A5A00;       --status-hold-bg:#FBEFD2;       --status-hold-solid:#E0A330;     /* Hold */
+  --status-noservice-fg:#475467;  --status-noservice-bg:#E7EBF1;  --status-noservice-solid:#697586;/* No service */
+
+  --success-fg:#0E7C6B; --success-bg:#DDF4EF; --warning-fg:#B5740B; --warning-bg:#FEF1DC;
+  --danger-fg:#B42318; --danger-bg:#FEECEB; --info-fg:#1857BE; --info-bg:#EAF2FF;
+  --booking-booked-fg:#1857BE; --booking-booked-bg:#EAF2FF;       /* ทำนัดแล้ว */
+  --booking-awaitpay-fg:#B5740B; --booking-awaitpay-bg:#FEF1DC;   /* รอชำระเงิน */
+  --booking-cancel-fg:#B42318; --booking-cancel-bg:#FEECEB;       /* ยกเลิกนัด */
+  --dx-stroke:#2F7FF6; --dx-parkinson:#14B8A6; --dx-dementia:#7C6CF0;
+  --dx-als:#4AA3E0; --dx-ms:#E08A2B; --dx-other:#94A0B5;
+
+  /* SPACING (4px base) */
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;
+  --space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;--space-20:80px;
+  --gutter-page:clamp(16px,4vw,32px); --gutter-section:clamp(24px,5vw,48px);
+  --card-pad:20px; --touch-min:48px;
+
+  /* RADIUS (rounded-2xl feel) */
+  --radius-xs:6px;--radius-sm:10px;--radius-md:14px;--radius-lg:20px;--radius-xl:28px;--radius-pill:999px;
+
+  /* TYPOGRAPHY (Thai-first; families come from next/font in app/fonts.ts) */
+  --font-sans:var(--font-plex-thai),"Noto Sans Thai","LINE Seed Sans TH",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --font-display:var(--font-plex-thai-looped),var(--font-plex-thai),"Noto Sans Thai",sans-serif;
+  --text-2xs:11px;--lh-2xs:16px; --text-xs:12px;--lh-xs:18px; --text-sm:14px;--lh-sm:22px;
+  --text-base:16px;--lh-base:26px; --text-lg:18px;--lh-lg:28px; --text-xl:22px;--lh-xl:32px;
+  --text-2xl:28px;--lh-2xl:38px; --text-3xl:clamp(30px,4vw,40px); --text-stat:clamp(34px,6vw,52px);
+  --weight-regular:400;--weight-medium:500;--weight-semibold:600;--weight-bold:700;
+  --tracking-tight:-0.01em; --tracking-wide:0.04em;
+
+  /* SHADOWS (soft, navy-tinted) */
+  --shadow-xs:0 1px 2px rgba(27,58,107,.06);
+  --shadow-sm:0 2px 8px rgba(27,58,107,.06),0 1px 2px rgba(27,58,107,.04);
+  --shadow-md:0 8px 24px rgba(27,58,107,.08),0 2px 6px rgba(27,58,107,.05);
+  --shadow-lg:0 16px 40px rgba(27,58,107,.12),0 4px 12px rgba(27,58,107,.06);
+  --shadow-pop:0 24px 64px rgba(15,38,69,.18);
+  --shadow-focus:0 0 0 3px rgba(47,127,246,.35); --shadow-primary:0 6px 16px rgba(47,127,246,.28);
+
+  /* MOTION */
+  --dur-instant:80ms;--dur-fast:140ms;--dur-normal:220ms;--dur-slow:360ms;--dur-cele:520ms;
+  --ease-standard:cubic-bezier(0.2,0,0,1); --ease-out-expo:cubic-bezier(0.16,1,0.3,1);
+  --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+
+  /* LAYERING + CHROME */
+  --z-sticky:100;--z-bottomnav:200;--z-fab:250;--z-drawer:300;--z-overlay:400;--z-modal:500;--z-toast:600;
+  --bottomnav-h:64px;--header-h:56px;--sidebar-w:264px;--content-max:1240px;
+}
+@media (prefers-reduced-motion: reduce){
+  :root{--dur-instant:0ms;--dur-fast:0ms;--dur-normal:0ms;--dur-slow:0ms;--dur-cele:0ms;}
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--lh-base);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Visible, token-driven focus for keyboard users (WCAG 2.2). */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius-sm);
+  }
+  /* Tabular numerals for clinical/dashboard numbers. */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+}

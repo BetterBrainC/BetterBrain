@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TPM">
+  <rect width="512" height="512" rx="112" fill="#1B3A6B"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#4AA3E0" stroke-width="42"/>
+  <circle cx="332" cy="332" r="34" fill="#F5A623"/>
+  <text x="256" y="298" font-family="IBM Plex Sans Thai, system-ui, sans-serif"
+        font-size="170" font-weight="700" fill="#FFFFFF" text-anchor="middle">T</text>
+</svg>

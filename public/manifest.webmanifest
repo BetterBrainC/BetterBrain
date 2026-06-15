@@ -1,0 +1,20 @@
+{
+  "name": "TPM · Better Brain Swallow Rehab",
+  "short_name": "TPM",
+  "description": "ระบบจัดการพนักงานและคอร์สกายภาพบำบัด",
+  "lang": "th",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7FAFC",
+  "theme_color": "#2F7FF6",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
