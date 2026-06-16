@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmployeeAdminPanel } from "@/components/staff/employee-admin-panel";
+import { SlotsEditor } from "@/components/staff/slots-editor";
 import { getEmployeeDetail, getEmployeeWorkHours } from "@/lib/data/queries";
 
 export default async function EmployeeDetail({
@@ -41,18 +42,7 @@ export default async function EmployeeDetail({
         }}
       />
 
-      <Card>
-        <CardTitle className="mb-3 text-base">ช่วงเวลาทำงาน (slots)</CardTitle>
-        <div className="flex flex-wrap gap-2">
-          {slots.length === 0 && <span className="text-sm text-muted">ยังไม่กำหนด</span>}
-          {slots.map((s, i) => (
-            <Badge key={i} tone="info">{s.slot_start.slice(0, 5)}–{s.slot_end.slice(0, 5)}</Badge>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-muted">
-          ชั่วโมงทำงานคำนวณจากเช็คอิน/เช็คเอาท์ (Asia/Bangkok) — งด/ไม่ได้เช็คอินไม่นับ
-        </p>
-      </Card>
+      <SlotsEditor employeeId={e.id} initial={slots} />
 
       <Card>
         <CardTitle className="mb-3 text-base">ชั่วโมงทำงานเดือนนี้</CardTitle>
