@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { formatThaiTime } from "@/lib/date/buddhist";
+import { DEFAULT_EXERCISE_GUIDE } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
 type Diagnosis = Database["public"]["Enums"]["diagnosis_category"];
@@ -688,14 +689,43 @@ export interface RelativePortalSession {
   therapist: string;
   status: SessionStatus;
 }
+export interface RelativePortalReport {
+  id: string;
+  type: "followup" | "summary";
+  dateISO: string;
+  note: string | null;
+}
+export interface RelativePortalTherapist {
+  name: string;
+  role: string | null;
+  photoUrl: string | null;
+}
 export interface RelativePortalData {
   patientName: string;
   program: string | null;
   courseTotal: number;
   courseUsed: number;
   bonus: number;
+  courseComplete: boolean;
   upcoming: { date: string; time: string; therapist: string }[];
   sessions: RelativePortalSession[];
+  reports: RelativePortalReport[];
+  therapist: RelativePortalTherapist | null;
+  exercises: { title: string; detail: string }[];
+}
+
+/** Pull a short human-readable note out of a clinical report's jsonb payload. */
+function reportNote(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  for (const key of ["summary", "note", "progress_note", "detail", "สรุป", "บันทึก"]) {
+    const v = p[key];
+    if (typeof v === "string" && v.trim()) {
+      const t = v.trim();
+      return t.length > 180 ? `${t.slice(0, 180)}…` : t;
+    }
+  }
+  return null;
 }
 
 /**
@@ -708,11 +738,16 @@ export async function getRelativePortal(
   const admin = createAdminClient();
   const { data: aData } = await admin
     .from("relative_access")
-    .select("patient_id, revoked")
+    .select("patient_id, revoked, expires_at, show_followup, show_summary")
     .eq("access_token", token)
     .maybeSingle();
-  const access = one<{ patient_id: string; revoked: boolean }>(aData);
+  const access = one<{
+    patient_id: string; revoked: boolean; expires_at: string | null;
+    show_followup: boolean; show_summary: boolean;
+  }>(aData);
   if (!access || access.revoked) return null;
+  // Honor the link's expiry at the gate (the share-link TTL is otherwise unenforced).
+  if (access.expires_at && new Date(access.expires_at).getTime() <= Date.now()) return null;
 
   const { data: pData } = await admin
     .from("patients")
@@ -724,12 +759,12 @@ export async function getRelativePortal(
 
   const { data: cData } = await admin
     .from("courses")
-    .select("id, total_sessions, bonus_sessions")
+    .select("id, total_sessions, bonus_sessions, status")
     .eq("patient_id", patient.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const course = one<{ id: string; total_sessions: number | null; bonus_sessions: number }>(cData);
+  const course = one<{ id: string; total_sessions: number | null; bonus_sessions: number; status: string }>(cData);
   let used = 0;
   if (course) {
     const { data: pr } = await admin
@@ -772,15 +807,86 @@ export async function getRelativePortal(
     status: s.status,
   }));
 
+  // Completed reports the clinic chose to expose (followup/summary toggles).
+  const allowed: ("followup" | "summary")[] = [
+    ...(access.show_followup ? (["followup"] as const) : []),
+    ...(access.show_summary ? (["summary"] as const) : []),
+  ];
+  let reports: RelativePortalReport[] = [];
+  if (allowed.length > 0) {
+    const { data: rData } = await admin
+      .from("reports")
+      .select("id, report_type, report_date, payload")
+      .eq("patient_id", patient.id)
+      .eq("status", "completed")
+      .in("report_type", allowed)
+      .order("report_date", { ascending: false })
+      .limit(12);
+    reports = rows<{ id: string; report_type: "followup" | "summary"; report_date: string; payload: unknown }>(rData)
+      .map((r) => ({ id: r.id, type: r.report_type, dateISO: r.report_date, note: reportNote(r.payload) }));
+  }
+
+  // Current therapist = employee on the most recent session (name + role + photo).
+  const { data: tData } = await admin
+    .from("schedule_sessions")
+    .select("employee:profiles!schedule_sessions_employee_id_fkey(full_name, position_title, photo_url)")
+    .eq("patient_id", patient.id)
+    .order("scheduled_start", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const emp = one<{ employee: { full_name: string | null; position_title: string | null; photo_url: string | null } | null }>(tData)?.employee ?? null;
+  const therapist: RelativePortalTherapist | null = emp
+    ? { name: emp.full_name ?? "—", role: emp.position_title ?? "พนักงาน/นักบำบัด", photoUrl: emp.photo_url ?? null }
+    : null;
+
+  // Exercise guide: Director-editable (settings.extra.exercise_guide) → fallback.
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
+  const guide = Array.isArray(extra.exercise_guide)
+    ? (extra.exercise_guide as unknown[]).filter(
+        (e): e is { title: string; detail: string } =>
+          !!e && typeof e === "object" && typeof (e as { title?: unknown }).title === "string",
+      ).map((e) => ({ title: e.title, detail: String((e as { detail?: unknown }).detail ?? "") }))
+    : [];
+  const exercises = guide.length > 0 ? guide : DEFAULT_EXERCISE_GUIDE;
+
+  const total = Number(course?.total_sessions ?? 0);
+  const courseComplete = course?.status === "course_complete" || (total > 0 && used >= total);
+
   return {
     patientName: patient.full_name,
     phoneLast4: (patient.phone ?? "").replace(/\D/g, "").slice(-4),
     program: patient.training_program,
-    courseTotal: Number(course?.total_sessions ?? 0),
+    courseTotal: total,
     courseUsed: used,
     bonus: Number(course?.bonus_sessions ?? 0),
+    courseComplete,
     upcoming,
     sessions,
+    reports,
+    therapist,
+    exercises,
+  };
+}
+
+/** Staff: read the relatives-portal report-visibility flags for a patient. */
+export async function getRelativeVisibility(
+  patientId: string,
+): Promise<{ hasLink: boolean; showFollowup: boolean; showSummary: boolean }> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("relative_access")
+    .select("show_followup, show_summary")
+    .eq("patient_id", patientId)
+    .eq("revoked", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row = one<{ show_followup: boolean; show_summary: boolean }>(data);
+  return {
+    hasLink: !!row,
+    showFollowup: row?.show_followup ?? true,
+    showSummary: row?.show_summary ?? true,
   };
 }
 

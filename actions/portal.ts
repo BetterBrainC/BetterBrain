@@ -70,6 +70,82 @@ export async function createRelativeShareLink(
   return { token };
 }
 
+/** Staff: set which report types the relatives portal exposes for a patient. */
+export async function setRelativeReportVisibility(input: {
+  patientId: string;
+  showFollowup: boolean;
+  showSummary: boolean;
+}): Promise<{ ok?: boolean; error?: string }> {
+  const u = await getCurrentUser();
+  const role = u?.profile?.role;
+  if (role !== "admin" && role !== "director") return { error: "ไม่มีสิทธิ์" };
+  if (u?.profile?.is_enabled === false) return { error: "บัญชีถูกปิดการใช้งาน" };
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("relative_access")
+    .update({ show_followup: input.showFollowup, show_summary: input.showSummary })
+    .eq("patient_id", input.patientId)
+    .eq("revoked", false)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "ยังไม่มีลิงก์ญาติ — สร้างลิงก์ก่อน" };
+  return { ok: true };
+}
+
+/**
+ * Relative opts into Web Push from the portal (no auth user). Resolves the
+ * token → relative_id server-side and stores the subscription keyed by the
+ * relative. Idempotent on endpoint (re-subscribe on the same device upserts).
+ */
+export async function subscribeRelativePush(input: {
+  token: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string;
+}): Promise<{ ok?: boolean; error?: string }> {
+  if (!input.endpoint || !input.p256dh || !input.auth) return { error: "ข้อมูล subscription ไม่ครบ" };
+  const admin = createAdminClient();
+  const { data: aData } = await admin
+    .from("relative_access")
+    .select("relative_id, revoked, expires_at")
+    .eq("access_token", input.token)
+    .maybeSingle();
+  const access = aData as { relative_id: string; revoked: boolean; expires_at: string | null } | null;
+  if (!access || access.revoked) return { error: "ลิงก์ไม่ถูกต้องหรือถูกยกเลิก" };
+  if (access.expires_at && new Date(access.expires_at).getTime() <= Date.now())
+    return { error: "ลิงก์หมดอายุ" };
+
+  const { error } = await admin.from("push_subscriptions").upsert(
+    {
+      profile_id: null,
+      relative_id: access.relative_id,
+      endpoint: input.endpoint,
+      p256dh: input.p256dh,
+      auth: input.auth,
+      user_agent: input.userAgent ?? null,
+      is_active: true,
+      last_used_at: new Date().toISOString(),
+    },
+    { onConflict: "endpoint" },
+  );
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+/** Relative turns off Web Push for a device (by endpoint). */
+export async function unsubscribeRelativePush(endpoint: string): Promise<{ ok?: boolean; error?: string }> {
+  if (!endpoint) return { error: "ไม่พบ endpoint" };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("push_subscriptions")
+    .update({ is_active: false })
+    .eq("endpoint", endpoint);
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
 /**
  * Verify the relatives portal phone last-4 SERVER-SIDE. The expected value never
  * reaches the browser — only a matched last-4 unlocks the (stripped) data.

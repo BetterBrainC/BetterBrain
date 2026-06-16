@@ -21,34 +21,17 @@ function configureVapid(): boolean {
   return true;
 }
 
-/**
- * Send a Web Push to every ACTIVE subscription of a profile (server-only;
- * uses the service-role client). Dead endpoints (404/410) are deactivated so
- * the table self-heals. Relatives are never auth users → never receive push.
- * Returns the number of subscriptions attempted.
- */
-export async function sendPushToProfile(
-  profileId: string,
-  payload: PushPayload,
-): Promise<number> {
-  if (!configureVapid()) {
-    console.warn("[push] VAPID env not configured — skipping push send");
-    return 0;
-  }
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
-    .eq("profile_id", profileId)
-    .eq("is_active", true);
-  const subs = (data ?? []) as {
-    id: string;
-    endpoint: string;
-    p256dh: string;
-    auth: string;
-  }[];
-  if (subs.length === 0) return 0;
+interface SubRow {
+  id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
 
+/** Send `payload` to a set of subscriptions; self-heal dead endpoints. */
+async function deliver(subs: SubRow[], payload: PushPayload): Promise<number> {
+  if (subs.length === 0) return 0;
+  const admin = createAdminClient();
   const body = JSON.stringify(payload);
   await Promise.all(
     subs.map(async (s) => {
@@ -76,4 +59,47 @@ export async function sendPushToProfile(
     }),
   );
   return subs.length;
+}
+
+/**
+ * Send a Web Push to every ACTIVE subscription of a staff/employee profile
+ * (server-only; service-role client). Returns the number attempted.
+ */
+export async function sendPushToProfile(
+  profileId: string,
+  payload: PushPayload,
+): Promise<number> {
+  if (!configureVapid()) {
+    console.warn("[push] VAPID env not configured — skipping push send");
+    return 0;
+  }
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("profile_id", profileId)
+    .eq("is_active", true);
+  return deliver((data ?? []) as SubRow[], payload);
+}
+
+/**
+ * Send a Web Push to a relative's devices. Relatives are NOT auth users — their
+ * subscriptions are keyed by `relative_id` and written via the service-role
+ * client from the portal (see actions/portal.ts).
+ */
+export async function sendPushToRelative(
+  relativeId: string,
+  payload: PushPayload,
+): Promise<number> {
+  if (!configureVapid()) {
+    console.warn("[push] VAPID env not configured — skipping push send");
+    return 0;
+  }
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("relative_id", relativeId)
+    .eq("is_active", true);
+  return deliver((data ?? []) as SubRow[], payload);
 }

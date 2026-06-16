@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CourseCard } from "@/components/course/course-card";
 import { PatientAdminControls } from "@/components/staff/patient-admin-controls";
-import { getPatientDetail } from "@/lib/data/queries";
+import { getPatientDetail, getRelativeVisibility } from "@/lib/data/queries";
 import { DIAGNOSIS_LABEL, PATIENT_STATUS_LABEL, SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { formatThaiDate } from "@/lib/date/buddhist";
 
@@ -28,7 +28,7 @@ export default async function PatientDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getPatientDetail(id);
+  const [detail, visibility] = await Promise.all([getPatientDetail(id), getRelativeVisibility(id)]);
   if (!detail) notFound();
   const { patient: p, course, courseUsed, reports, sessions } = detail;
   const courseTotal = course?.total_sessions ?? 0;
@@ -65,6 +65,7 @@ export default async function PatientDetail({
         patientId={p.id}
         patientStatus={p.status}
         course={course ? { id: course.id, status: course.status } : null}
+        visibility={visibility}
       />
 
       <div className="grid grid-cols-3 gap-3">

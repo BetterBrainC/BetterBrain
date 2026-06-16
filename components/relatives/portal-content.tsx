@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RelativePushToggle } from "@/components/relatives/relative-push-toggle";
 import { APP } from "@/lib/i18n/th";
 import { formatThaiDate } from "@/lib/date/buddhist";
 import type { RelativePortalData } from "@/lib/data/queries";
+
+const REPORT_LABEL = { followup: "บันทึกรายวัน", summary: "ความก้าวหน้ารายเดือน" } as const;
 
 const WEEKDAYS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -21,7 +24,7 @@ function monthTitle(d: Date): string {
 }
 
 /** Unlocked relatives portal view (rendered only after server-side verify). */
-export function PortalContent({ data }: { data: RelativePortalData }) {
+export function PortalContent({ data, token }: { data: RelativePortalData; token: string }) {
   const remaining = Math.max(data.courseTotal - data.courseUsed, 0);
   const pct = data.courseTotal ? Math.min(100, Math.round((data.courseUsed / data.courseTotal) * 100)) : 0;
   const [cursor, setCursor] = React.useState(() => new Date());
@@ -66,7 +69,13 @@ export function PortalContent({ data }: { data: RelativePortalData }) {
             </div>
           ))}
         </div>
-        <Badge tone="completed">{data.program ?? "โปรแกรมฟื้นฟู"}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="completed">{data.program ?? "โปรแกรมฟื้นฟู"}</Badge>
+          {data.courseComplete && <Badge tone="noservice">ครบคอร์สแล้ว</Badge>}
+        </div>
+        {data.courseComplete && (
+          <p className="text-xs text-muted">คอร์สนี้ครบแล้ว — เมื่อบันทึกสรุปรายเดือน สิทธิ์เข้าดูจะสิ้นสุดลง</p>
+        )}
       </Card>
 
       <Card className="space-y-3">
@@ -117,18 +126,59 @@ export function PortalContent({ data }: { data: RelativePortalData }) {
               </p>
             ))
           )}
-          <p className="pt-1 text-xs text-faint">แจ้งเตือนญาติ 1 วันก่อนเข้าฝึก + ก่อนจบคอร์ส</p>
+          <p className="pt-1 text-xs text-faint">แจ้งเตือน 1 วันก่อนเข้าฝึก + ก่อนจบคอร์ส</p>
+          <RelativePushToggle token={token} />
         </div>
       </Card>
 
-      <Card className="space-y-1">
+      {data.therapist && (
+        <Card className="flex items-center gap-3">
+          {data.therapist.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={data.therapist.photoUrl} alt={data.therapist.name} className="h-12 w-12 rounded-full object-cover" />
+          ) : (
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-surface-tint text-primary">
+              <UserRound className="h-6 w-6" />
+            </span>
+          )}
+          <div>
+            <p className="text-2xs text-muted">ผู้ดูแล/นักบำบัด</p>
+            <p className="font-display font-semibold text-navy">{data.therapist.name}</p>
+            {data.therapist.role && <p className="text-xs text-muted">{data.therapist.role}</p>}
+          </div>
+        </Card>
+      )}
+
+      <Card className="space-y-2">
         <CardTitle className="text-base">รายงานการฝึก</CardTitle>
-        <p className="text-sm text-muted">Follow up (รายวัน) · ความก้าวหน้ารายเดือน — ตามที่คลินิกเลือกให้เห็น</p>
+        {data.reports.length === 0 ? (
+          <p className="text-sm text-muted">ยังไม่มีรายงานที่เปิดให้ดู</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.reports.map((r) => (
+              <li key={r.id} className="border-b border-border pb-2 last:border-0 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <Badge tone={r.type === "summary" ? "info" : "completed"}>{REPORT_LABEL[r.type]}</Badge>
+                  <span className="text-xs text-muted">{formatThaiDate(r.dateISO)}</span>
+                </div>
+                {r.note && <p className="mt-1 text-sm text-ink">{r.note}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
-      <Card className="space-y-1">
+      <Card className="space-y-2">
         <CardTitle className="text-base">วิธีออกกำลังกาย</CardTitle>
-        <p className="text-sm text-muted">ท่าฝึก/คำแนะนำสำหรับทำต่อที่บ้าน (เพิ่มเนื้อหาภายหลัง)</p>
+        <p className="text-xs text-muted">ท่าฝึกและคำแนะนำสำหรับทำต่อที่บ้าน</p>
+        <ul className="space-y-3">
+          {data.exercises.map((ex, i) => (
+            <li key={i} className="rounded-md bg-surface-tint p-3">
+              <p className="text-sm font-semibold text-navy">{i + 1}. {ex.title}</p>
+              <p className="mt-1 text-sm text-ink">{ex.detail}</p>
+            </li>
+          ))}
+        </ul>
       </Card>
     </main>
   );

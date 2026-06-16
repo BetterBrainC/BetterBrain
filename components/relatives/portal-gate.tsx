@@ -19,7 +19,7 @@ export function PortalGate({ token }: { token: string }) {
   const [err, setErr] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
-  if (data) return <PortalContent data={data} />;
+  if (data) return <PortalContent data={data} token={token} />;
 
   async function verify() {
     setBusy(true);
