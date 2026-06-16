@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CourseCard } from "@/components/course/course-card";
+import { CreateCourseControl } from "@/components/course/create-course-button";
 import { PatientAdminControls } from "@/components/staff/patient-admin-controls";
 import { getPatientDetail, getRelativeVisibility } from "@/lib/data/queries";
 import { DIAGNOSIS_LABEL, PATIENT_STATUS_LABEL, SESSION_STATUS_LABEL } from "@/lib/i18n/th";
@@ -91,12 +92,16 @@ export default async function PatientDetail({
         </Card>
 
         <div className="space-y-4">
-          {course && (
+          {course ? (
             <CourseCard
               used={courseUsed}
               total={course.total_sessions ?? 0}
               bonus={course.bonus_sessions ?? 0}
+              patientId={p.id}
+              courseId={course.id}
             />
+          ) : (
+            <CreateCourseControl patientId={p.id} />
           )}
           <Card>
             <CardTitle className="mb-2 text-base">รายงาน ({reports.length})</CardTitle>
