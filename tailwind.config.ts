@@ -70,6 +70,12 @@ const config: Config = {
         sans: ["var(--font-sans)"],
         display: ["var(--font-display)"],
       },
+      fontSize: {
+        // `2xs` (11px) is NOT a Tailwind default — register it so `text-2xs`
+        // resolves to the token instead of silently inheriting the parent size
+        // (which made calendar chips / badges render at 16px).
+        "2xs": ["var(--text-2xs)", { lineHeight: "var(--lh-2xs)" }],
+      },
       transitionTimingFunction: {
         standard: "var(--ease-standard)",
         "out-expo": "var(--ease-out-expo)",
