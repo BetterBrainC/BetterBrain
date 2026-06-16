@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/notifications/create";
 
 export interface ActionResult {
   ok?: boolean;
@@ -93,10 +94,12 @@ export async function substituteSession(input: {
 
   const { data: session } = await supabase
     .from("schedule_sessions")
-    .select("employee_id, patient_id")
+    .select("employee_id, patient_id, scheduled_date, patients(full_name)")
     .eq("id", input.sessionId)
     .maybeSingle();
-  const s = session as { employee_id: string; patient_id: string } | null;
+  const s = session as
+    | { employee_id: string; patient_id: string; scheduled_date: string; patients: { full_name: string } | null }
+    | null;
   if (!s) return { error: "ไม่พบเวร" };
   if (s.employee_id === input.substituteEmployeeId) {
     return { error: "พนักงานแทนต้องไม่ใช่คนเดิม" };
@@ -120,6 +123,17 @@ export async function substituteSession(input: {
       { employee_id: input.substituteEmployeeId, patient_id: s.patient_id },
       { onConflict: "employee_id,patient_id" },
     );
+
+  // Notify the substitute (in-app + Web Push).
+  await createNotification({
+    type: "substitute_assigned",
+    audience: "employee",
+    recipientProfileId: input.substituteEmployeeId,
+    channel: "push",
+    title: "คุณได้รับมอบเวรแทน",
+    body: `รับเวรแทน${s.patients?.full_name ? ` · ${s.patients.full_name}` : ""} วันที่ ${s.scheduled_date}`,
+    url: "/app/schedule",
+  });
 
   revalidatePath("/staff/assign");
   revalidatePath("/staff");

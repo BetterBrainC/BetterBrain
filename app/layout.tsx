@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { plexThai, plexThaiLooped } from "./fonts";
 import { Providers } from "./providers";
+import { ServiceWorkerRegister } from "@/components/shell/service-worker-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="th" className={`${plexThai.variable} ${plexThaiLooped.variable}`}>
       <body className="min-h-dvh bg-bg font-sans text-ink antialiased">
         <Providers>{children}</Providers>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

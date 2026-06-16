@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { PencilLine, ChevronRight, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
 import { AccountProfile } from "@/components/employee/account-profile";
+import { PushToggle } from "@/components/shell/push-toggle";
 import { signOut } from "@/actions/auth";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -30,6 +32,12 @@ export default async function AccountPage() {
           email: u?.email ?? "",
         }}
       />
+
+      <Card className="space-y-2">
+        <CardTitle className="text-base">การแจ้งเตือน (Web Push)</CardTitle>
+        <p className="text-xs text-muted">รับแจ้งเตือนนัด/เวร/อนุมัติ บนอุปกรณ์นี้</p>
+        <PushToggle />
+      </Card>
 
       <div className="space-y-2">
         {LINKS.map(({ href, label, icon: Icon }) => (
