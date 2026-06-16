@@ -1255,14 +1255,23 @@ export type Database = {
       is_director: { Args: never; Returns: boolean }
       is_enabled: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      kpi_questions_for_employee: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["employee_kpi_kind"]
+          p_year: number
+        }
+        Returns: { template_id: string; questions: Json }[]
+      }
       record_check_event: {
         Args: {
           p_distance_m: number
+          p_event_id?: string
           p_is_early?: boolean
           p_is_late?: boolean
           p_kind: Database["public"]["Enums"]["checkin_kind"]
           p_lat: number
           p_lng: number
+          p_selfie_url?: string
           p_session_id: string
           p_within: boolean
         }

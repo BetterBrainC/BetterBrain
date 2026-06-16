@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { writeAudit } from "@/lib/audit/log";
 
 export interface ActionResult {
   ok?: boolean;
@@ -73,6 +74,7 @@ export async function createEmployee(input: {
     .eq("id", newId);
   if (profErr) return { error: profErr.message };
 
+  await writeAudit({ action: "create", entity: "employee", entityId: newId, after: { fullName: input.fullName.trim(), employmentType: input.employmentType } });
   revalidatePath("/staff/employees");
   return { ok: true };
 }
@@ -103,6 +105,7 @@ export async function updateEmployee(input: {
     .eq("id", input.id)
     .eq("role", "employee");
   if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "employee", entityId: input.id, after: { fullName: input.fullName.trim() } });
   revalidatePath(`/staff/employees/${input.id}`);
   revalidatePath("/staff/employees");
   return { ok: true };
@@ -115,6 +118,7 @@ export async function resetPassword(input: { id: string; password: string }): Pr
   if (!admin) return { error: "ไม่มีสิทธิ์" };
   const { error } = await admin.auth.admin.updateUserById(input.id, { password: input.password });
   if (error) return { error: error.message };
+  await writeAudit({ action: "password_change", entity: "employee", entityId: input.id });
   return { ok: true };
 }
 
@@ -128,6 +132,7 @@ export async function setEmployeeEnabled(input: { id: string; enabled: boolean }
     .eq("id", input.id)
     .eq("role", "employee");
   if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "employee", entityId: input.id, after: { is_enabled: input.enabled } });
   revalidatePath(`/staff/employees/${input.id}`);
   revalidatePath("/staff/employees");
   return { ok: true };

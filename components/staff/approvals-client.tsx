@@ -20,12 +20,15 @@ export function ApprovalsClient({
 }) {
   // Track the row currently submitting so only its button spins.
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [err, setErr] = React.useState<string | null>(null);
   const [, start] = React.useTransition();
 
-  function run(id: string, fn: (id: string) => Promise<void>) {
+  function run(id: string, fn: (id: string) => Promise<{ error?: string } | void>) {
     setBusyId(id);
+    setErr(null);
     start(async () => {
-      await fn(id);
+      const res = await fn(id);
+      if (res && "error" in res && res.error) setErr(res.error);
       setBusyId(null);
     });
   }
@@ -36,6 +39,7 @@ export function ApprovalsClient({
       {items.length === 0 && (
         <EmptyState icon={CheckCircle2} title="ไม่มีคำขอแก้ไข" description="คำขอแก้ไขเช็คอินจากพนักงานจะปรากฏที่นี่" />
       )}
+      {err && <p className="text-sm text-[var(--danger-fg)]">{err}</p>}
       {items.map((c) => {
         const busy = busyId === c.id;
         return (

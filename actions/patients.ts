@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
+import { writeAudit } from "@/lib/audit/log";
 
 export interface FormResult {
   ok?: boolean;
@@ -128,6 +129,7 @@ export async function setPatientStatus(input: {
     .update({ status: input.status })
     .eq("id", input.id);
   if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "patient", entityId: input.id, actorId: guard.userId, after: { status: input.status } });
   revalidatePath(`/staff/patients/${input.id}`);
   revalidatePath("/staff/patients");
   return { ok: true };
@@ -148,13 +150,15 @@ export async function setCourseStatus(input: {
     .update({ status: input.status })
     .eq("id", input.courseId);
   if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "course", entityId: input.courseId, actorId: guard.userId, after: { status: input.status } });
   revalidatePath(`/staff/patients/${input.patientId}`);
   return { ok: true };
 }
 
 /**
- * Admin creates an opaque, single-use registration link for a relative to fill
- * the intake. The token is random (not the HN) so the link is not enumerable.
+ * Admin creates an opaque, time-bounded registration link for a relative to fill
+ * the intake. The token is random (not the HN) so the link is not enumerable, and
+ * stays valid for 14 days (re-openable within that window to correct data).
  */
 export async function createRegistrationLink(input: {
   hn: string;
@@ -169,6 +173,7 @@ export async function createRegistrationLink(input: {
     .from("registration_links")
     .insert({ token, hn, created_by: guard.userId });
   if (error) return { error: error.message };
+  await writeAudit({ action: "create", entity: "registration_link", entityId: hn, actorId: guard.userId });
   return { token };
 }
 

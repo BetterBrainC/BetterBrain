@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { writeAudit } from "@/lib/audit/log";
 
 export interface SignInState {
   error?: string;
@@ -35,6 +36,14 @@ export async function signIn(
     return { error: "บัญชีนี้ถูกปิดการใช้งาน กรุณาติดต่อผู้ดูแลระบบ" };
   }
 
+  await writeAudit({
+    action: "login",
+    entity: "auth",
+    entityId: data.user.id,
+    actorId: data.user.id,
+    actorRole: (profile.role ?? null) as never,
+  });
+
   redirect(
     profile?.role === "admin" || profile?.role === "director" ? "/staff" : "/app",
   );
@@ -42,6 +51,10 @@ export async function signIn(
 
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) await writeAudit({ action: "logout", entity: "auth", entityId: user.id, actorId: user.id, actorRole: null });
   await supabase.auth.signOut();
   redirect("/login");
 }

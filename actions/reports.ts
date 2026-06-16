@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { writeAudit } from "@/lib/audit/log";
 
 export interface ActionResult {
   ok?: boolean;
@@ -101,6 +102,13 @@ export async function saveReport(input: {
     payload: input.payload as never,
   });
   if (error) return { error: error.message };
+  await writeAudit({
+    action: "create",
+    entity: "report",
+    entityId: input.sessionId,
+    actorId: user.id,
+    context: { reportType: input.reportType },
+  });
   revalidatePath(`/app/session/${input.sessionId}`);
   revalidatePath("/staff/reports");
   return { ok: true };

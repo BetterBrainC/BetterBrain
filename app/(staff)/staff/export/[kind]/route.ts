@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { formatThaiDateTime } from "@/lib/date/buddhist";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
+import { writeAudit } from "@/lib/audit/log";
 
 function csvCell(v: string | number | null | undefined): string {
   const s = String(v ?? "");
@@ -61,6 +62,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     ].map(csvCell).join(",");
   });
   const csv = "﻿" + [headers.map(csvCell).join(","), ...lines].join("\r\n");
+
+  await writeAudit({
+    action: "export",
+    entity: "attendance",
+    actorId: user.id,
+    actorRole: (role ?? null) as never,
+    context: { kind, from: from || null, to: to || null, rows: rows.length },
+  });
 
   return new Response(csv, {
     headers: {
