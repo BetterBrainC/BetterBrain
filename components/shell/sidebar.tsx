@@ -36,7 +36,15 @@ const ITEMS = [
 ];
 
 /** Admin + Director desktop sidebar (shared shell). */
-export function Sidebar({ role }: { role: Role | null | undefined }) {
+export function Sidebar({
+  role,
+  logoUrl,
+  companyName,
+}: {
+  role: Role | null | undefined;
+  logoUrl?: string | null;
+  companyName?: string | null;
+}) {
   const pathname = usePathname();
   const items = ITEMS.filter((i) => !i.directorOnly || role === "director");
   return (
@@ -45,11 +53,16 @@ export function Sidebar({ role }: { role: Role | null | undefined }) {
       style={{ width: "var(--sidebar-w)" }}
     >
       <div className="flex items-center gap-2 px-5 py-5">
-        <span className="grid h-9 w-9 place-items-center rounded-md bg-navy font-display text-sm font-bold text-white">
-          T
-        </span>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt={companyName || APP.name} className="h-9 w-9 rounded-md object-contain" />
+        ) : (
+          <span className="grid h-9 w-9 place-items-center rounded-md bg-navy font-display text-sm font-bold text-white">
+            T
+          </span>
+        )}
         <div className="leading-tight">
-          <p className="font-display text-base font-bold text-navy">{APP.name}</p>
+          <p className="font-display text-base font-bold text-navy">{companyName || APP.name}</p>
           <p className="text-2xs text-muted">{APP.org}</p>
         </div>
       </div>
