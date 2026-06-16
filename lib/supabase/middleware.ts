@@ -9,6 +9,7 @@ const PUBLIC_PREFIXES = [
   "/booking", // public booking form
   "/register/", // public registration link (relative fills intake)
   "/r/", // tokenized relatives portal
+  "/api/cron", // cron routes (no Supabase session; self-guarded by CRON_SECRET)
 ];
 
 /**
