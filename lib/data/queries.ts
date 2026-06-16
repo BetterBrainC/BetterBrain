@@ -94,6 +94,7 @@ export interface SessionDetail {
   address: string | null;
   timeLabel: string;
   scheduledStartISO: string | null;
+  scheduledEndISO: string | null;
   homeLat: number | null;
   homeLng: number | null;
   courseUsed: number;
@@ -144,6 +145,7 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
     address: s.patients?.address ?? null,
     timeLabel: timeLabel(s.scheduled_start, s.scheduled_end),
     scheduledStartISO: s.scheduled_start,
+    scheduledEndISO: s.scheduled_end,
     homeLat: s.patients?.home_lat ?? null,
     homeLng: s.patients?.home_lng ?? null,
     courseUsed: used,
@@ -943,6 +945,79 @@ export async function getKpiTemplates(): Promise<KpiTemplate[]> {
   }));
 }
 
+export interface PatientKpiResult {
+  id: string;
+  patientName: string;
+  fois: string | null;
+  barthel: number | null;
+  functionDone: number;
+  functionTotal: number;
+  fim: number | null;
+  mfs: number | null;
+  dateISO: string;
+}
+export interface EmployeeKpiResult {
+  id: string;
+  employeeName: string;
+  kind: "knowledge" | "stress" | null;
+  score: number | null;
+  year: number | null;
+  dateISO: string;
+}
+
+/** Director-only KPI results (การวัดผล): patient scales + employee self-assessments. */
+export async function getMeasurementResults(): Promise<{
+  patient: PatientKpiResult[];
+  employee: EmployeeKpiResult[];
+}> {
+  const supabase = await createClient();
+  const { data: pData } = await supabase
+    .from("kpi_evaluations")
+    .select("id, fois_level, barthel_index, function_checklist, answers, evaluated_on, patients(full_name)")
+    .eq("target", "patient")
+    .order("evaluated_on", { ascending: false })
+    .limit(200);
+  const patient = rows<{
+    id: string; fois_level: string | null; barthel_index: number | null;
+    function_checklist: Record<string, boolean> | null; answers: { fim?: number | null; mfs?: number | null } | null;
+    evaluated_on: string; patients: { full_name: string | null } | null;
+  }>(pData).map((r) => {
+    const fc = r.function_checklist ?? {};
+    const vals = Object.values(fc);
+    return {
+      id: r.id,
+      patientName: r.patients?.full_name ?? "—",
+      fois: r.fois_level,
+      barthel: r.barthel_index,
+      functionDone: vals.filter(Boolean).length,
+      functionTotal: vals.length,
+      fim: r.answers?.fim ?? null,
+      mfs: r.answers?.mfs ?? null,
+      dateISO: r.evaluated_on,
+    };
+  });
+
+  const { data: eData } = await supabase
+    .from("kpi_evaluations")
+    .select("id, employee_kpi_kind, score, period_year, evaluated_on, employee:profiles!kpi_evaluations_employee_id_fkey(full_name)")
+    .eq("target", "employee")
+    .order("evaluated_on", { ascending: false })
+    .limit(200);
+  const employee = rows<{
+    id: string; employee_kpi_kind: "knowledge" | "stress" | null; score: number | null;
+    period_year: number | null; evaluated_on: string; employee: { full_name: string | null } | null;
+  }>(eData).map((r) => ({
+    id: r.id,
+    employeeName: r.employee?.full_name ?? "—",
+    kind: r.employee_kpi_kind,
+    score: r.score,
+    year: r.period_year,
+    dateISO: r.evaluated_on,
+  }));
+
+  return { patient, employee };
+}
+
 /** Drop the correct-answer key so the question bank is safe to send to employees. */
 export function stripKpiAnswers(t: KpiTemplate | null): KpiTemplate | null {
   if (!t) return null;
@@ -1085,12 +1160,14 @@ export async function getSettings(): Promise<SettingsData> {
 export async function getCheckinSettings(): Promise<{
   radiusM: number;
   lateThresholdMin: number;
+  earlyThresholdMin: number;
   selfieEnforced: boolean;
 }> {
   const s = await getSettings();
   return {
     radiusM: s.geofenceRadiusM,
     lateThresholdMin: s.lateThresholdMin,
+    earlyThresholdMin: s.earlyThresholdMin,
     selfieEnforced: s.selfieEnforced,
   };
 }

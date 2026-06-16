@@ -14,14 +14,16 @@ export interface QueuedCheckin {
   capturedAt: string; // ISO; device clock = authoritative event time
   lat: number;
   lng: number;
-  accuracy?: number;
-  distanceMeters?: number;
-  withinRadius?: boolean;
-  selfieBlobKey?: string;
-  derivedStatus?: string;
+  accuracy?: number | undefined;
+  distanceMeters?: number | undefined;
+  withinRadius?: boolean | undefined;
+  isLate?: boolean | undefined;
+  isEarly?: boolean | undefined;
+  selfieBlob?: Blob | undefined; // captured offline; uploaded on flush
+  derivedStatus?: string | undefined;
   syncState: "pending" | "syncing" | "synced" | "conflict" | "failed";
   attempts: number;
-  lastError?: string;
+  lastError?: string | undefined;
 }
 
 export interface QueuedReport {

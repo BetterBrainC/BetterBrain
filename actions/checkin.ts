@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,6 +23,29 @@ async function requireEnabledUser(): Promise<{ ok: true; id: string } | { ok: fa
   if (!u) return { ok: false, error: "ไม่ได้เข้าสู่ระบบ" };
   if (u.profile?.is_enabled === false) return { ok: false, error: "บัญชีถูกปิดการใช้งาน" };
   return { ok: true, id: u.id };
+}
+
+/** Upload a check-in selfie to the PRIVATE attachments bucket; returns the path. */
+export async function uploadCheckinSelfie(
+  formData: FormData,
+): Promise<{ path?: string; error?: string }> {
+  const file = formData.get("file");
+  const sessionId = String(formData.get("sessionId") ?? "");
+  if (!(file instanceof File) || file.size === 0) return { error: "ไม่พบรูปเซลฟี่" };
+  if (file.size > 8_388_608) return { error: "ไฟล์ใหญ่เกิน 8MB" };
+  if (!sessionId) return { error: "ไม่พบเวร" };
+  const guard = await requireEnabledUser();
+  if (!guard.ok) return { error: guard.error };
+
+  const admin = createAdminClient();
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const path = `checkins/${sessionId}/${randomUUID()}.${ext}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error } = await admin.storage
+    .from("attachments")
+    .upload(path, bytes, { contentType: file.type || "image/jpeg", upsert: true });
+  if (error) return { error: error.message };
+  return { path };
 }
 
 /** Record a check-in or check-out (via SECURITY DEFINER RPC that also flips session status). */

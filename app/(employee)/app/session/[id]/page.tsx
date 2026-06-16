@@ -61,7 +61,10 @@ export default async function SessionPage({
         radiusM={checkinCfg.radiusM}
         initialStatus={session.status}
         scheduledStartISO={session.scheduledStartISO}
+        scheduledEndISO={session.scheduledEndISO}
         lateThresholdMin={checkinCfg.lateThresholdMin}
+        earlyThresholdMin={checkinCfg.earlyThresholdMin}
+        selfieEnforced={checkinCfg.selfieEnforced}
       />
 
       <section className="space-y-2">
