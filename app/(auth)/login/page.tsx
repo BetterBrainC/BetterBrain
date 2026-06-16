@@ -30,7 +30,7 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium text-ink">อีเมล</label>
               <input id="email" name="email" type="email" autoComplete="email" required
-                placeholder="director@bb.test" className={inputClsLg} />
+                placeholder="director@tpm.com" className={inputClsLg} />
             </div>
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-sm font-medium text-ink">รหัสผ่าน</label>
@@ -51,7 +51,7 @@ export default function LoginPage() {
           </form>
           {process.env.NODE_ENV !== "production" && (
             <p className="text-center text-xs text-faint">
-              ทดลอง: director@bb.test / admin@bb.test / employee1@bb.test · รหัส 123456
+              ทดลอง: director@tpm.com / admin@tpm.com / employee1@tpm.com · รหัส 123456
             </p>
           )}
         </Card>
