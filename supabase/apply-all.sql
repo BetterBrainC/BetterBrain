@@ -38,7 +38,7 @@ create type notification_type  as enum (
 create type notification_channel  as enum ('in_app','push','email','line');
 create type notification_audience as enum ('employee','admin','director','relative');
 create type audit_action       as enum ('login','logout','create','update','delete','check_in','check_out',
-                                        'approve','reject','apply_correction','password_change','export');
+                                        'approve','reject','apply_correction','password_change','export','access_revoke');
 
 -- ── Shared triggers ─────────────────────────────────────────────────────
 create or replace function public.set_updated_at()
@@ -405,6 +405,8 @@ create table public.relative_access (
   consent_relative_portal boolean not null default false,
   expires_at timestamptz,
   revoked boolean not null default false,
+  show_followup boolean not null default true,   -- clinic selects which reports relatives see
+  show_summary  boolean not null default true,
   created_at timestamptz not null default now()
 );
 create index idx_relaccess_patient on public.relative_access(patient_id);
@@ -429,19 +431,22 @@ create table public.notifications (
 create index idx_notif_pending on public.notifications(scheduled_for) where sent_at is null;
 create index idx_notif_recipient on public.notifications(recipient_profile_id, read_at);
 
--- ── push_subscriptions (Web Push / VAPID; staff/employee only) ──────────
+-- ── push_subscriptions (Web Push / VAPID; staff/employee AND relatives) ──
 create table public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
-  profile_id uuid not null references public.profiles(id) on delete cascade,
+  profile_id uuid references public.profiles(id) on delete cascade,
+  relative_id uuid references public.relatives(id) on delete cascade,  -- relatives are NOT auth users
   endpoint text not null unique,
   p256dh text not null,
   auth text not null,
   user_agent text,
   last_used_at timestamptz,
   is_active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint chk_push_owner check (num_nonnulls(profile_id, relative_id) = 1)  -- exactly one owner
 );
 create index idx_push_profile on public.push_subscriptions(profile_id);
+create index idx_push_relative on public.push_subscriptions(relative_id);
 
 -- ── audit_logs (append-only; director-only read) ────────────────────────
 create table public.audit_logs (
@@ -819,6 +824,50 @@ revoke execute on function public.record_check_event(uuid,public.checkin_kind,do
 grant  execute on function public.record_check_event(uuid,public.checkin_kind,double precision,double precision,double precision,boolean,boolean,boolean) to authenticated;
 revoke execute on function public.save_followup(uuid,jsonb,public.fois_level) from public, anon;
 grant  execute on function public.save_followup(uuid,jsonb,public.fois_level) to authenticated;
+
+-- ╔═══ 0008_relative_portal_and_revoke ═══╗
+-- Saving a Summary on a FINISHED course revokes relative + employee access and
+-- marks the course complete (audit-logged). See migrations/0008.
+create or replace function public.revoke_access_on_summary()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_remaining int;
+  v_status public.course_status;
+begin
+  if new.report_type <> 'summary' or new.status <> 'completed' or new.course_id is null then
+    return new;
+  end if;
+
+  select remaining_sessions into v_remaining
+    from public.course_progress where course_id = new.course_id;
+  select status into v_status from public.courses where id = new.course_id;
+
+  if coalesce(v_remaining, 1) > 0 and v_status is distinct from 'course_complete' then
+    return new;
+  end if;
+
+  update public.courses
+     set status = 'course_complete', completed_on = coalesce(completed_on, current_date)
+   where id = new.course_id and status <> 'course_complete';
+
+  update public.relative_access
+     set revoked = true
+   where patient_id = new.patient_id and revoked = false;
+
+  insert into public.audit_logs(actor_id, action, entity, entity_id, after, context)
+  values (auth.uid(), 'access_revoke', 'patient', new.patient_id::text,
+          jsonb_build_object('reason', 'summary_completed', 'course_id', new.course_id),
+          jsonb_build_object('report_id', new.id));
+
+  delete from public.patient_assignments where patient_id = new.patient_id;
+  return new;
+end $$;
+revoke execute on function public.revoke_access_on_summary() from public, anon, authenticated;
+
+drop trigger if exists trg_revoke_on_summary on public.reports;
+create trigger trg_revoke_on_summary
+  after insert or update of status on public.reports
+  for each row execute function public.revoke_access_on_summary();
 
 -- ╔═══ seed.sql ═══╗
 -- ════════════════════════════════════════════════════════════════════════

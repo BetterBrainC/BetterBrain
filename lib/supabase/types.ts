@@ -789,7 +789,8 @@ export type Database = {
           is_active: boolean
           last_used_at: string | null
           p256dh: string
-          profile_id: string
+          profile_id: string | null
+          relative_id: string | null
           user_agent: string | null
         }
         Insert: {
@@ -800,7 +801,8 @@ export type Database = {
           is_active?: boolean
           last_used_at?: string | null
           p256dh: string
-          profile_id: string
+          profile_id?: string | null
+          relative_id?: string | null
           user_agent?: string | null
         }
         Update: {
@@ -811,7 +813,8 @@ export type Database = {
           is_active?: boolean
           last_used_at?: string | null
           p256dh?: string
-          profile_id?: string
+          profile_id?: string | null
+          relative_id?: string | null
           user_agent?: string | null
         }
         Relationships: [
@@ -820,6 +823,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_relative_id_fkey"
+            columns: ["relative_id"]
+            isOneToOne: false
+            referencedRelation: "relatives"
             referencedColumns: ["id"]
           },
         ]
@@ -834,6 +844,8 @@ export type Database = {
           patient_id: string
           relative_id: string
           revoked: boolean
+          show_followup: boolean
+          show_summary: boolean
         }
         Insert: {
           access_token: string
@@ -844,6 +856,8 @@ export type Database = {
           patient_id: string
           relative_id: string
           revoked?: boolean
+          show_followup?: boolean
+          show_summary?: boolean
         }
         Update: {
           access_token?: string
@@ -854,6 +868,8 @@ export type Database = {
           patient_id?: string
           relative_id?: string
           revoked?: boolean
+          show_followup?: boolean
+          show_summary?: boolean
         }
         Relationships: [
           {
