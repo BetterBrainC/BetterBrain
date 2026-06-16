@@ -930,6 +930,11 @@ insert into public.settings (id, company_name)
 values (1, 'Better Brain - Swallow Rehab')
 on conflict (id) do nothing;
 
+-- Private storage bucket for report photos + check-in selfies.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('attachments', 'attachments', false, 8388608)
+on conflict (id) do nothing;
+
 -- Diagnosis categories (for statistics; store full English names).
 insert into public.diagnoses (category, label_en, sort) values
   ('stroke',             'Stroke',                          1),

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { writeAudit } from "@/lib/audit/log";
@@ -96,13 +97,17 @@ export async function applyCorrection(id: string): Promise<{ error?: string } | 
 
   let before: unknown = null;
   if (row.check_in_id) {
-    const { data: prevCi } = await supabase.from("check_ins").select("client_event_at").eq("id", row.check_in_id).maybeSingle();
+    // Use the service-role client: the checkins_update RLS admin branch requires
+    // the correction to still be 'approved', but we just flipped it to 'applied'.
+    const admin = createAdminClient();
+    const { data: prevCi } = await admin.from("check_ins").select("client_event_at").eq("id", row.check_in_id).maybeSingle();
     before = prevCi;
     // Apply the requested corrected time when it parses; always flag as corrected.
     const to = row.requested_changes?.to ?? "";
     const patch: Record<string, unknown> = { corrected: true };
     if (to && !Number.isNaN(Date.parse(to))) patch.client_event_at = new Date(to).toISOString();
-    await supabase.from("check_ins").update(patch as never).eq("id", row.check_in_id);
+    const { error: ciErr } = await admin.from("check_ins").update(patch as never).eq("id", row.check_in_id);
+    if (ciErr) return { error: ciErr.message };
   }
   await writeAudit({
     action: "apply_correction",
