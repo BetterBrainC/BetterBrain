@@ -45,10 +45,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
   const { data } = await q;
   const rows = (Array.isArray(data) ? data : []) as unknown as Row[];
 
-  const headers = ["วันที่", "ผู้รับบริการ", "พนักงาน", "สถานะ", "เช็คอิน", "เช็คเอาท์", "สาย", "ระยะ(ม.)", "ในระยะ"];
+  const headers = ["วันที่", "ผู้รับบริการ", "พนักงาน", "สถานะ", "เช็คอิน", "เช็คเอาท์", "ชั่วโมง", "สาย", "ระยะ(ม.)", "ในระยะ"];
   const lines = rows.map((r) => {
     const ci = r.check_ins?.find((c) => c.kind === "check_in");
     const co = r.check_ins?.find((c) => c.kind === "check_out");
+    const hours =
+      ci && co ? Math.round((new Date(co.client_event_at).getTime() - new Date(ci.client_event_at).getTime()) / 360_000) / 10 : "";
     return [
       r.scheduled_date,
       r.patients?.full_name ?? "",
@@ -56,6 +58,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
       SESSION_STATUS_LABEL[r.status] ?? r.status,
       ci ? formatThaiDateTime(ci.client_event_at) : "",
       co ? formatThaiDateTime(co.client_event_at) : "",
+      hours === "" ? "" : hours > 0 ? hours : "",
       ci?.is_late ? "สาย" : "",
       ci?.distance_m != null ? Math.round(ci.distance_m) : "",
       ci?.within_geofence == null ? "" : ci.within_geofence ? "ใช่" : "ไม่",

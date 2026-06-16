@@ -354,6 +354,42 @@ export async function getEmployeeDetail(id: string): Promise<{
   return { profile, slots: rows<{ slot_start: string; slot_end: string }>(sData) };
 }
 
+/**
+ * Work hours for an employee this month = Σ(check_out − check_in) per session,
+ * in Asia/Bangkok. no_checkin/งด sessions have no check-in pair so are excluded.
+ */
+export async function getEmployeeWorkHours(
+  employeeId: string,
+): Promise<{ totalHours: number; sessionCount: number }> {
+  const supabase = await createClient();
+  const monthStart = `${bangkokToday().slice(0, 8)}01T00:00:00+07:00`;
+  const { data } = await supabase
+    .from("check_ins")
+    .select("session_id, kind, client_event_at")
+    .eq("employee_id", employeeId)
+    .gte("client_event_at", monthStart);
+  const evs = rows<{ session_id: string; kind: string; client_event_at: string }>(data);
+  const bySession = new Map<string, { in?: string; out?: string }>();
+  for (const r of evs) {
+    const e = bySession.get(r.session_id) ?? {};
+    if (r.kind === "check_in") e.in = r.client_event_at;
+    else if (r.kind === "check_out") e.out = r.client_event_at;
+    bySession.set(r.session_id, e);
+  }
+  let totalMs = 0;
+  let sessionCount = 0;
+  for (const e of bySession.values()) {
+    if (e.in && e.out) {
+      const ms = new Date(e.out).getTime() - new Date(e.in).getTime();
+      if (ms > 0) {
+        totalMs += ms;
+        sessionCount += 1;
+      }
+    }
+  }
+  return { totalHours: Math.round(totalMs / 360_000) / 10, sessionCount };
+}
+
 type BookingLite = {
   id: string; full_name: string; phone: string; area: string | null;
   status: Database["public"]["Enums"]["booking_status"]; created_at: string;
@@ -489,7 +525,7 @@ export interface DashboardData {
   inProgress: number;
   pendingApprovals: number;
   diagnosis: { label: string; count: number; varName: string }[];
-  monitor: { name: string; patient: string; time: string; status: SessionStatus }[];
+  monitor: { name: string; patient: string; time: string; status: SessionStatus; early: boolean }[];
   employeeCount: number;
   patients: PatientRow[];
   dailySeries: { label: string; total: number; done: number }[];
@@ -510,13 +546,14 @@ export async function getDashboard(): Promise<DashboardData> {
 
   const { data: tData } = await supabase
     .from("schedule_sessions")
-    .select("status, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name)")
+    .select("status, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
     .eq("scheduled_date", today)
     .order("scheduled_start");
   const sessions = rows<{
     status: SessionStatus; scheduled_start: string | null;
     patients: { full_name: string | null } | null;
     employee: { full_name: string | null } | null;
+    check_ins: { kind: string; is_early: boolean }[] | null;
   }>(tData);
   const checkedIn = sessions.filter((s) =>
     ["in_progress", "attended", "late", "completed"].includes(s.status),
@@ -586,6 +623,7 @@ export async function getDashboard(): Promise<DashboardData> {
       patient: s.patients?.full_name ?? "—",
       time: s.scheduled_start ? formatThaiTime(s.scheduled_start) : "",
       status: s.status,
+      early: s.check_ins?.some((c) => c.kind === "check_out" && c.is_early) ?? false,
     })),
     employeeCount: employeeCount ?? 0,
     patients: await getPatients(),

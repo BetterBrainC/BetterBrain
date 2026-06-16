@@ -9,7 +9,7 @@ import { CalendarClock } from "lucide-react";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 
 type SessionStatus = keyof typeof SESSION_STATUS_LABEL;
-type MonitorRow = { name: string; patient: string; time: string; status: SessionStatus };
+type MonitorRow = { name: string; patient: string; time: string; status: SessionStatus; early?: boolean };
 
 const TONE: Record<string, "completed" | "late" | "info" | "neutral" | "nocheckin" | "skipped"> = {
   completed: "completed", attended: "completed", in_progress: "info", late: "late",
@@ -63,7 +63,10 @@ export function LiveMonitor({ rows, employeeCount }: { rows: MonitorRow[]; emplo
                   {m.time ? `${m.time} · ` : ""}{m.name}
                 </p>
               </div>
-              <Badge tone={TONE[m.status] ?? "neutral"}>{SESSION_STATUS_LABEL[m.status]}</Badge>
+              <span className="flex shrink-0 items-center gap-1.5">
+                {m.early && <Badge tone="early">ออกก่อนเวลา</Badge>}
+                <Badge tone={TONE[m.status] ?? "neutral"}>{SESSION_STATUS_LABEL[m.status]}</Badge>
+              </span>
             </li>
           ))}
         </ul>

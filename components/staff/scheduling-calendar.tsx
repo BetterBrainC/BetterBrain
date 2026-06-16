@@ -1,13 +1,66 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Sparkles, MapPin, Clock, User, Stethoscope } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Sparkles, MapPin, Clock, User, Stethoscope, Ban } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Sheet } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { formatThaiDate } from "@/lib/date/buddhist";
+import { markSessionSkipped, updateSessionSpecial } from "@/actions/scheduling";
 import type { CalendarSession } from "@/lib/data/queries";
+
+/** Admin controls inside the visit sheet: mark งด + edit เคสพิเศษ on an existing session. */
+function SessionActions({ session, onDone }: { session: CalendarSession; onDone: () => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  const [special, setSpecial] = React.useState(session.isSpecial);
+  const [amount, setAmount] = React.useState(session.specialAmount ? String(session.specialAmount) : "");
+
+  async function skip() {
+    setBusy(true); setErr(null);
+    const res = await markSessionSkipped(session.id, "ผู้รับบริการยกเลิก");
+    setBusy(false);
+    if (res.error) return setErr(res.error);
+    router.refresh(); onDone();
+  }
+  async function saveSpecial(next: boolean, amt: string) {
+    setSpecial(next); setAmount(amt);
+    setBusy(true); setErr(null);
+    const res = await updateSessionSpecial({ sessionId: session.id, isSpecial: next, amount: next ? Number(amt) || 0 : null });
+    setBusy(false);
+    if (res.error) return setErr(res.error);
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-3 border-t border-border pt-3">
+      <label className="flex items-center gap-2 text-sm text-ink">
+        <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={special} disabled={busy}
+          onChange={(e) => saveSpecial(e.target.checked, amount)} />
+        เคสพิเศษ (เพิ่มเงิน)
+      </label>
+      {special && (
+        <div className="flex items-center gap-2">
+          <input type="number" inputMode="numeric" value={amount} placeholder="จำนวนเงิน (บาท)" disabled={busy}
+            onChange={(e) => setAmount(e.target.value)}
+            onBlur={() => saveSpecial(true, amount)}
+            className="h-9 w-40 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary" />
+          <span className="text-xs text-muted">บาท</span>
+        </div>
+      )}
+      {session.status !== "skipped" && session.status !== "completed" && (
+        <Button size="sm" variant="secondary" onClick={skip} disabled={busy}>
+          <Ban className="h-4 w-4" /> งด (ผู้รับบริการยกเลิก)
+        </Button>
+      )}
+      {err && <p className="text-sm text-[var(--danger-fg)]">{err}</p>}
+    </div>
+  );
+}
 
 type View = "day" | "week" | "month";
 type SessionStatus = CalendarSession["status"];
@@ -145,6 +198,7 @@ function VisitDetailSheet({ session, onClose }: { session: CalendarSession | nul
               <MapPin className="h-4 w-4" /> เปิดแผนที่
             </a>
           )}
+          <SessionActions session={session} onDone={onClose} />
         </div>
       )}
     </Sheet>

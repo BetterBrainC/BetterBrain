@@ -3,10 +3,56 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createNotification } from "@/lib/notifications/create";
+import { getCurrentUser } from "@/lib/auth";
+import { writeAudit } from "@/lib/audit/log";
 
 export interface ActionResult {
   ok?: boolean;
   error?: string;
+}
+
+async function requireStaffUser(): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const u = await getCurrentUser();
+  const role = u?.profile?.role;
+  if (role !== "admin" && role !== "director") return { ok: false, error: "ไม่มีสิทธิ์" };
+  if (u?.profile?.is_enabled === false) return { ok: false, error: "บัญชีถูกปิดการใช้งาน" };
+  return { ok: true, id: u!.id };
+}
+
+/** Patient last-minute cancel → mark the session "งด" (no session consumed). */
+export async function markSessionSkipped(sessionId: string, reason?: string): Promise<ActionResult> {
+  const guard = await requireStaffUser();
+  if (!guard.ok) return { error: guard.error };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schedule_sessions")
+    .update({ status: "skipped", note: reason ?? null })
+    .eq("id", sessionId);
+  if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "session", entityId: sessionId, actorId: guard.id, after: { status: "skipped", reason: reason ?? null } });
+  revalidatePath("/staff/assign");
+  return { ok: true };
+}
+
+/** Toggle/set เคสพิเศษ (extra pay) on an EXISTING session. */
+export async function updateSessionSpecial(input: {
+  sessionId: string;
+  isSpecial: boolean;
+  amount: number | null;
+}): Promise<ActionResult> {
+  const guard = await requireStaffUser();
+  if (!guard.ok) return { error: guard.error };
+  if (input.isSpecial && (input.amount == null || input.amount <= 0))
+    return { error: "ระบุจำนวนเงินเคสพิเศษ" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schedule_sessions")
+    .update({ is_special_case: input.isSpecial, special_amount: input.isSpecial ? input.amount : null })
+    .eq("id", input.sessionId);
+  if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "session", entityId: input.sessionId, actorId: guard.id, after: { is_special_case: input.isSpecial, special_amount: input.isSpecial ? input.amount : null } });
+  revalidatePath("/staff/assign");
+  return { ok: true };
 }
 
 // Bangkok has no DST → fixed +07:00. A local "HH:MM" on a given date maps to a

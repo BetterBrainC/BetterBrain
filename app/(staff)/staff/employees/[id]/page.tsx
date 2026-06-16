@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmployeeAdminPanel } from "@/components/staff/employee-admin-panel";
-import { getEmployeeDetail } from "@/lib/data/queries";
+import { getEmployeeDetail, getEmployeeWorkHours } from "@/lib/data/queries";
 
 export default async function EmployeeDetail({
   params,
@@ -12,7 +12,7 @@ export default async function EmployeeDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getEmployeeDetail(id);
+  const [detail, work] = await Promise.all([getEmployeeDetail(id), getEmployeeWorkHours(id)]);
   if (!detail) notFound();
   const { profile: e, slots } = detail;
 
@@ -50,8 +50,22 @@ export default async function EmployeeDetail({
           ))}
         </div>
         <p className="mt-3 text-xs text-muted">
-          ระบบคำนวณชั่วโมงทำงานอัตโนมัติจาก slot + เช็คอิน/เช็คเอาท์
+          ชั่วโมงทำงานคำนวณจากเช็คอิน/เช็คเอาท์ (Asia/Bangkok) — งด/ไม่ได้เช็คอินไม่นับ
         </p>
+      </Card>
+
+      <Card>
+        <CardTitle className="mb-3 text-base">ชั่วโมงทำงานเดือนนี้</CardTitle>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-surface-tint px-3 py-2.5 text-center">
+            <p className="font-display text-2xl font-bold tabular-nums text-navy">{work.totalHours}</p>
+            <p className="mt-0.5 text-2xs text-muted">ชั่วโมงรวม</p>
+          </div>
+          <div className="rounded-lg bg-surface-tint px-3 py-2.5 text-center">
+            <p className="font-display text-2xl font-bold tabular-nums text-navy">{work.sessionCount}</p>
+            <p className="mt-0.5 text-2xs text-muted">เคสที่เช็คเอาท์</p>
+          </div>
+        </div>
       </Card>
     </div>
   );
