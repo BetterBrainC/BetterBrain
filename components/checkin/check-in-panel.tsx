@@ -9,7 +9,7 @@ import { DailyReportSheet } from "@/components/reports/daily-report-sheet";
 import { haversineMeters } from "@/lib/geo/haversine";
 import { getCurrentFix } from "@/lib/geo/geolocation";
 import { recordCheckEvent, uploadCheckinSelfie } from "@/actions/checkin";
-import { enqueueCheckEvent, flushCheckins } from "@/lib/sync/checkin-sync";
+import { enqueueCheckEvent, flushAll } from "@/lib/sync/checkin-sync";
 
 type Phase = "idle" | "locating" | "located" | "checkedin" | "done";
 
@@ -66,7 +66,7 @@ export function CheckInPanel({
   // Flush any queued offline events on mount and whenever the device reconnects.
   React.useEffect(() => {
     const run = () => {
-      flushCheckins()
+      flushAll()
         .then((r) => r.synced > 0 && router.refresh())
         .catch(() => {});
     };
@@ -158,7 +158,8 @@ export function CheckInPanel({
     if (!navigator.onLine) {
       await enqueueCheckEvent({ clientUuid: eventId, sessionId, kind: "check_out", capturedAt: new Date().toISOString(), lat, lng, distanceMeters: distance ?? undefined, withinRadius: hasHome ? inRange : false, isEarly: isEarlyNow() });
       setBusy(false);
-      setInfo("บันทึกเช็คเอาท์ออฟไลน์แล้ว — โปรดทำรายงาน Follow up เมื่อกลับมาออนไลน์");
+      setInfo("บันทึกเช็คเอาท์ออฟไลน์แล้ว — กรอก Follow up ได้เลย จะซิงค์เมื่อกลับมาออนไลน์");
+      setSheetOpen(true); // let the employee fill the daily report offline (it queues too)
       return;
     }
     try {

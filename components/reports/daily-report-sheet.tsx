@@ -5,6 +5,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { formatThaiDate } from "@/lib/date/buddhist";
 import { saveFollowup } from "@/actions/checkin";
+import { enqueueReport } from "@/lib/sync/checkin-sync";
 
 function Field({
   label,
@@ -50,13 +51,25 @@ export function DailyReportSheet({
     setError(null);
     const fd = new FormData(e.currentTarget);
     const payload = Object.fromEntries(fd.entries());
-    const res = await saveFollowup(sessionId, payload);
-    setSaving(false);
-    if (res.error) {
-      setError(res.error);
+
+    // Offline (e.g. at the patient's home with no signal): queue the report and
+    // flush on reconnect — idempotent via the client report id.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType: "followup", sessionId, payload });
+      setSaving(false);
+      onSaved();
       return;
     }
-    onSaved();
+    try {
+      const res = await saveFollowup(sessionId, payload);
+      setSaving(false);
+      if (res.error) return setError(res.error);
+      onSaved();
+    } catch {
+      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType: "followup", sessionId, payload });
+      setSaving(false);
+      onSaved();
+    }
   }
 
   return (

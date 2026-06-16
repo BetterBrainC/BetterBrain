@@ -20,7 +20,9 @@ import { APP } from "@/lib/i18n/th";
 import { signOut } from "@/actions/auth";
 import type { Role } from "@/lib/auth";
 
-const ITEMS = [
+/** Shared staff nav items (sidebar on desktop, drawer on mobile). directorOnly
+ *  items are hidden from Admin in the nav AND page-guarded server-side. */
+export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashboard; directorOnly?: boolean }[] = [
   { href: "/staff", label: "ภาพรวม", icon: LayoutDashboard },
   { href: "/staff/bookings", label: "การจอง", icon: Inbox },
   { href: "/staff/assign", label: "มอบหมายงาน", icon: CalendarRange },
@@ -28,12 +30,12 @@ const ITEMS = [
   { href: "/staff/patients", label: "ผู้รับบริการ", icon: Users },
   { href: "/staff/employees", label: "รายชื่อพนักงาน", icon: UserCog },
   { href: "/staff/reports", label: "รายงาน", icon: FileText },
-  // การวัดผล/KPI = Director-only (client v3); hidden from Admin in nav + page-guarded.
   { href: "/staff/measurement", label: "การวัดผล", icon: Activity, directorOnly: true },
-  // Audit log = Director-only (append-only read), page-guarded by requireDirector.
   { href: "/staff/audit", label: "บันทึกการใช้งาน", icon: ScrollText, directorOnly: true },
   { href: "/staff/settings", label: "ตั้งค่า", icon: Settings },
 ];
+
+const ITEMS = STAFF_NAV;
 
 /** Admin + Director desktop sidebar (shared shell). */
 export function Sidebar({

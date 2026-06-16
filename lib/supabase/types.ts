@@ -1281,6 +1281,7 @@ export type Database = {
         Args: {
           p_fois?: Database["public"]["Enums"]["fois_level"]
           p_payload?: Json
+          p_report_id?: string
           p_session_id: string
         }
         Returns: string

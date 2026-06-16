@@ -103,10 +103,12 @@ export async function recordCheckEvent(input: {
   return { ok: true };
 }
 
-/** Save the Follow-up (daily) report → marks session completed ("จบเคส"). */
+/** Save the Follow-up (daily) report → marks session completed ("จบเคส").
+ *  reportId (client UUID) keeps an offline-queued report idempotent on flush. */
 export async function saveFollowup(
   sessionId: string,
   payload: Record<string, unknown>,
+  reportId?: string | null,
 ): Promise<ActionResult> {
   const guard = await requireEnabledUser();
   if (!guard.ok) return { error: guard.error };
@@ -115,6 +117,7 @@ export async function saveFollowup(
     p_session_id: sessionId,
     p_payload: payload as never,
     p_fois: null,
+    p_report_id: reportId ?? null,
   });
   if (error) return { error: error.message };
   await writeAudit({ action: "create", entity: "report", entityId: sessionId, actorId: guard.id, context: { type: "followup" } });

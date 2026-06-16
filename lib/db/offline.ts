@@ -29,13 +29,13 @@ export interface QueuedCheckin {
 export interface QueuedReport {
   clientUuid: string;
   reportType: string;
-  patientId: string;
-  sessionId?: string;
-  checkInUuid?: string;
+  patientId?: string | undefined;
+  sessionId?: string | undefined;
+  checkInUuid?: string | undefined;
   payload: unknown;
   syncState: "pending" | "syncing" | "synced" | "conflict" | "failed";
   attempts: number;
-  lastError?: string;
+  lastError?: string | undefined;
 }
 
 class TpmOfflineDb extends Dexie {
