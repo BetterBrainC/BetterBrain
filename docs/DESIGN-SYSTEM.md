@@ -54,9 +54,9 @@ Verified against ground truth: `flow/S__362397734_0.jpg` (logo: navy head outlin
   --radius-xs:6px;--radius-sm:10px;--radius-md:14px;--radius-lg:20px;--radius-xl:28px;--radius-pill:999px;
 
   /* TYPOGRAPHY (Thai-first) */
-  --font-sans:"IBM Plex Sans Thai","Noto Sans Thai","LINE Seed Sans TH",-apple-system,"Segoe UI",system-ui,sans-serif;
-  --font-display:"IBM Plex Sans Thai Looped","IBM Plex Sans Thai",sans-serif;
-  --font-num:"IBM Plex Sans Thai","Inter",system-ui,sans-serif;
+  --font-sans:"Prompt","Noto Sans Thai","LINE Seed Sans TH",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --font-display:"Prompt","Noto Sans Thai",sans-serif;
+  --font-num:"Prompt","Inter",system-ui,sans-serif;
   --text-2xs:11px;--lh-2xs:16px; --text-xs:12px;--lh-xs:18px; --text-sm:14px;--lh-sm:22px;
   --text-base:16px;--lh-base:26px; --text-lg:18px;--lh-lg:28px; --text-xl:22px;--lh-xl:32px;
   --text-2xl:28px;--lh-2xl:38px; --text-3xl:clamp(30px,4vw,40px); --text-stat:clamp(34px,6vw,52px);
@@ -90,12 +90,12 @@ Verified against ground truth: `flow/S__362397734_0.jpg` (logo: navy head outlin
 ---
 
 ## 2. Typography — Thai pairing
-**IBM Plex Sans Thai** (UI/body) + **IBM Plex Sans Thai Looped** (friendly display/headings/empty-states/relatives). One superfamily keeps Thai labels + Latin clinical abbreviations (BP, HR, SpO2, FOIS, DM, HT, U/D, ADL) and numerals consistent. Fallback ladder: Noto Sans Thai → LINE Seed Sans TH → system Thai. Self-host woff2 via `next/font/local`, subset thai+latin, `font-display:swap`, preload 400+600 only.
+**Google Prompt** (Thai-aware geometric sans; used for both UI/body and display/headings — matches the original build). One family keeps Thai labels + Latin clinical abbreviations (BP, HR, SpO2, FOIS, DM, HT, U/D, ADL) and numerals consistent. Fallback ladder: Noto Sans Thai → LINE Seed Sans TH → system Thai. Loaded via `next/font` (self-hosted woff2 at build), subset thai+latin, weights 300–700, `font-display:swap`.
 
 | Role | Family/Weight | Size/LH |
 |---|---|---|
-| Page title (พ.ศ. dates) | Looped 700 | 2xl |
-| Section heading | Looped 600 | xl |
+| Page title (พ.ศ. dates) | Prompt 700 | 2xl |
+| Section heading | Prompt 600 | xl |
 | Card title | sans 600 | lg |
 | Body (PWA min 16px) | sans 400 | base |
 | Form labels / secondary | sans 500 | sm (muted) |

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { plexThai, plexThaiLooped } from "./fonts";
+import { appFont } from "./fonts";
 import { Providers } from "./providers";
 import { ServiceWorkerRegister } from "@/components/shell/service-worker-register";
 import "./globals.css";
@@ -28,7 +28,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="th" className={`${plexThai.variable} ${plexThaiLooped.variable}`}>
+    <html lang="th" className={appFont.variable}>
       <body className="min-h-dvh bg-bg font-sans text-ink antialiased">
         <Providers>{children}</Providers>
         <ServiceWorkerRegister />

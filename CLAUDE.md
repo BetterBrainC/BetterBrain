@@ -18,7 +18,7 @@ The system manages the full lifecycle: **public booking → in-person assessment
 - **Reference feel:** the **OOCA app** — clean, light, high whitespace, `rounded-2xl` tinted cards, ONE confident blue pill CTA per surface, a **teal active accent on the bottom-nav item only**, illustration-led empty states (verified against `flow/1.jpg`, `flow/2.jpg`).
 - **Brand:** the logo = navy head outline + sky-blue swallowing pathway + **a single orange epiglottis accent** + silver gradient wordmark (verified against `flow/S__362397734_0.jpg`).
 - **Locked tokens:** `--primary #2F7FF6`, `--teal #14B8A6` (active nav), `--brand-navy #1B3A6B`, `--sky #4AA3E0`, `--accent #F5A623` (orange; "one per screen"), `--surface-tint #EAF2FF`, `--bg #F7FAFC`, neutrals `#1F2A37 / #6B7280`.
-- **Typography:** IBM Plex Sans Thai (body) + IBM Plex Sans Thai Looped (display), self-hosted via `next/font/local`. Never letter-space Thai runs. Full spec in **docs/DESIGN-SYSTEM.md**.
+- **Typography:** **Google Prompt** (Thai-aware geometric sans; used for body + display), self-hosted at build via `next/font` (matches the original build). Never letter-space Thai runs. Full spec in **docs/DESIGN-SYSTEM.md**.
 
 ## 3. Tech Stack (LOCKED — do not substitute)
 
