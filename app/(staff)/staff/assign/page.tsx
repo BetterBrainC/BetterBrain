@@ -32,7 +32,10 @@ export default async function AssignPage() {
         </div>
       </header>
 
-      <SchedulingCalendar sessions={sessions} />
+      <SchedulingCalendar
+        sessions={sessions}
+        employees={employees.map((e) => ({ id: e.id, name: e.full_name, code: e.employee_code }))}
+      />
     </div>
   );
 }

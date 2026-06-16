@@ -2,23 +2,28 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Sparkles, MapPin, Clock, User, Stethoscope, Ban } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, MapPin, Clock, User, Stethoscope, Ban, Repeat } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { formatThaiDate } from "@/lib/date/buddhist";
-import { markSessionSkipped, updateSessionSpecial } from "@/actions/scheduling";
+import { markSessionSkipped, updateSessionSpecial, substituteSession } from "@/actions/scheduling";
 import type { CalendarSession } from "@/lib/data/queries";
 
-/** Admin controls inside the visit sheet: mark งด + edit เคสพิเศษ on an existing session. */
-function SessionActions({ session, onDone }: { session: CalendarSession; onDone: () => void }) {
+type EmpOpt = { id: string; name: string; code: string | null };
+
+/** Admin controls inside the visit sheet: จัดเวรแทน + งด + edit เคสพิเศษ on an existing session. */
+function SessionActions({ session, employees, onDone }: { session: CalendarSession; employees: EmpOpt[]; onDone: () => void }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [special, setSpecial] = React.useState(session.isSpecial);
   const [amount, setAmount] = React.useState(session.specialAmount ? String(session.specialAmount) : "");
+  const [subOpen, setSubOpen] = React.useState(false);
+  const [subEmp, setSubEmp] = React.useState("");
+  const [subReason, setSubReason] = React.useState("");
 
   async function skip() {
     setBusy(true); setErr(null);
@@ -35,9 +40,49 @@ function SessionActions({ session, onDone }: { session: CalendarSession; onDone:
     if (res.error) return setErr(res.error);
     router.refresh();
   }
+  async function substitute() {
+    if (!subEmp) return setErr("เลือกพนักงานแทน");
+    setBusy(true); setErr(null);
+    const res = await substituteSession({ sessionId: session.id, substituteEmployeeId: subEmp, reason: subReason });
+    setBusy(false);
+    if (res.error) return setErr(res.error);
+    router.refresh(); onDone();
+  }
+
+  const canEdit = session.status !== "skipped" && session.status !== "completed";
 
   return (
     <div className="space-y-3 border-t border-border pt-3">
+      {canEdit && (
+        <div className="space-y-2">
+          {!subOpen ? (
+            <Button size="sm" variant="secondary" onClick={() => setSubOpen(true)} disabled={busy}>
+              <Repeat className="h-4 w-4" /> จัดเวรแทน / สลับเวร
+            </Button>
+          ) : (
+            <div className="space-y-2 rounded-md bg-surface-tint p-3">
+              <p className="text-sm font-medium text-navy">จัดเวรแทนเคสนี้ — เดิม: {session.employeeFull}</p>
+              <select
+                value={subEmp}
+                disabled={busy}
+                onChange={(e) => setSubEmp(e.target.value)}
+                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary"
+              >
+                <option value="" disabled>เลือกพนักงานแทน</option>
+                {employees.map((e) => (<option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ""}</option>))}
+              </select>
+              <input type="text" value={subReason} placeholder="เหตุผล (ไม่บังคับ)" disabled={busy}
+                onChange={(e) => setSubReason(e.target.value)}
+                className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary" />
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" className="flex-1" onClick={() => setSubOpen(false)} disabled={busy}>ยกเลิก</Button>
+                <Button size="sm" className="flex-1" onClick={substitute} disabled={busy}>ยืนยันจัดเวรแทน</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <label className="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={special} disabled={busy}
           onChange={(e) => saveSpecial(e.target.checked, amount)} />
@@ -52,7 +97,7 @@ function SessionActions({ session, onDone }: { session: CalendarSession; onDone:
           <span className="text-xs text-muted">บาท</span>
         </div>
       )}
-      {session.status !== "skipped" && session.status !== "completed" && (
+      {canEdit && (
         <Button size="sm" variant="secondary" onClick={skip} disabled={busy}>
           <Ban className="h-4 w-4" /> งด (ผู้รับบริการยกเลิก)
         </Button>
@@ -145,7 +190,7 @@ function SessionChip({ s, onSelect }: { s: CalendarSession; onSelect?: (s: Calen
 }
 
 /** Detail sheet shown when a calendar chip is clicked. */
-function VisitDetailSheet({ session, onClose }: { session: CalendarSession | null; onClose: () => void }) {
+function VisitDetailSheet({ session, employees, onClose }: { session: CalendarSession | null; employees: EmpOpt[]; onClose: () => void }) {
   const tone = session ? STATUS_TONE[session.status] : null;
   const mapsHref = session?.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(session.address)}`
@@ -198,14 +243,14 @@ function VisitDetailSheet({ session, onClose }: { session: CalendarSession | nul
               <MapPin className="h-4 w-4" /> เปิดแผนที่
             </a>
           )}
-          <SessionActions session={session} onDone={onClose} />
+          <SessionActions session={session} employees={employees} onDone={onClose} />
         </div>
       )}
     </Sheet>
   );
 }
 
-export function SchedulingCalendar({ sessions }: { sessions: CalendarSession[] }) {
+export function SchedulingCalendar({ sessions, employees }: { sessions: CalendarSession[]; employees: EmpOpt[] }) {
   const todayISO = React.useMemo(bangkokTodayISO, []);
   const [view, setView] = React.useState<View>("month");
   const [cursor, setCursor] = React.useState<Date>(() => isoToDate(todayISO));
@@ -335,7 +380,7 @@ export function SchedulingCalendar({ sessions }: { sessions: CalendarSession[] }
       </Card>
 
       <Legend />
-      <VisitDetailSheet session={selected} onClose={() => setSelected(null)} />
+      <VisitDetailSheet session={selected} employees={employees} onClose={() => setSelected(null)} />
     </div>
   );
 }
