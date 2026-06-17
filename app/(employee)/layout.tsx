@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { BottomNav } from "@/components/shell/bottom-nav";
+import { EmployeeTopNav } from "@/components/shell/employee-top-nav";
 import { NotificationBell } from "@/components/shell/notification-bell";
 import { OnlineBadge } from "@/components/offline/online-badge";
 import { APP } from "@/lib/i18n/th";
 import { requireUser } from "@/lib/auth";
 import { getNotifications, getSettings } from "@/lib/data/queries";
 
-/** Employee PWA shell: slim header, mobile-first body, bottom nav. */
+/**
+ * Employee shell — responsive: a normal web page with a top nav on ≥md, and a
+ * mobile-first body + bottom nav on small screens.
+ */
 export default async function EmployeeLayout({
   children,
 }: {
@@ -15,9 +19,9 @@ export default async function EmployeeLayout({
   await requireUser();
   const [notes, settings] = await Promise.all([getNotifications(), getSettings()]);
   return (
-    <div className="mx-auto min-h-dvh max-w-md pb-[calc(var(--bottomnav-h)+env(safe-area-inset-bottom))]">
+    <div className="mx-auto min-h-dvh w-full max-w-md pb-[calc(var(--bottomnav-h)+env(safe-area-inset-bottom))] md:max-w-content md:pb-0">
       <header
-        className="sticky top-0 z-sticky flex items-center justify-between border-b border-border bg-surface/95 px-[var(--gutter-page)] backdrop-blur"
+        className="sticky top-0 z-sticky flex items-center gap-4 border-b border-border bg-surface/95 px-[var(--gutter-page)] backdrop-blur"
         style={{ height: "var(--header-h)" }}
       >
         <Link href="/app" className="flex items-center gap-2 font-display text-base font-bold text-navy">
@@ -27,7 +31,10 @@ export default async function EmployeeLayout({
           ) : null}
           {APP.name}
         </Link>
-        <NotificationBell items={notes} />
+        <EmployeeTopNav />
+        <div className="ml-auto">
+          <NotificationBell items={notes} />
+        </div>
       </header>
       <OnlineBadge />
       {children}

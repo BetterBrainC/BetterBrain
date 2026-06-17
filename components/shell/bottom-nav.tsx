@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { Home, CalendarDays, MapPin, Activity, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ITEMS = [
+/** Shared employee nav items (bottom bar on mobile, top nav on desktop). */
+export const EMPLOYEE_NAV = [
   { href: "/app", label: "หน้าหลัก", icon: Home },
   { href: "/app/schedule", label: "นัดหมาย", icon: CalendarDays },
   { href: "/app/check-in", label: "เช็คอิน", icon: MapPin },
@@ -13,13 +14,15 @@ const ITEMS = [
   { href: "/app/account", label: "บัญชี", icon: User },
 ];
 
-/** Employee PWA bottom nav — active item gets the teal accent (OOCA behavior). */
+const ITEMS = EMPLOYEE_NAV;
+
+/** Employee bottom nav — small screens only (desktop uses the top nav). */
 export function BottomNav() {
   const pathname = usePathname();
   return (
     <nav
       aria-label="เมนูหลัก"
-      className="fixed inset-x-0 bottom-0 z-bottomnav border-t border-border bg-surface/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-bottomnav border-t border-border bg-surface/95 backdrop-blur md:hidden"
       style={{ height: "var(--bottomnav-h)", paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto flex h-[var(--bottomnav-h)] max-w-md items-stretch justify-around">
