@@ -17,12 +17,18 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-dvh place-items-center px-[var(--gutter-page)]">
       <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-md bg-navy font-display text-lg font-bold text-white">
-            T
-          </span>
-          <h1 className="font-display text-2xl font-bold text-navy">{APP.name}</h1>
-          <p className="text-sm text-muted">{APP.org}</p>
+        <div className="space-y-3 text-center">
+          <div className="mx-auto w-fit rounded-2xl bg-white p-3 shadow-sm ring-1 ring-border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/betterbrain-logo.jpg"
+              alt={APP.org}
+              width={1500}
+              height={1500}
+              className="h-28 w-28 object-contain"
+            />
+          </div>
+          <p className="text-sm text-muted">{APP.tagline}</p>
         </div>
 
         <Card className="space-y-4">
