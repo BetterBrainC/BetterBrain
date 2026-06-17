@@ -89,6 +89,7 @@ export async function getMyRecentSessions(): Promise<{ id: string; label: string
 
 export interface SessionDetail {
   id: string;
+  patientId: string;
   patientName: string;
   program: string | null;
   address: string | null;
@@ -106,11 +107,12 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
   const supabase = await createClient();
   const { data } = await supabase
     .from("schedule_sessions")
-    .select("id, scheduled_start, scheduled_end, status, course_id, patients(full_name, training_program, address, home_lat, home_lng)")
+    .select("id, patient_id, scheduled_start, scheduled_end, status, course_id, patients(full_name, training_program, address, home_lat, home_lng)")
     .eq("id", id)
     .maybeSingle();
   const s = one<{
     id: string;
+    patient_id: string;
     scheduled_start: string | null;
     scheduled_end: string | null;
     status: SessionStatus;
@@ -140,6 +142,7 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
 
   return {
     id: s.id,
+    patientId: s.patient_id,
     patientName: s.patients?.full_name ?? "—",
     program: s.patients?.training_program ?? null,
     address: s.patients?.address ?? null,

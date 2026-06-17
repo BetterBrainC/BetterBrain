@@ -24,7 +24,8 @@ export function BottomNav() {
     >
       <ul className="mx-auto flex h-[var(--bottomnav-h)] max-w-md items-stretch justify-around">
         {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          // "/app" must match exactly, else it highlights on every /app/* subroute.
+          const active = pathname === href || (href !== "/app" && pathname.startsWith(`${href}/`));
           return (
             <li key={href} className="flex-1">
               <Link

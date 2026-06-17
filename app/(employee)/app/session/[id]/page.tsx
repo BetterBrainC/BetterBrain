@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CheckInPanel } from "@/components/checkin/check-in-panel";
+import { PatientKpiForm } from "@/components/employee/patient-kpi-form";
 import { getSessionDetail, getCheckinSettings } from "@/lib/data/queries";
 
 export default async function SessionPage({
@@ -87,6 +88,11 @@ export default async function SessionPage({
         <p className="text-xs text-faint">
           Assessment + Follow up ต้องเช็คอินก่อน · Follow up เปิดอัตโนมัติเมื่อกดเช็คเอาท์
         </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted">การวัดผลผู้รับบริการ</h2>
+        <PatientKpiForm patientId={session.patientId} />
       </section>
     </div>
   );
