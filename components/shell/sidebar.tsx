@@ -75,7 +75,7 @@ export function Sidebar({
       <div className="flex items-center gap-2 px-5 py-5">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logoUrl} alt={companyName || APP.name} className="h-9 w-9 rounded-md object-contain" />
+          <img src={logoUrl} alt={companyName || APP.name} width={36} height={36} className="h-9 w-9 rounded-md object-contain" />
         ) : (
           <span className="grid h-9 w-9 place-items-center rounded-md bg-navy font-display text-sm font-bold text-white">
             T

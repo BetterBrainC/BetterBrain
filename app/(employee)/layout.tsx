@@ -27,7 +27,7 @@ export default async function EmployeeLayout({
         <Link href="/app" className="flex items-center gap-2 font-display text-base font-bold text-navy">
           {settings.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={settings.logoUrl} alt={settings.companyName || APP.name} className="h-7 w-7 rounded object-contain" />
+            <img src={settings.logoUrl} alt={settings.companyName || APP.name} width={28} height={28} className="h-7 w-7 rounded object-contain" />
           ) : null}
           {APP.name}
         </Link>
