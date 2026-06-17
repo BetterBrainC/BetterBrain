@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Navigation } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CheckInPanel } from "@/components/checkin/check-in-panel";
 import { PatientKpiForm } from "@/components/employee/patient-kpi-form";
@@ -23,6 +23,15 @@ export default async function SessionPage({
     ? Math.min(100, Math.round((session.courseUsed / session.courseTotal) * 100))
     : 0;
 
+  // Navigation to the patient's home — prefer exact coords, else the address.
+  const dest =
+    session.homeLat != null && session.homeLng != null
+      ? `${session.homeLat},${session.homeLng}`
+      : session.address
+        ? encodeURIComponent(session.address)
+        : null;
+  const mapsHref = dest ? `https://www.google.com/maps/dir/?api=1&destination=${dest}` : null;
+
   return (
     <div className="space-y-5 px-[var(--gutter-page)] pt-4">
       <Link href="/app/schedule" className="inline-flex items-center gap-1 text-sm text-muted">
@@ -42,6 +51,16 @@ export default async function SessionPage({
           <p className="flex items-start gap-2 text-sm text-ink">
             <MapPin className="h-4 w-4 shrink-0 text-muted" /> {session.address}
           </p>
+        )}
+        {mapsHref && (
+          <a
+            href={mapsHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-md bg-primary text-sm font-semibold text-[var(--text-on-fill)] hover:bg-primary-600"
+          >
+            <Navigation className="h-4 w-4" /> เปิดแผนที่ · นำทางไปบ้านผู้รับบริการ
+          </a>
         )}
         <div className="mt-1 space-y-1 rounded-md bg-surface-tint px-3 py-2">
           <span className="text-xs text-muted">ความคืบหน้าคอร์ส</span>
