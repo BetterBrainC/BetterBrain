@@ -1,17 +1,14 @@
-import Link from "next/link";
-import { Card, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { SessionList } from "@/components/employee/session-list";
-import { getMyTodaySessions } from "@/lib/data/queries";
+import { TodayBoard } from "@/components/employee/today-board";
+import { getMyTodaySessions, getCheckinSettings } from "@/lib/data/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { formatThaiDate } from "@/lib/date/buddhist";
 
 export default async function EmployeeHome() {
-  const [sessions, u] = await Promise.all([
+  const [sessions, u, checkinCfg] = await Promise.all([
     getMyTodaySessions(),
     getCurrentUser(),
+    getCheckinSettings(),
   ]);
-  const next = sessions.find((s) => s.status !== "completed");
   const doneCount = sessions.filter((s) => s.status === "completed").length;
 
   return (
@@ -28,24 +25,11 @@ export default async function EmployeeHome() {
         </p>
       </header>
 
-      {next && (
-        <Card tinted className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <CardTitle className="text-base">
-              เคสถัดไป · {next.timeLabel.split("–")[0]}
-            </CardTitle>
-            <p className="truncate text-sm text-muted">{next.patientName}</p>
-          </div>
-          <Link href={`/app/session/${next.id}`}>
-            <Button size="md">เช็คอิน</Button>
-          </Link>
-        </Card>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted">ตารางวันนี้</h2>
-        <SessionList sessions={sessions} />
-      </section>
+      <TodayBoard
+        sessions={sessions}
+        lateThresholdMin={checkinCfg.lateThresholdMin}
+        serverNowMs={Date.now()}
+      />
     </div>
   );
 }

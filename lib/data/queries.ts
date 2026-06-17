@@ -39,9 +39,13 @@ function timeLabel(startISO: string | null, endISO: string | null): string {
 export interface SessionRow {
   id: string;
   timeLabel: string;
+  /** Raw start/end instants (UTC ISO) for client-side live time math. */
+  scheduledStartISO: string | null;
+  scheduledEndISO: string | null;
   patientName: string;
   program: string | null;
   status: SessionStatus;
+  kind: "assessment" | "treatment";
 }
 
 type RawSession = {
@@ -49,6 +53,7 @@ type RawSession = {
   scheduled_start: string | null;
   scheduled_end: string | null;
   status: SessionStatus;
+  kind: "assessment" | "treatment" | null;
   patients: { full_name: string | null; training_program: string | null } | null;
 };
 
@@ -58,16 +63,19 @@ export async function getMyTodaySessions(): Promise<SessionRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("schedule_sessions")
-    .select("id, scheduled_start, scheduled_end, status, patients(full_name, training_program)")
+    .select("id, scheduled_start, scheduled_end, status, kind, patients(full_name, training_program)")
     .eq("employee_id", u.id)
     .eq("scheduled_date", bangkokToday())
     .order("scheduled_start");
   return rows<RawSession>(data).map((s) => ({
     id: s.id,
     timeLabel: timeLabel(s.scheduled_start, s.scheduled_end),
+    scheduledStartISO: s.scheduled_start,
+    scheduledEndISO: s.scheduled_end,
     patientName: s.patients?.full_name ?? "—",
     program: s.patients?.training_program ?? null,
     status: s.status,
+    kind: s.kind === "assessment" ? "assessment" : "treatment",
   }));
 }
 
