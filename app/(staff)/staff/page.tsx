@@ -3,7 +3,8 @@ import { DataTable, Td } from "@/components/ui/table";
 import { ExportButton } from "@/components/staff/export-button";
 import { DashboardTrend } from "@/components/staff/dashboard-charts";
 import { LiveMonitor } from "@/components/staff/live-monitor";
-import { formatThaiDate, buddhistYear } from "@/lib/date/buddhist";
+import { buddhistYear } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 import { getDashboard } from "@/lib/data/queries";
 import { PATIENT_STATUS_LABEL } from "@/lib/i18n/th";
 
@@ -24,7 +25,7 @@ export default async function StaffDashboard() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">ภาพรวมพนักงาน</h1>
-          <p className="text-sm text-muted">{formatThaiDate(new Date())}</p>
+          <p className="text-sm text-muted"><ThaiDate value={new Date()} /></p>
         </div>
         <ExportButton
           filename={`tpm-cases-${buddhistYear(new Date())}`}

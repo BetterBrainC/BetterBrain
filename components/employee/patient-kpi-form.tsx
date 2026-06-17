@@ -47,7 +47,7 @@ function FoisPicker({ value, onChange }: { value: string; onChange: (v: string) 
  * the recipient is fixed (no picker). Moved here from the standalone measurement
  * page because การวัดผล must be recorded before the case is closed.
  */
-export function PatientKpiForm({ patientId, done }: { patientId: string; done?: boolean }) {
+export function PatientKpiForm({ patientId }: { patientId: string }) {
   const router = useRouter();
   const [fois, setFois] = React.useState("");
   const [barthel, setBarthel] = React.useState("");

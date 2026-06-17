@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ConvertBookingButton } from "@/components/staff/convert-booking-button";
 import { cancelBooking } from "@/actions/bookings";
 import { BOOKING_STATUS_LABEL } from "@/lib/i18n/th";
-import { formatThaiDateTime } from "@/lib/date/buddhist";
+import { ThaiDateTime } from "@/components/ui/thai-date";
 
 type BookingStatus = "booked" | "awaiting_payment" | "cancelled";
 interface Booking {
@@ -96,7 +96,7 @@ export function BookingsTable({ bookings }: { bookings: Booking[] }) {
               <Td className="font-medium text-navy">{b.full_name}</Td>
               <Td className="tabular-nums text-muted">{b.phone}</Td>
               <Td>{b.area ?? "—"}</Td>
-              <Td className="text-muted">{formatThaiDateTime(b.created_at)}</Td>
+              <Td className="text-muted"><ThaiDateTime value={b.created_at} /></Td>
               <Td><Badge tone={TONE[b.status]}>{BOOKING_STATUS_LABEL[b.status]}</Badge></Td>
               <Td>
                 {b.status !== "cancelled" && (

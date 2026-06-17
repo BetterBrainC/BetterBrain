@@ -1,5 +1,5 @@
 import { Bell } from "lucide-react";
-import { formatThaiDateTime } from "@/lib/date/buddhist";
+import { ThaiDateTime } from "@/components/ui/thai-date";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export interface NotificationItem {
@@ -26,7 +26,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
             </div>
             {!n.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" />}
           </div>
-          <p className="mt-1 text-2xs text-faint">{formatThaiDateTime(n.created_at)}</p>
+          <p className="mt-1 text-2xs text-faint"><ThaiDateTime value={n.created_at} /></p>
         </li>
       ))}
     </ul>

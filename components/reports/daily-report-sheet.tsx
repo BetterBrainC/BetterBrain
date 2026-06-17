@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 import { saveFollowup } from "@/actions/checkin";
 import { enqueueReport } from "@/lib/sync/checkin-sync";
 
@@ -76,7 +76,7 @@ export function DailyReportSheet({
     <Sheet open={open} onClose={onClose} title="บันทึกรายวัน (Follow up)">
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-sm text-muted">
-          {patientName} · {formatThaiDate(new Date())}
+          {patientName} · <ThaiDate value={new Date()} />
         </p>
 
         <div className="rounded-md bg-surface-tint p-3">

@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { requireDirector } from "@/lib/auth";
 import { getAuditLogs } from "@/lib/data/queries";
 import { AUDIT_ACTION_LABEL, ROLE_LABEL } from "@/lib/i18n/th";
-import { formatThaiDate, formatThaiTime } from "@/lib/date/buddhist";
+import { ThaiDateTime } from "@/components/ui/thai-date";
 
 export const metadata = { title: "บันทึกการใช้งาน" };
 
@@ -45,7 +45,7 @@ export default async function AuditPage() {
               {logs.map((l) => (
                 <tr key={l.id} className="border-b border-border last:border-0 align-top">
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted">
-                    {formatThaiDate(l.occurredAt)} · {formatThaiTime(l.occurredAt)}
+                    <ThaiDateTime value={l.occurredAt} />
                   </td>
                   <td className="px-4 py-2.5">
                     <span className="text-ink">{l.actorName}</span>

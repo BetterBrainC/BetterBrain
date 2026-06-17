@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 import { saveReport } from "@/actions/reports";
 import { enqueueReport } from "@/lib/sync/checkin-sync";
 
@@ -153,7 +153,7 @@ export function ReportFormShell({
       <header className="space-y-1">
         <h1 className="font-display text-xl font-bold text-navy">{title}</h1>
         <p className="text-sm text-muted">
-          {patientName} · {formatThaiDate(new Date())}
+          {patientName} · <ThaiDate value={new Date()} />
         </p>
         {requiresCheckin && (
           <Badge tone="info">ต้องเช็คอินก่อนจึงจะบันทึกได้</Badge>

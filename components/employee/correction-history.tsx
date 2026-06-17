@@ -1,7 +1,7 @@
 import { History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 import type { MyCorrection } from "@/lib/data/queries";
 
 const STATUS: Record<string, { label: string; tone: "info" | "completed" | "nocheckin" | "late" }> = {
@@ -28,7 +28,7 @@ export function CorrectionHistory({ items }: { items: MyCorrection[] }) {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink">{c.patientName}</p>
                   <p className="truncate text-xs text-muted">{c.reason}</p>
-                  <p className="mt-0.5 text-2xs text-faint">{formatThaiDate(c.createdAt)}</p>
+                  <p className="mt-0.5 text-2xs text-faint"><ThaiDate value={c.createdAt} /></p>
                 </div>
                 <Badge tone={st.tone}>{st.label}</Badge>
               </li>

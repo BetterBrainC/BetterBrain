@@ -8,7 +8,7 @@ import { CreateCourseControl } from "@/components/course/create-course-button";
 import { PatientAdminControls } from "@/components/staff/patient-admin-controls";
 import { getPatientDetail, getRelativeVisibility } from "@/lib/data/queries";
 import { DIAGNOSIS_LABEL, PATIENT_STATUS_LABEL, SESSION_STATUS_LABEL } from "@/lib/i18n/th";
-import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 
 const STATUS_TONE = { active: "info", hold: "hold", no_service: "noservice" } as const;
 const SESSION_TONE: Record<string, "completed" | "late" | "info" | "neutral" | "nocheckin" | "skipped"> = {
@@ -111,7 +111,7 @@ export default async function PatientDetail({
                 <li key={r.id} className="flex justify-between border-b border-border py-1.5 last:border-0">
                   <span className="text-ink">{REPORT_LABEL[r.report_type] ?? r.report_type}</span>
                   <span className="text-xs text-muted">
-                    {formatThaiDate(r.report_date)} · {r.status === "completed" ? "จบเคส" : "ร่าง"}
+                    <ThaiDate value={r.report_date} /> · {r.status === "completed" ? "จบเคส" : "ร่าง"}
                   </span>
                 </li>
               ))}
@@ -126,7 +126,7 @@ export default async function PatientDetail({
           {sessions.length === 0 && <li className="text-muted">ยังไม่มีคิว</li>}
           {sessions.map((s) => (
             <li key={s.id} className="flex items-center justify-between border-b border-border py-1.5 last:border-0">
-              <span className="text-ink">{formatThaiDate(s.dateISO)} · {s.time}</span>
+              <span className="text-ink"><ThaiDate value={s.dateISO} /> · {s.time}</span>
               <span className="flex items-center gap-2">
                 <span className="text-xs text-muted">{s.employee}</span>
                 <Badge tone={SESSION_TONE[s.status] ?? "neutral"}>{SESSION_STATUS_LABEL[s.status]}</Badge>

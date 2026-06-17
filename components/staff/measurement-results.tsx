@@ -2,7 +2,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FOIS_LABEL } from "@/lib/i18n/th";
-import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 import type { PatientKpiResult, EmployeeKpiResult } from "@/lib/data/queries";
 
 const KIND_LABEL = { knowledge: "ความรู้ประจำปี", stress: "ความเครียด" } as const;
@@ -38,7 +38,7 @@ export function MeasurementResults({
               <tbody>
                 {patient.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0">
-                    <td className="py-1.5 pr-2 text-muted">{formatThaiDate(r.dateISO)}</td>
+                    <td className="py-1.5 pr-2 text-muted"><ThaiDate value={r.dateISO} /></td>
                     <td className="py-1.5 pr-2 text-ink">{r.patientName}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.fois ? (FOIS_LABEL[r.fois as keyof typeof FOIS_LABEL] ?? r.fois) : "—"}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.barthel ?? "—"}</td>
@@ -65,7 +65,7 @@ export function MeasurementResults({
                 <span className="flex items-center gap-2">
                   <Badge tone={r.kind === "stress" ? "info" : "completed"}>{r.kind ? KIND_LABEL[r.kind] : "—"}</Badge>
                   {r.score != null && <span className="tabular-nums text-muted">{r.score}%</span>}
-                  <span className="text-2xs text-faint">{r.year ?? ""} · {formatThaiDate(r.dateISO)}</span>
+                  <span className="text-2xs text-faint">{r.year ?? ""} · <ThaiDate value={r.dateISO} /></span>
                 </span>
               </li>
             ))}

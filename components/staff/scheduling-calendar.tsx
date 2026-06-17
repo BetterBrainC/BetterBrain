@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
-import { formatThaiDate } from "@/lib/date/buddhist";
 import { markSessionSkipped, updateSessionSpecial, substituteSession } from "@/actions/scheduling";
 import type { CalendarSession } from "@/lib/data/queries";
 
@@ -212,7 +211,7 @@ function VisitDetailSheet({ session, employees, onClose }: { session: CalendarSe
           <dl className="space-y-2 text-sm">
             <div className="flex items-center gap-2 text-ink">
               <Clock className="h-4 w-4 shrink-0 text-muted" />
-              {formatThaiDate(session.dateISO)} · {session.timeLabel || session.time}
+              <ThaiDate value={session.dateISO} /> · {session.timeLabel || session.time}
             </div>
             {session.program && (
               <div className="flex items-center gap-2 text-ink">

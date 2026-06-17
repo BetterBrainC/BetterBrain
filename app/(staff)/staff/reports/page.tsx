@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ExportButton } from "@/components/staff/export-button";
 import { ExportRange } from "@/components/staff/export-range";
 import { getReports } from "@/lib/data/queries";
-import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 
 const STATUS: Record<string, { label: string; tone: "completed" | "info" | "nocheckin" | "late" }> = {
   completed: { label: "จบเคส", tone: "completed" },
@@ -44,7 +44,7 @@ export default async function ReportsPage() {
                 <Td className="font-medium text-navy">{r.typeLabel}</Td>
                 <Td>{r.patientName}</Td>
                 <Td className="text-muted">{r.authorName}</Td>
-                <Td className="text-muted">{formatThaiDate(r.date)}</Td>
+                <Td className="text-muted"><ThaiDate value={r.date} /></Td>
                 <Td><Badge tone={st.tone}>{st.label}</Badge></Td>
               </tr>
             );

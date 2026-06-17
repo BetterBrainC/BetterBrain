@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Bell, CheckCheck } from "lucide-react";
-import { formatThaiDateTime } from "@/lib/date/buddhist";
+import { ThaiDateTime } from "@/components/ui/thai-date";
 import { markNotificationRead, markAllNotificationsRead } from "@/actions/notifications";
 import type { NotificationItem } from "@/components/shell/notification-list";
 
@@ -99,7 +99,7 @@ export function NotificationBell({ items }: { items: NotificationItem[] }) {
                         {!read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" />}
                       </span>
                       {n.body && <span className="text-xs text-muted">{n.body}</span>}
-                      <span className="text-2xs text-faint">{formatThaiDateTime(n.created_at)}</span>
+                      <span className="text-2xs text-faint"><ThaiDateTime value={n.created_at} /></span>
                     </button>
                   </li>
                 );

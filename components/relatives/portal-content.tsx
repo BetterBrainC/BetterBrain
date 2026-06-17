@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { RelativePushToggle } from "@/components/relatives/relative-push-toggle";
 import { APP } from "@/lib/i18n/th";
 import { formatThaiDate } from "@/lib/date/buddhist";
+import { ThaiDate } from "@/components/ui/thai-date";
 import type { RelativePortalData } from "@/lib/data/queries";
 
 const REPORT_LABEL = { followup: "บันทึกรายวัน", summary: "ความก้าวหน้ารายเดือน" } as const;
@@ -127,7 +128,7 @@ export function PortalContent({ data, token }: { data: RelativePortalData; token
           <div className="flex items-center gap-2 rounded-md bg-surface-tint px-3 py-2">
             <CalendarClock className="h-4 w-4 shrink-0 text-primary" />
             <p className="text-sm text-ink">
-              <span className="font-semibold text-navy">ครั้งถัดไป</span> {formatThaiDate(next.date)} · {next.time}
+              <span className="font-semibold text-navy">ครั้งถัดไป</span> <ThaiDate value={next.date} /> · {next.time}
               {next.therapist && next.therapist !== "—" ? ` · ${next.therapist}` : ""}
             </p>
           </div>
@@ -193,7 +194,7 @@ export function PortalContent({ data, token }: { data: RelativePortalData; token
                 const v = SESSION_VIEW[s.status] ?? { label: "", tone: "neutral" as const };
                 return (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-ink">{formatThaiDate(s.dateISO)} · {s.time}</span>
+                    <span className="text-ink"><ThaiDate value={s.dateISO} /> · {s.time}</span>
                     <span className="flex items-center gap-2">
                       {s.therapist && s.therapist !== "—" && <span className="text-xs text-muted">{s.therapist}</span>}
                       {v.label && <Badge tone={v.tone}>{v.label}</Badge>}
@@ -239,7 +240,7 @@ export function PortalContent({ data, token }: { data: RelativePortalData; token
               <li key={r.id} className="border-b border-border pb-2 last:border-0 last:pb-0">
                 <div className="flex items-center justify-between">
                   <Badge tone={r.type === "summary" ? "info" : "completed"}>{REPORT_LABEL[r.type]}</Badge>
-                  <span className="text-xs text-muted">{formatThaiDate(r.dateISO)}</span>
+                  <span className="text-xs text-muted"><ThaiDate value={r.dateISO} /></span>
                 </div>
                 {r.note && <p className="mt-1 text-sm text-ink">{r.note}</p>}
               </li>
