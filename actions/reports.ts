@@ -60,6 +60,7 @@ export async function saveReport(input: {
   sessionId: string;
   reportType: ReportType;
   payload: Record<string, unknown>;
+  reportId?: string | null;
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -90,17 +91,22 @@ export async function saveReport(input: {
     if (!checkInId) return { error: "ต้องเช็คอินก่อนจึงจะบันทึกได้" };
   }
 
-  const { error } = await supabase.from("reports").insert({
+  const row = {
+    ...(input.reportId ? { id: input.reportId } : {}),
     report_type: input.reportType,
     patient_id: s.patient_id,
     course_id: s.course_id,
     session_id: input.sessionId,
     author_id: user.id,
     check_in_id: checkInId,
-    status: "completed",
+    status: "completed" as const,
     completed_at: new Date().toISOString(),
     payload: input.payload as never,
-  });
+  };
+  // A client-supplied reportId makes an offline-queued report idempotent on flush.
+  const { error } = input.reportId
+    ? await supabase.from("reports").upsert(row, { onConflict: "id", ignoreDuplicates: true })
+    : await supabase.from("reports").insert(row);
   if (error) return { error: error.message };
   await writeAudit({
     action: "create",

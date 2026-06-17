@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatThaiDate } from "@/lib/date/buddhist";
 import { saveReport } from "@/actions/reports";
+import { enqueueReport } from "@/lib/sync/checkin-sync";
 
 type ReportType = "assessment_swallow" | "assessment_hand" | "summary";
 
@@ -94,19 +95,41 @@ export function ReportFormShell({
     }
   }
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const payload = serializeForm(e.currentTarget);
-    setSaving(true);
-    setError(null);
-    const res = await saveReport({ sessionId, reportType, payload });
-    setSaving(false);
-    if (res.error) return setError(res.error);
+  function clearDraft() {
     try {
       localStorage.removeItem(draftKey);
     } catch {
       // ignore
     }
+  }
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const payload = serializeForm(e.currentTarget);
+    setSaving(true);
+    setError(null);
+
+    // Offline (e.g. at the patient's home): queue + flush on reconnect. Idempotent
+    // via the client report id; assessments flush AFTER their check-in.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType, sessionId, payload });
+      setSaving(false);
+      clearDraft();
+      setDone(true);
+      return;
+    }
+    try {
+      const res = await saveReport({ sessionId, reportType, payload });
+      setSaving(false);
+      if (res.error) return setError(res.error);
+    } catch {
+      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType, sessionId, payload });
+      setSaving(false);
+      clearDraft();
+      setDone(true);
+      return;
+    }
+    clearDraft();
     setDone(true);
     router.refresh();
   }

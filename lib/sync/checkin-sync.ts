@@ -1,5 +1,8 @@
 import { getOfflineDb, type QueuedCheckin, type QueuedReport } from "@/lib/db/offline";
 import { recordCheckEvent, uploadCheckinSelfie, saveFollowup } from "@/actions/checkin";
+import { saveReport } from "@/actions/reports";
+
+type AssessmentType = "assessment_swallow" | "assessment_hand" | "summary";
 
 /**
  * Offline check-in sync. Check-in/out events are queued in IndexedDB (device
@@ -49,7 +52,11 @@ export async function flushReports(): Promise<{ synced: number; failed: number }
     }
     try {
       await db.reports.update(q.clientUuid, { syncState: "syncing" });
-      const res = await saveFollowup(q.sessionId, (q.payload ?? {}) as Record<string, unknown>, q.clientUuid);
+      const payload = (q.payload ?? {}) as Record<string, unknown>;
+      const res =
+        q.reportType === "followup"
+          ? await saveFollowup(q.sessionId, payload, q.clientUuid)
+          : await saveReport({ sessionId: q.sessionId, reportType: q.reportType as AssessmentType, payload, reportId: q.clientUuid });
       if (res.error) {
         await db.reports.update(q.clientUuid, { syncState: "failed", attempts: q.attempts + 1, lastError: res.error });
         failed += 1;
