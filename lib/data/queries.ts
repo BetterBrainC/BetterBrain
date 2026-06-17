@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
-import { formatThaiTime, formatThaiDateTime } from "@/lib/date/buddhist";
+import { formatThaiTime, formatThaiDateTime, formatThaiDateNumeric } from "@/lib/date/buddhist";
 import { DEFAULT_EXERCISE_GUIDE } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
@@ -71,19 +71,26 @@ export async function getMyTodaySessions(): Promise<SessionRow[]> {
   }));
 }
 
+/** Cases for a check-in correction: PAST cases only, within the last 7 days. */
 export async function getMyRecentSessions(): Promise<{ id: string; label: string }[]> {
   const u = await getCurrentUser();
   if (!u) return [];
+  const today = bangkokToday();
+  const fromDate = new Date(`${today}T00:00:00Z`);
+  fromDate.setUTCDate(fromDate.getUTCDate() - 7);
+  const fromISO = fromDate.toISOString().slice(0, 10);
   const supabase = await createClient();
   const { data } = await supabase
     .from("schedule_sessions")
     .select("id, scheduled_date, patients(full_name)")
     .eq("employee_id", u.id)
+    .gte("scheduled_date", fromISO)
+    .lte("scheduled_date", today)
     .order("scheduled_date", { ascending: false })
-    .limit(20);
+    .limit(50);
   return rows<{ id: string; scheduled_date: string; patients: { full_name: string | null } | null }>(data).map((s) => ({
     id: s.id,
-    label: `${s.scheduled_date} · ${s.patients?.full_name ?? "—"}`,
+    label: `${formatThaiDateNumeric(s.scheduled_date)} · ${s.patients?.full_name ?? "—"}`,
   }));
 }
 
