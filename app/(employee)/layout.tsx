@@ -19,7 +19,7 @@ export default async function EmployeeLayout({
   await requireUser();
   const [notes, settings] = await Promise.all([getNotifications(), getSettings()]);
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-[calc(var(--bottomnav-h)+env(safe-area-inset-bottom))] md:max-w-content md:pb-0">
+    <div className="mx-auto min-h-dvh w-full max-w-md pb-[calc(var(--bottomnav-h)+env(safe-area-inset-bottom)+1.5rem)] md:max-w-content md:pb-10">
       <header
         className="sticky top-0 z-sticky flex items-center gap-4 border-b border-border bg-surface/95 px-[var(--gutter-page)] backdrop-blur"
         style={{ height: "var(--header-h)" }}

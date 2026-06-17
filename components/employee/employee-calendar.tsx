@@ -104,26 +104,49 @@ export function EmployeeCalendar({ sessions }: { sessions: CalendarSession[] }) 
             </div>
             <div className="grid grid-cols-7 gap-1">
               {cells.map((date, i) => {
-                if (!date) return <div key={`b${i}`} />;
+                if (!date) return <div key={`b${i}`} className="min-h-16 sm:min-h-24" />;
                 const iso = ymd(date);
-                const count = (byDay.get(iso) ?? []).length;
+                const chips = (byDay.get(iso) ?? []).slice().sort((a, b) => a.time.localeCompare(b.time));
                 const isToday = iso === todayISO;
                 const picked = iso === day;
                 return (
-                  <button
+                  <div
                     key={iso}
-                    type="button"
-                    onClick={() => setDay(iso)}
-                    aria-pressed={picked}
                     className={
-                      "flex aspect-square flex-col items-center justify-center rounded-md text-2xs " +
-                      (count ? "bg-surface-tint font-semibold text-primary-700" : "text-ink") +
-                      (picked ? " ring-2 ring-primary" : isToday ? " ring-1 ring-teal" : "")
+                      "min-h-16 rounded-md border p-1 sm:min-h-24 " +
+                      (picked ? "border-primary ring-1 ring-primary" : isToday ? "border-teal bg-[var(--status-completed-bg)]" : "border-border bg-surface")
                     }
                   >
-                    <span className="tabular-nums">{date.getDate()}</span>
-                    {count > 0 && <span className="mt-0.5 h-1 w-1 rounded-full bg-primary" />}
-                  </button>
+                    <div className="mb-0.5 flex items-center justify-between">
+                      <button type="button" onClick={() => setDay(iso)} className={"rounded px-1 text-xs font-semibold tabular-nums hover:bg-surface-tint " + (isToday ? "text-teal" : "text-ink")}>
+                        {date.getDate()}
+                      </button>
+                      {chips.length > 0 && (
+                        <span className="grid h-4 min-w-4 place-items-center rounded-full bg-surface-sunken px-1 text-[10px] font-semibold tabular-nums text-muted">{chips.length}</span>
+                      )}
+                    </div>
+                    <div className="space-y-0.5">
+                      {chips.slice(0, 3).map((s) => {
+                        const tone = TONE[s.status];
+                        return (
+                          <Link
+                            key={s.id}
+                            href={`/app/session/${s.id}`}
+                            title={`${s.time} ${s.patient}${s.kind === "assessment" ? " · ประเมิน" : ""}`}
+                            className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-2xs font-medium"
+                            style={{ backgroundColor: `var(${tone.bg})`, color: `var(${tone.fg})` }}
+                          >
+                            <span className="font-semibold tabular-nums">{s.time}</span>
+                            <span className="truncate">{s.patient}</span>
+                            {s.kind === "assessment" && <span className="ml-auto shrink-0 text-[9px] font-bold">ปม</span>}
+                          </Link>
+                        );
+                      })}
+                      {chips.length > 3 && (
+                        <button type="button" onClick={() => setDay(iso)} className="px-1 text-2xs text-faint">+{chips.length - 3} เพิ่มเติม</button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
