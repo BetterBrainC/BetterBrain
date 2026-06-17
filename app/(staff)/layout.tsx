@@ -2,7 +2,7 @@ import { Sidebar } from "@/components/shell/sidebar";
 import { StaffMobileNav } from "@/components/shell/staff-mobile-nav";
 import { NotificationBell } from "@/components/shell/notification-bell";
 import { requireStaff } from "@/lib/auth";
-import { getNotifications, getSettings } from "@/lib/data/queries";
+import { getNotifications, getSettings, getNavCounts } from "@/lib/data/queries";
 
 /** Admin + Director shared shell: desktop sidebar + content area. */
 export default async function StaffLayout({
@@ -11,16 +11,16 @@ export default async function StaffLayout({
   children: React.ReactNode;
 }) {
   const user = await requireStaff();
-  const [notes, settings] = await Promise.all([getNotifications(), getSettings()]);
+  const [notes, settings, counts] = await Promise.all([getNotifications(), getSettings(), getNavCounts()]);
   return (
     <div className="flex min-h-dvh bg-bg">
-      <Sidebar role={user.profile?.role} logoUrl={settings.logoUrl} companyName={settings.companyName} />
+      <Sidebar role={user.profile?.role} logoUrl={settings.logoUrl} companyName={settings.companyName} counts={counts} />
       <div className="flex flex-1 flex-col overflow-x-hidden">
         <header
           className="sticky top-0 z-sticky flex items-center justify-between gap-2 border-b border-border bg-surface/95 px-[var(--gutter-page)] backdrop-blur"
           style={{ height: "var(--header-h)" }}
         >
-          <StaffMobileNav role={user.profile?.role} companyName={settings.companyName} />
+          <StaffMobileNav role={user.profile?.role} companyName={settings.companyName} counts={counts} />
           <div className="ml-auto">
             <NotificationBell items={notes} />
           </div>

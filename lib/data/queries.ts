@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
-import { formatThaiTime } from "@/lib/date/buddhist";
+import { formatThaiTime, formatThaiDateTime } from "@/lib/date/buddhist";
 import { DEFAULT_EXERCISE_GUIDE } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
@@ -420,6 +420,8 @@ const CORRECTION_FIELD_LABEL: Record<string, string> = {
   client_event_at: "เวลาเช็คอิน",
   check_in_at: "เวลาเช็คอิน",
   check_out_at: "เวลาเช็คเอาท์",
+  checkin_time: "เวลาเช็คอิน",
+  checkout_time: "เวลาเช็คเอาท์",
   lat: "พิกัด (lat)",
   lng: "พิกัด (lng)",
   is_late: "สถานะสาย",
@@ -432,15 +434,33 @@ function toStr(v: unknown): string | null {
   return String(v);
 }
 
+/** Format a correction value: ISO datetimes → Thai date-time; else verbatim. */
+function fmtCorrectionValue(v: unknown): string | null {
+  const s = toStr(v);
+  if (s === null) return null;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s) && !Number.isNaN(Date.parse(s))) return formatThaiDateTime(s);
+  return s;
+}
+
 function diffChanges(
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ): CorrectionField[] {
   const req = after ?? {};
+  // Shape from createCorrection: { field, from, to } → one labeled change.
+  if (typeof req.field === "string") {
+    const f = req.field;
+    return [{
+      label: CORRECTION_FIELD_LABEL[f] ?? f,
+      before: fmtCorrectionValue(req.from),
+      after: fmtCorrectionValue(req.to),
+    }];
+  }
+  // Legacy shape: { <field>: value, ... } → one labeled change per field.
   return Object.keys(req).map((k) => ({
     label: CORRECTION_FIELD_LABEL[k] ?? k,
-    before: toStr(before?.[k]),
-    after: toStr(req[k]),
+    before: fmtCorrectionValue(before?.[k]),
+    after: fmtCorrectionValue(req[k]),
   }));
 }
 
@@ -539,6 +559,16 @@ const DX_META: Record<Diagnosis, { label: string; varName: string }> = {
   ms: { label: "MS", varName: "--dx-ms" },
   other: { label: "Other", varName: "--dx-other" },
 };
+
+/** Actionable counts for staff nav badges (pending corrections + new bookings). */
+export async function getNavCounts(): Promise<{ approvals: number; bookings: number }> {
+  const supabase = await createClient();
+  const [{ count: approvals }, { count: bookings }] = await Promise.all([
+    supabase.from("correction_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["booked", "awaiting_payment"]),
+  ]);
+  return { approvals: approvals ?? 0, bookings: bookings ?? 0 };
+}
 
 export async function getDashboard(): Promise<DashboardData> {
   const supabase = await createClient();

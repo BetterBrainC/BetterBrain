@@ -22,11 +22,17 @@ import type { Role } from "@/lib/auth";
 
 /** Shared staff nav items (sidebar on desktop, drawer on mobile). directorOnly
  *  items are hidden from Admin in the nav AND page-guarded server-side. */
-export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashboard; directorOnly?: boolean }[] = [
+export type NavBadge = "approvals" | "bookings";
+export interface NavCounts {
+  approvals: number;
+  bookings: number;
+}
+
+export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashboard; directorOnly?: boolean; badge?: NavBadge }[] = [
   { href: "/staff", label: "ภาพรวม", icon: LayoutDashboard },
-  { href: "/staff/bookings", label: "การจอง", icon: Inbox },
+  { href: "/staff/bookings", label: "การจอง", icon: Inbox, badge: "bookings" },
   { href: "/staff/assign", label: "มอบหมายงาน", icon: CalendarRange },
-  { href: "/staff/approvals", label: "อนุมัติ", icon: CheckCircle2 },
+  { href: "/staff/approvals", label: "อนุมัติ", icon: CheckCircle2, badge: "approvals" },
   { href: "/staff/patients", label: "ผู้รับบริการ", icon: Users },
   { href: "/staff/employees", label: "รายชื่อพนักงาน", icon: UserCog },
   { href: "/staff/reports", label: "รายงาน", icon: FileText },
@@ -37,15 +43,27 @@ export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashbo
 
 const ITEMS = STAFF_NAV;
 
+/** Small count pill shown on nav items with pending work. */
+export function NavCountBadge({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[var(--danger-fg)] px-1.5 text-2xs font-bold text-white tabular-nums">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 /** Admin + Director desktop sidebar (shared shell). */
 export function Sidebar({
   role,
   logoUrl,
   companyName,
+  counts,
 }: {
   role: Role | null | undefined;
   logoUrl?: string | null;
   companyName?: string | null;
+  counts?: NavCounts;
 }) {
   const pathname = usePathname();
   const items = ITEMS.filter((i) => !i.directorOnly || role === "director");
@@ -69,10 +87,11 @@ export function Sidebar({
         </div>
       </div>
       <nav aria-label="เมนูจัดการ" className="flex-1 space-y-1 px-3 py-2">
-        {items.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon, badge }) => {
           const active =
             pathname === href ||
             (href !== "/staff" && pathname.startsWith(`${href}/`));
+          const count = badge && counts ? counts[badge] : 0;
           return (
             <Link
               key={href}
@@ -87,6 +106,7 @@ export function Sidebar({
             >
               <Icon className="h-[18px] w-[18px]" aria-hidden />
               {label}
+              <NavCountBadge count={count} />
             </Link>
           );
         })}

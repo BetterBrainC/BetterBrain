@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
+import { ThaiDate } from "@/components/ui/thai-date";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { formatThaiDate } from "@/lib/date/buddhist";
 import { markSessionSkipped, updateSessionSpecial, substituteSession } from "@/actions/scheduling";
@@ -255,6 +256,7 @@ export function SchedulingCalendar({ sessions, employees }: { sessions: Calendar
   const [view, setView] = React.useState<View>("month");
   const [cursor, setCursor] = React.useState<Date>(() => isoToDate(todayISO));
   const [selected, setSelected] = React.useState<CalendarSession | null>(null);
+  const [detailDay, setDetailDay] = React.useState<string>(todayISO);
 
   const byDay = React.useMemo(() => {
     const map = new Map<string, CalendarSession[]>();
@@ -374,12 +376,13 @@ export function SchedulingCalendar({ sessions, employees }: { sessions: Calendar
       </Card>
 
       <Card className="p-3">
-        {view === "month" && <MonthGrid cursor={cursor} byDay={byDay} todayISO={todayISO} onSelect={setSelected} />}
+        {view === "month" && <MonthGrid cursor={cursor} byDay={byDay} todayISO={todayISO} detailDay={detailDay} onSelect={setSelected} onPickDay={setDetailDay} />}
         {view === "week" && <Agenda days={weekDays(cursor)} byDay={byDay} todayISO={todayISO} onSelect={setSelected} />}
         {view === "day" && <Agenda days={[cursor]} byDay={byDay} todayISO={todayISO} onSelect={setSelected} />}
       </Card>
 
       <Legend />
+      <DayDetails dateISO={detailDay} sessions={byDay.get(detailDay) ?? []} onSelect={setSelected} />
       <VisitDetailSheet session={selected} employees={employees} onClose={() => setSelected(null)} />
     </div>
   );
@@ -396,16 +399,73 @@ function weekDays(cursor: Date): Date[] {
   });
 }
 
+/** Auto-shown details for the focused day (today by default) — under the legend. */
+function DayDetails({
+  dateISO,
+  sessions,
+  onSelect,
+}: {
+  dateISO: string;
+  sessions: CalendarSession[];
+  onSelect: (s: CalendarSession) => void;
+}) {
+  const sorted = [...sessions].sort((a, b) => a.time.localeCompare(b.time));
+  return (
+    <Card className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-navy">
+          รายละเอียดวันที่ <ThaiDate value={dateISO} />
+        </p>
+        <span className="text-2xs text-muted">{sorted.length} เคส</span>
+      </div>
+      {sorted.length === 0 ? (
+        <p className="text-sm text-muted">วันนี้ไม่มีคิว</p>
+      ) : (
+        <ul className="space-y-1">
+          {sorted.map((s) => {
+            const tone = STATUS_TONE[s.status];
+            return (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(s)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-tint"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="w-12 shrink-0 font-medium tabular-nums text-muted">{s.time}</span>
+                    <span className="truncate text-ink">{s.patient}</span>
+                    {s.isSpecial && <Sparkles className="h-3 w-3 shrink-0" style={{ color: "var(--accent)" }} aria-label="เคสพิเศษ" />}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="hidden text-2xs text-faint sm:inline">{s.employee}</span>
+                    <span className="rounded-pill px-2 py-0.5 text-2xs font-semibold" style={{ backgroundColor: `var(${tone.bg})`, color: `var(${tone.fg})` }}>
+                      {SESSION_STATUS_LABEL[s.status]}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
 function MonthGrid({
   cursor,
   byDay,
   todayISO,
+  detailDay,
   onSelect,
+  onPickDay,
 }: {
   cursor: Date;
   byDay: Map<string, CalendarSession[]>;
   todayISO: string;
+  detailDay: string;
   onSelect: (s: CalendarSession) => void;
+  onPickDay: (iso: string) => void;
 }) {
   const y = cursor.getFullYear();
   const m = cursor.getMonth();
@@ -429,18 +489,28 @@ function MonthGrid({
           const iso = ymd(date);
           const chips = byDay.get(iso) ?? [];
           const isToday = iso === todayISO;
+          const picked = iso === detailDay;
           return (
             <div
               key={iso}
               className={
                 "min-h-24 rounded-md border p-1.5 " +
-                (isToday ? "border-teal bg-[var(--status-completed-bg)] ring-1 ring-teal" : "border-border bg-surface")
+                (picked
+                  ? "border-primary ring-2 ring-primary"
+                  : isToday
+                    ? "border-teal bg-[var(--status-completed-bg)] ring-1 ring-teal"
+                    : "border-border bg-surface")
               }
             >
               <div className="mb-1 flex items-center justify-between">
-                <span className={"text-xs font-semibold tabular-nums " + (isToday ? "text-teal" : "text-ink")}>
+                <button
+                  type="button"
+                  onClick={() => onPickDay(iso)}
+                  aria-label={`ดูรายละเอียดวันที่ ${date.getDate()}`}
+                  className={"rounded px-1 text-xs font-semibold tabular-nums hover:bg-surface-tint " + (isToday ? "text-teal" : "text-ink")}
+                >
                   {pad(date.getDate())}
-                </span>
+                </button>
                 {chips.length > 0 && (
                   <span className="grid h-4 min-w-4 place-items-center rounded-full bg-surface-sunken px-1 text-2xs font-semibold tabular-nums text-muted">
                     {chips.length}

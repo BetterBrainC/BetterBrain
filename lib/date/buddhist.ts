@@ -24,6 +24,16 @@ export function formatThaiDate(
   }).format(toDate(input));
 }
 
+/** e.g. "17 มิ.ย. 69" — compact form for small screens. */
+export function formatThaiDateShort(input: DateInput): string {
+  return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
+    timeZone: APP_TZ,
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  }).format(toDate(input));
+}
+
 /** e.g. "14 มิ.ย. 2569 15:10 น." */
 export function formatThaiDateTime(input: DateInput): string {
   const date = formatThaiDate(input, { month: "short" });

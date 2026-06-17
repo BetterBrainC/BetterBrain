@@ -8,7 +8,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { APP } from "@/lib/i18n/th";
 import { signOut } from "@/actions/auth";
-import { STAFF_NAV } from "@/components/shell/sidebar";
+import { STAFF_NAV, NavCountBadge, type NavCounts } from "@/components/shell/sidebar";
 import type { Role } from "@/lib/auth";
 
 /**
@@ -19,13 +19,16 @@ import type { Role } from "@/lib/auth";
 export function StaffMobileNav({
   role,
   companyName,
+  counts,
 }: {
   role: Role | null | undefined;
   companyName?: string | null;
+  counts?: NavCounts;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const items = STAFF_NAV.filter((i) => !i.directorOnly || role === "director");
+  const totalBadge = (counts?.approvals ?? 0) + (counts?.bookings ?? 0);
 
   return (
     <div className="md:hidden">
@@ -33,14 +36,20 @@ export function StaffMobileNav({
         type="button"
         aria-label="เมนู"
         onClick={() => setOpen(true)}
-        className="grid h-9 w-9 place-items-center rounded-md border border-border text-ink hover:bg-surface-tint"
+        className="relative grid h-9 w-9 place-items-center rounded-md border border-border text-ink hover:bg-surface-tint"
       >
         <Menu className="h-5 w-5" />
+        {totalBadge > 0 && (
+          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger-fg)] px-1 text-[10px] font-bold text-white">
+            {totalBadge > 9 ? "9+" : totalBadge}
+          </span>
+        )}
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={companyName || APP.name}>
         <nav aria-label="เมนูจัดการ" className="space-y-1">
-          {items.map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, label, icon: Icon, badge }) => {
             const active = pathname === href || (href !== "/staff" && pathname.startsWith(`${href}/`));
+            const count = badge && counts ? counts[badge] : 0;
             return (
               <Link
                 key={href}
@@ -54,6 +63,7 @@ export function StaffMobileNav({
               >
                 <Icon className="h-[18px] w-[18px]" aria-hidden />
                 {label}
+                <NavCountBadge count={count} />
               </Link>
             );
           })}
