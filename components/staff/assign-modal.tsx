@@ -31,6 +31,7 @@ export function AssignModal({
   const [employeeId, setEmployeeId] = React.useState("");
   const [date, setDate] = React.useState("");
   const [slot, setSlot] = React.useState("");
+  const [kind, setKind] = React.useState<"treatment" | "assessment">("treatment");
   const [special, setSpecial] = React.useState(false);
   const [amount, setAmount] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -38,7 +39,7 @@ export function AssignModal({
 
   function reset() {
     setPatientId(""); setEmployeeId(""); setDate(""); setSlot("");
-    setSpecial(false); setAmount(""); setError(null);
+    setKind("treatment"); setSpecial(false); setAmount(""); setError(null);
   }
 
   async function submit(e: React.FormEvent) {
@@ -50,6 +51,7 @@ export function AssignModal({
       employeeId,
       date,
       slot,
+      kind,
       isSpecial: special,
       specialAmount: special ? Number(amount) || null : null,
     });
@@ -75,6 +77,12 @@ export function AssignModal({
             <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required>
               <option value="" disabled>เลือกพนักงาน</option>
               {employees.map((e) => (<option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ""}</option>))}
+            </Select>
+          </Field>
+          <Field label="ประเภทงาน">
+            <Select value={kind} onChange={(e) => setKind(e.target.value as "treatment" | "assessment")}>
+              <option value="treatment">การรักษา</option>
+              <option value="assessment">ประเมิน · Hand Function (ครั้งแรก ครั้งเดียว)</option>
             </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">

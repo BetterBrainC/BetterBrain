@@ -158,7 +158,12 @@ export function EmployeeCalendar({ sessions }: { sessions: CalendarSession[] }) 
               <Link key={s.id} href={`/app/session/${s.id}`}>
                 <Card className="flex items-center justify-between gap-2 transition hover:bg-surface-tint">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-navy">{s.time} · {s.patient}</p>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-navy">
+                      {s.time} · {s.patient}
+                      {s.kind === "assessment" && (
+                        <span className="rounded px-1.5 py-0.5 text-2xs font-semibold" style={{ backgroundColor: "var(--info-bg)", color: "var(--info-fg)" }}>ประเมิน</span>
+                      )}
+                    </p>
                     {s.address && <p className="mt-0.5 flex items-center gap-1 truncate text-2xs text-muted"><MapPin className="h-3 w-3 shrink-0" /> {s.address}</p>}
                   </div>
                   <span className="shrink-0 rounded-pill px-2 py-0.5 text-2xs font-semibold" style={{ backgroundColor: `var(${tone.bg})`, color: `var(${tone.fg})` }}>

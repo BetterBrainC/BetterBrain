@@ -34,6 +34,62 @@ export async function markSessionSkipped(sessionId: string, reason?: string): Pr
   return { ok: true };
 }
 
+/**
+ * Reschedule a session: either "indefinite" (parked, status=rescheduled) or to a
+ * specific new date/time. Notifies the assigned employee.
+ */
+export async function rescheduleSession(input: {
+  sessionId: string;
+  mode: "indefinite" | "datetime";
+  date?: string;
+  slot?: string; // "09:00-10:00"
+}): Promise<ActionResult> {
+  const guard = await requireStaffUser();
+  if (!guard.ok) return { error: guard.error };
+  const supabase = await createClient();
+  const { data: s } = await supabase
+    .from("schedule_sessions")
+    .select("employee_id, patients(full_name)")
+    .eq("id", input.sessionId)
+    .maybeSingle();
+  const sess = s as { employee_id: string; patients: { full_name: string | null } | null } | null;
+  if (!sess) return { error: "ไม่พบเวร" };
+  const name = sess.patients?.full_name ?? "ผู้รับบริการ";
+
+  let patch: Record<string, unknown> = { status: "rescheduled" };
+  let body = `เวร ${name} ถูกเลื่อนแบบไม่มีกำหนด`;
+  if (input.mode === "datetime") {
+    if (!input.date || !input.slot) return { error: "เลือกวันและเวลาที่จะเลื่อนไป" };
+    const [start, end] = input.slot.split("-");
+    if (!start || !end) return { error: "เลือกช่วงเวลา" };
+    patch = {
+      status: "rescheduled",
+      scheduled_date: input.date,
+      scheduled_start: bangkokTimestamp(input.date, start),
+      scheduled_end: bangkokTimestamp(input.date, end),
+      note: "เลื่อนนัด",
+    };
+    body = `เวร ${name} ถูกเลื่อนไปวันที่ ${input.date} เวลา ${start}`;
+  } else {
+    patch.note = "เลื่อนไม่มีกำหนด";
+  }
+
+  const { error } = await supabase.from("schedule_sessions").update(patch as never).eq("id", input.sessionId);
+  if (error) return { error: error.message };
+  await writeAudit({ action: "update", entity: "session", entityId: input.sessionId, actorId: guard.id, after: { rescheduled: input.mode } });
+  await createNotification({
+    type: "generic",
+    audience: "employee",
+    recipientProfileId: sess.employee_id,
+    channel: "push",
+    title: "เลื่อนนัด",
+    body,
+    url: "/app/schedule",
+  });
+  revalidatePath("/staff/assign");
+  return { ok: true };
+}
+
 /** Toggle/set เคสพิเศษ (extra pay) on an EXISTING session. */
 export async function updateSessionSpecial(input: {
   sessionId: string;
@@ -79,6 +135,7 @@ export async function createAssignment(input: {
   slot: string; // "09:00-10:00"
   isSpecial: boolean;
   specialAmount: number | null;
+  kind?: "assessment" | "treatment";
 }): Promise<ActionResult> {
   if (!input.patientId || !input.employeeId) return { error: "เลือกผู้รับบริการและพนักงาน" };
   if (!input.date) return { error: "เลือกวันที่" };
@@ -108,6 +165,7 @@ export async function createAssignment(input: {
     scheduled_start: bangkokTimestamp(input.date, start),
     scheduled_end: bangkokTimestamp(input.date, end),
     status: "scheduled",
+    kind: input.kind ?? "treatment",
     is_special_case: input.isSpecial,
     special_amount: input.isSpecial ? input.specialAmount : null,
     assigned_by: userId,

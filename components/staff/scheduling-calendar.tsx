@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
-import { markSessionSkipped, updateSessionSpecial, substituteSession } from "@/actions/scheduling";
+import { markSessionSkipped, updateSessionSpecial, substituteSession, rescheduleSession } from "@/actions/scheduling";
 import type { CalendarSession } from "@/lib/data/queries";
 
 type EmpOpt = { id: string; name: string; code: string | null };
+const RESCHEDULE_SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
 
 /** Admin controls inside the visit sheet: จัดเวรแทน + งด + edit เคสพิเศษ on an existing session. */
 function SessionActions({ session, employees, onDone }: { session: CalendarSession; employees: EmpOpt[]; onDone: () => void }) {
@@ -24,6 +25,10 @@ function SessionActions({ session, employees, onDone }: { session: CalendarSessi
   const [subOpen, setSubOpen] = React.useState(false);
   const [subEmp, setSubEmp] = React.useState("");
   const [subReason, setSubReason] = React.useState("");
+  const [reOpen, setReOpen] = React.useState(false);
+  const [reMode, setReMode] = React.useState<"indefinite" | "datetime">("datetime");
+  const [reDate, setReDate] = React.useState("");
+  const [reSlot, setReSlot] = React.useState("");
 
   async function skip() {
     setBusy(true); setErr(null);
@@ -44,6 +49,15 @@ function SessionActions({ session, employees, onDone }: { session: CalendarSessi
     if (!subEmp) return setErr("เลือกพนักงานแทน");
     setBusy(true); setErr(null);
     const res = await substituteSession({ sessionId: session.id, substituteEmployeeId: subEmp, reason: subReason });
+    setBusy(false);
+    if (res.error) return setErr(res.error);
+    router.refresh(); onDone();
+  }
+  async function reschedule() {
+    setBusy(true); setErr(null);
+    const res = await rescheduleSession(
+      reMode === "datetime" ? { sessionId: session.id, mode: "datetime", date: reDate, slot: reSlot } : { sessionId: session.id, mode: "indefinite" },
+    );
     setBusy(false);
     if (res.error) return setErr(res.error);
     router.refresh(); onDone();
@@ -95,6 +109,40 @@ function SessionActions({ session, employees, onDone }: { session: CalendarSessi
             onBlur={() => saveSpecial(true, amount)}
             className="h-9 w-40 rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary" />
           <span className="text-xs text-muted">บาท</span>
+        </div>
+      )}
+      {canEdit && (
+        <div className="space-y-2">
+          {!reOpen ? (
+            <Button size="sm" variant="secondary" onClick={() => setReOpen(true)} disabled={busy}>
+              <Clock className="h-4 w-4" /> เลื่อนนัด
+            </Button>
+          ) : (
+            <div className="space-y-2 rounded-md bg-surface-tint p-3">
+              <p className="text-sm font-medium text-navy">เลื่อนนัดเคสนี้</p>
+              <div className="flex flex-col gap-1.5 text-sm text-ink">
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="remode" checked={reMode === "datetime"} onChange={() => setReMode("datetime")} /> ระบุวัน/เวลาใหม่
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="remode" checked={reMode === "indefinite"} onChange={() => setReMode("indefinite")} /> เลื่อนแบบไม่มีกำหนด
+                </label>
+              </div>
+              {reMode === "datetime" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <ThaiDateInput value={reDate} onChange={setReDate} className="h-9 text-sm" />
+                  <select value={reSlot} onChange={(e) => setReSlot(e.target.value)} className="h-9 rounded-md border border-border bg-surface px-2 text-sm outline-none focus:border-primary">
+                    <option value="" disabled>เลือกเวลา</option>
+                    {RESCHEDULE_SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
+                  </select>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" className="flex-1" onClick={() => setReOpen(false)} disabled={busy}>ยกเลิก</Button>
+                <Button size="sm" className="flex-1" onClick={reschedule} disabled={busy}>ยืนยันเลื่อนนัด</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {canEdit && (
@@ -433,6 +481,9 @@ function DayDetails({
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="w-12 shrink-0 font-medium tabular-nums text-muted">{s.time}</span>
                     <span className="truncate text-ink">{s.patient}</span>
+                    {s.kind === "assessment" && (
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold" style={{ backgroundColor: "var(--info-bg)", color: "var(--info-fg)" }}>ประเมิน</span>
+                    )}
                     {s.isSpecial && <Sparkles className="h-3 w-3 shrink-0" style={{ color: "var(--accent)" }} aria-label="เคสพิเศษ" />}
                   </span>
                   <span className="flex shrink-0 items-center gap-2">

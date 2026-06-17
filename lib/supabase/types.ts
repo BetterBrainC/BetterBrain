@@ -1042,6 +1042,7 @@ export type Database = {
           employee_id: string
           id: string
           is_special_case: boolean
+          kind: Database["public"]["Enums"]["session_kind"]
           note: string | null
           patient_id: string
           scheduled_date: string
@@ -1064,6 +1065,7 @@ export type Database = {
           employee_id: string
           id?: string
           is_special_case?: boolean
+          kind?: Database["public"]["Enums"]["session_kind"]
           note?: string | null
           patient_id: string
           scheduled_date: string
@@ -1086,6 +1088,7 @@ export type Database = {
           employee_id?: string
           id?: string
           is_special_case?: boolean
+          kind?: Database["public"]["Enums"]["session_kind"]
           note?: string | null
           patient_id?: string
           scheduled_date?: string
@@ -1343,6 +1346,7 @@ export type Database = {
         | "rejected"
         | "applied"
         | "cancelled"
+      session_kind: "assessment" | "treatment"
       session_status:
         | "scheduled"
         | "in_progress"
@@ -1542,6 +1546,7 @@ export const Constants = {
         "applied",
         "cancelled",
       ],
+      session_kind: ["assessment", "treatment"],
       session_status: [
         "scheduled",
         "in_progress",

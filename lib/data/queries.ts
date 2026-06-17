@@ -101,13 +101,14 @@ export interface SessionDetail {
   courseUsed: number;
   courseTotal: number;
   status: SessionStatus;
+  kind: "assessment" | "treatment";
 }
 
 export async function getSessionDetail(id: string): Promise<SessionDetail | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("schedule_sessions")
-    .select("id, patient_id, scheduled_start, scheduled_end, status, course_id, patients(full_name, training_program, address, home_lat, home_lng)")
+    .select("id, patient_id, scheduled_start, scheduled_end, status, kind, course_id, patients(full_name, training_program, address, home_lat, home_lng)")
     .eq("id", id)
     .maybeSingle();
   const s = one<{
@@ -116,6 +117,7 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
     scheduled_start: string | null;
     scheduled_end: string | null;
     status: SessionStatus;
+    kind: "assessment" | "treatment";
     course_id: string | null;
     patients: {
       full_name: string | null;
@@ -154,6 +156,7 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
     courseUsed: used,
     courseTotal: total,
     status: s.status,
+    kind: s.kind,
   };
 }
 
@@ -355,6 +358,50 @@ export async function getEmployeeDetail(id: string): Promise<{
     .eq("employee_id", id)
     .order("slot_start");
   return { profile, slots: rows<{ slot_start: string; slot_end: string }>(sData) };
+}
+
+export interface EmployeeWorkSummary {
+  employeeId: string;
+  name: string;
+  total: number;
+  treatment: number;
+  assessment: number;
+  passed: number;
+  upcoming: number;
+  absent: number; // ไม่ได้เช็คอิน (ขาด)
+  late: number;
+  rescheduled: number;
+}
+
+/** Per-employee case summary for staff: totals split by kind + attendance outcomes. */
+export async function getEmployeeWorkSummary(): Promise<EmployeeWorkSummary[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("schedule_sessions")
+    .select("status, kind, employee:profiles!schedule_sessions_employee_id_fkey(id, full_name)")
+    .limit(5000);
+  const evs = rows<{
+    status: SessionStatus; kind: "assessment" | "treatment";
+    employee: { id: string; full_name: string | null } | null;
+  }>(data);
+  const map = new Map<string, EmployeeWorkSummary>();
+  for (const r of evs) {
+    if (!r.employee) continue;
+    const id = r.employee.id;
+    let e = map.get(id);
+    if (!e) {
+      e = { employeeId: id, name: r.employee.full_name ?? "—", total: 0, treatment: 0, assessment: 0, passed: 0, upcoming: 0, absent: 0, late: 0, rescheduled: 0 };
+      map.set(id, e);
+    }
+    e.total += 1;
+    if (r.kind === "assessment") e.assessment += 1; else e.treatment += 1;
+    if (["completed", "attended", "late"].includes(r.status)) e.passed += 1;
+    if (["scheduled", "rescheduled", "in_progress"].includes(r.status)) e.upcoming += 1;
+    if (r.status === "no_checkin") e.absent += 1;
+    if (r.status === "late") e.late += 1;
+    if (r.status === "rescheduled") e.rescheduled += 1;
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
 }
 
 /**
@@ -709,6 +756,7 @@ export interface CalendarSession {
   patient: string; // short (no "คุณ" prefix)
   employee: string; // given name only
   status: SessionStatus;
+  kind: "assessment" | "treatment";
   isSpecial: boolean;
   // detail-sheet fields
   patientFull: string;
@@ -727,12 +775,12 @@ export async function getCalendarSessions(): Promise<CalendarSession[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("schedule_sessions")
-    .select("id, scheduled_date, scheduled_start, scheduled_end, status, is_special_case, special_amount, patients(full_name, training_program, address), employee:profiles!schedule_sessions_employee_id_fkey(full_name)")
+    .select("id, scheduled_date, scheduled_start, scheduled_end, status, kind, is_special_case, special_amount, patients(full_name, training_program, address), employee:profiles!schedule_sessions_employee_id_fkey(full_name)")
     .order("scheduled_start")
     .limit(2000);
   return rows<{
     id: string; scheduled_date: string; scheduled_start: string; scheduled_end: string | null;
-    status: SessionStatus; is_special_case: boolean; special_amount: number | null;
+    status: SessionStatus; kind: "assessment" | "treatment"; is_special_case: boolean; special_amount: number | null;
     patients: { full_name: string | null; training_program: string | null; address: string | null } | null;
     employee: { full_name: string | null } | null;
   }>(data).map((s) => {
@@ -745,6 +793,7 @@ export async function getCalendarSessions(): Promise<CalendarSession[]> {
       patient: full.replace(/^คุณ/, ""),
       employee: emp.split(" ")[1] ?? emp,
       status: s.status,
+      kind: s.kind,
       isSpecial: s.is_special_case,
       patientFull: full,
       employeeFull: emp,

@@ -40,7 +40,14 @@ export default async function SessionPage({
 
       <header className="space-y-1">
         <h1 className="font-display text-2xl font-bold text-navy">{session.patientName}</h1>
-        <p className="text-sm text-muted">{session.program}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted">{session.program}</p>
+          {session.kind === "assessment" ? (
+            <span className="rounded-pill bg-[var(--info-bg)] px-2 py-0.5 text-2xs font-semibold text-[var(--info-fg)]">ประเมิน · Hand Function</span>
+          ) : (
+            <span className="rounded-pill bg-surface-tint px-2 py-0.5 text-2xs font-semibold text-primary-700">การรักษา</span>
+          )}
+        </div>
       </header>
 
       <Card className="space-y-2">
@@ -90,11 +97,17 @@ export default async function SessionPage({
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-muted">รายงาน & ประเมิน</h2>
         <div className="grid grid-cols-2 gap-2">
-          {[
-            { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
-            { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
-            { href: `/app/session/${session.id}/report/summary`, label: "ความก้าวหน้ารายเดือน (Summary)" },
-          ].map((r) => (
+          {(session.kind === "assessment"
+            ? [
+                { href: `/app/session/${session.id}/report/hand`, label: "Hand Function Assessment" },
+                { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
+              ]
+            : [
+                { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
+                { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
+                { href: `/app/session/${session.id}/report/summary`, label: "ความก้าวหน้ารายเดือน (Summary)" },
+              ]
+          ).map((r) => (
             <Link
               key={r.href}
               href={r.href}
@@ -105,7 +118,9 @@ export default async function SessionPage({
           ))}
         </div>
         <p className="text-xs text-faint">
-          Assessment + Follow up ต้องเช็คอินก่อน · Follow up เปิดอัตโนมัติเมื่อกดเช็คเอาท์
+          {session.kind === "assessment"
+            ? "เคสนี้เป็นการประเมิน Hand Function (ครั้งแรก ครั้งเดียว) · ต้องเช็คอินก่อนบันทึก"
+            : "Assessment + Follow up ต้องเช็คอินก่อน · Follow up เปิดอัตโนมัติเมื่อกดเช็คเอาท์"}
         </p>
       </section>
 

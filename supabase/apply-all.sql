@@ -22,6 +22,7 @@ create type session_status     as enum (
   'scheduled','in_progress','attended','late','completed',
   'no_checkin','skipped','rescheduled','cancelled','corrected');
 create type coverage_status    as enum ('not_required','needs_substitute','covered');
+create type session_kind       as enum ('assessment','treatment');  -- assessment = Hand Function (ครั้งเดียว)
 create type checkin_kind       as enum ('check_in','check_out');
 create type report_type        as enum ('assessment_swallow','assessment_hand','followup','summary');  -- 3 types: Assessment · Follow up(รายวัน) · Summary(รายเดือน)
 create type report_status      as enum ('draft','completed','corrected','discarded');
@@ -233,6 +234,7 @@ create table public.schedule_sessions (
   scheduled_start timestamptz not null,
   scheduled_end timestamptz,
   status session_status not null default 'scheduled',
+  kind session_kind not null default 'treatment',
   counts_as_training boolean not null default true,
   is_special_case boolean not null default false,
   special_amount numeric(12,2),
