@@ -231,7 +231,7 @@ function SessionChip({ s, onSelect }: { s: CalendarSession; onSelect?: (s: Calen
     return <div className={cls} style={style} title={title}>{inner}</div>;
   }
   return (
-    <button type="button" onClick={() => onSelect(s)} className={cls + " transition hover:brightness-95"} style={style} title={title}>
+    <button type="button" onClick={(e) => { e.stopPropagation(); onSelect(s); }} className={cls + " transition hover:brightness-95"} style={style} title={title}>
       {inner}
     </button>
   );
@@ -298,7 +298,15 @@ function VisitDetailSheet({ session, employees, onClose }: { session: CalendarSe
   );
 }
 
-export function SchedulingCalendar({ sessions, employees }: { sessions: CalendarSession[]; employees: EmpOpt[] }) {
+export function SchedulingCalendar({
+  sessions,
+  employees,
+  onCreateForDate,
+}: {
+  sessions: CalendarSession[];
+  employees: EmpOpt[];
+  onCreateForDate?: (iso: string) => void;
+}) {
   const todayISO = React.useMemo(bangkokTodayISO, []);
   const [view, setView] = React.useState<View>("month");
   const [cursor, setCursor] = React.useState<Date>(() => isoToDate(todayISO));
@@ -423,7 +431,7 @@ export function SchedulingCalendar({ sessions, employees }: { sessions: Calendar
       </Card>
 
       <Card className="p-3">
-        {view === "month" && <MonthGrid cursor={cursor} byDay={byDay} todayISO={todayISO} detailDay={detailDay} onSelect={setSelected} onPickDay={setDetailDay} />}
+        {view === "month" && <MonthGrid cursor={cursor} byDay={byDay} todayISO={todayISO} detailDay={detailDay} onSelect={setSelected} onPickDay={setDetailDay} onCreateForDate={onCreateForDate} />}
         {view === "week" && <Agenda days={weekDays(cursor)} byDay={byDay} todayISO={todayISO} onSelect={setSelected} />}
         {view === "day" && <Agenda days={[cursor]} byDay={byDay} todayISO={todayISO} onSelect={setSelected} />}
       </Card>
@@ -509,6 +517,7 @@ function MonthGrid({
   detailDay,
   onSelect,
   onPickDay,
+  onCreateForDate,
 }: {
   cursor: Date;
   byDay: Map<string, CalendarSession[]>;
@@ -516,6 +525,7 @@ function MonthGrid({
   detailDay: string;
   onSelect: (s: CalendarSession) => void;
   onPickDay: (iso: string) => void;
+  onCreateForDate?: (iso: string) => void;
 }) {
   const y = cursor.getFullYear();
   const m = cursor.getMonth();
@@ -543,8 +553,11 @@ function MonthGrid({
           return (
             <div
               key={iso}
+              onClick={onCreateForDate ? () => onCreateForDate(iso) : undefined}
+              title={onCreateForDate ? "มอบหมายเคสในวันนี้" : undefined}
               className={
                 "min-h-24 rounded-md border p-1.5 " +
+                (onCreateForDate ? "cursor-pointer " : "") +
                 (picked
                   ? "border-primary ring-2 ring-primary"
                   : isToday
@@ -555,7 +568,7 @@ function MonthGrid({
               <div className="mb-1 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => onPickDay(iso)}
+                  onClick={(e) => { e.stopPropagation(); onPickDay(iso); }}
                   aria-label={`ดูรายละเอียดวันที่ ${date.getDate()}`}
                   className={"rounded px-1 text-xs font-semibold tabular-nums hover:bg-surface-tint " + (isToday ? "text-teal" : "text-ink")}
                 >
@@ -572,7 +585,13 @@ function MonthGrid({
                   <SessionChip key={s.id} s={s} onSelect={onSelect} />
                 ))}
                 {chips.length > 3 && (
-                  <p className="px-1 text-2xs text-faint">+{chips.length - 3} เพิ่มเติม</p>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onPickDay(iso); }}
+                    className="px-1 text-2xs text-faint hover:text-ink"
+                  >
+                    +{chips.length - 3} เพิ่มเติม
+                  </button>
                 )}
               </div>
             </div>

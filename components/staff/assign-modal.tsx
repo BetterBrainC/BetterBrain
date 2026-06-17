@@ -17,16 +17,24 @@ const SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
  * Admin case assignment (P4): patient → employee → date/time, with the
  * special-case extra-pay toggle. Persists to schedule_sessions + grants the
  * employee access to the patient (RLS backbone).
+ *
+ * Controlled by the parent (AssignBoard) so it can also be opened by clicking
+ * an empty spot on the calendar — `initialDate` prefills that day's date.
  */
 export function AssignModal({
   patients,
   employees,
+  open,
+  onOpenChange,
+  initialDate,
 }: {
   patients: Opt[];
   employees: EmpOpt[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialDate?: string | undefined;
 }) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
   const [patientId, setPatientId] = React.useState("");
   const [employeeId, setEmployeeId] = React.useState("");
   const [date, setDate] = React.useState("");
@@ -37,9 +45,18 @@ export function AssignModal({
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Prefill the date each time the sheet opens (from the clicked calendar day).
+  React.useEffect(() => {
+    if (open) setDate(initialDate ?? "");
+  }, [open, initialDate]);
+
   function reset() {
     setPatientId(""); setEmployeeId(""); setDate(""); setSlot("");
     setKind("treatment"); setSpecial(false); setAmount(""); setError(null);
+  }
+
+  function close() {
+    onOpenChange(false);
   }
 
   async function submit(e: React.FormEvent) {
@@ -57,15 +74,13 @@ export function AssignModal({
     });
     setBusy(false);
     if (res.error) return setError(res.error);
-    setOpen(false);
+    onOpenChange(false);
     reset();
     router.refresh();
   }
 
   return (
-    <>
-      <Button onClick={() => setOpen(true)}>+ มอบหมายเคส</Button>
-      <Sheet open={open} onClose={() => setOpen(false)} title="มอบหมายเคส">
+    <Sheet open={open} onClose={close} title="มอบหมายเคส">
         <form onSubmit={submit} className="space-y-4">
           <Field label="ผู้รับบริการ">
             <Select value={patientId} onChange={(e) => setPatientId(e.target.value)} required>
@@ -109,11 +124,10 @@ export function AssignModal({
           </div>
           {error && <p className="text-sm text-[var(--danger-fg)]">{error}</p>}
           <div className="flex gap-3 pt-1">
-            <Button type="button" variant="secondary" className="flex-1" onClick={() => setOpen(false)}>ยกเลิก</Button>
+            <Button type="button" variant="secondary" className="flex-1" onClick={close}>ยกเลิก</Button>
             <Button type="submit" className="flex-1" disabled={busy}>{busy ? "กำลังบันทึก…" : "มอบหมาย"}</Button>
           </div>
         </form>
       </Sheet>
-    </>
   );
 }
