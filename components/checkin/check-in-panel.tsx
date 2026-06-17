@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { DailyReportSheet } from "@/components/reports/daily-report-sheet";
 import { haversineMeters } from "@/lib/geo/haversine";
 import { getCurrentFix } from "@/lib/geo/geolocation";
-import { recordCheckEvent, uploadCheckinSelfie } from "@/actions/checkin";
+import { recordCheckEvent, uploadCheckinSelfie, completeAssessment } from "@/actions/checkin";
 import { enqueueCheckEvent, flushAll } from "@/lib/sync/checkin-sync";
 
 type Phase = "idle" | "locating" | "located" | "checkedin" | "done";
@@ -32,6 +32,7 @@ export function CheckInPanel({
   lateThresholdMin,
   earlyThresholdMin,
   selfieEnforced,
+  kind,
 }: {
   sessionId: string;
   patientName: string;
@@ -44,6 +45,7 @@ export function CheckInPanel({
   lateThresholdMin: number;
   earlyThresholdMin: number;
   selfieEnforced: boolean;
+  kind: "assessment" | "treatment";
 }) {
   const router = useRouter();
   const alreadyDone = initialStatus === "completed";
@@ -57,6 +59,7 @@ export function CheckInPanel({
   const [info, setInfo] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [checkedOut, setCheckedOut] = React.useState(false);
   const [selfie, setSelfie] = React.useState<File | null>(null);
   const selfieUrl = React.useMemo(() => (selfie ? URL.createObjectURL(selfie) : null), [selfie]);
 
@@ -155,23 +158,40 @@ export function CheckInPanel({
     const lat = coords?.lat ?? homeLat ?? 0;
     const lng = coords?.lng ?? homeLng ?? 0;
 
+    // Assessment cases have NO daily Follow-up — check-out, then the employee
+    // saves the Hand Function form and presses "จบเคส" (completeAssessment).
+    const isAssessment = kind === "assessment";
+
     if (!navigator.onLine) {
       await enqueueCheckEvent({ clientUuid: eventId, sessionId, kind: "check_out", capturedAt: new Date().toISOString(), lat, lng, distanceMeters: distance ?? undefined, withinRadius: hasHome ? inRange : false, isEarly: isEarlyNow() });
       setBusy(false);
-      setInfo("บันทึกเช็คเอาท์ออฟไลน์แล้ว — กรอก Follow up ได้เลย จะซิงค์เมื่อกลับมาออนไลน์");
-      setSheetOpen(true); // let the employee fill the daily report offline (it queues too)
+      setCheckedOut(true);
+      if (isAssessment) setInfo("เช็คเอาท์ออฟไลน์แล้ว — บันทึกแบบประเมิน Hand Function แล้วกดจบเคสเมื่อกลับมาออนไลน์");
+      else { setInfo("บันทึกเช็คเอาท์ออฟไลน์แล้ว — กรอก Follow up ได้เลย จะซิงค์เมื่อกลับมาออนไลน์"); setSheetOpen(true); }
       return;
     }
     try {
       const res = await recordCheckEvent({ sessionId, kind: "check_out", lat, lng, distanceM: distance, within: hasHome ? inRange : false, isEarly: isEarlyNow(), eventId });
       setBusy(false);
       if (res.error) return setError(res.error);
-      setSheetOpen(true);
+      setCheckedOut(true);
+      if (!isAssessment) setSheetOpen(true); // treatment → daily Follow-up
     } catch {
       await enqueueCheckEvent({ clientUuid: eventId, sessionId, kind: "check_out", capturedAt: new Date().toISOString(), lat, lng, distanceMeters: distance ?? undefined, withinRadius: hasHome ? inRange : false, isEarly: isEarlyNow() });
       setBusy(false);
+      setCheckedOut(true);
       setInfo("เครือข่ายขัดข้อง — บันทึกเช็คเอาท์ออฟไลน์แล้ว");
     }
+  }
+
+  async function complete() {
+    setBusy(true);
+    setError(null);
+    const res = await completeAssessment(sessionId);
+    setBusy(false);
+    if (res.error) return setError(res.error);
+    setPhase("done");
+    router.refresh();
   }
 
   const distanceText =
@@ -246,12 +266,35 @@ export function CheckInPanel({
           <p className="flex items-center gap-2 text-sm font-semibold text-[var(--status-completed-fg)]">
             <CheckCircle2 className="h-5 w-5" /> เช็คอินแล้ว
           </p>
-          <p className="text-xs text-muted">เมื่อฝึกเสร็จ กด “เช็คเอาท์” เพื่อบันทึก Follow up (รายวัน)</p>
-          {info && <p className="flex items-center gap-1 text-xs text-muted"><WifiOff className="h-3.5 w-3.5" /> {info}</p>}
-          {error && <p className="text-xs text-[var(--danger-fg)]">{error}</p>}
-          <Button size="lg" variant="secondary" className="w-full" onClick={checkout} disabled={busy}>
-            <LogOut className="h-5 w-5" /> {busy ? "กำลังบันทึก…" : "เช็คเอาท์"}
-          </Button>
+          {kind === "assessment" ? (
+            checkedOut ? (
+              <>
+                <p className="text-xs text-muted">บันทึกแบบประเมิน Hand Function ด้านล่างก่อน แล้วกด “จบเคส”</p>
+                {info && <p className="flex items-center gap-1 text-xs text-muted"><WifiOff className="h-3.5 w-3.5" /> {info}</p>}
+                {error && <p className="text-xs text-[var(--danger-fg)]">{error}</p>}
+                <Button size="lg" className="w-full" onClick={complete} disabled={busy}>
+                  <CheckCircle2 className="h-5 w-5" /> {busy ? "กำลังบันทึก…" : "จบเคส"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-muted">เคสประเมิน (ครั้งเดียว) — เมื่อเสร็จ กด “เช็คเอาท์” แล้วบันทึกแบบประเมิน Hand Function</p>
+                {error && <p className="text-xs text-[var(--danger-fg)]">{error}</p>}
+                <Button size="lg" variant="secondary" className="w-full" onClick={checkout} disabled={busy}>
+                  <LogOut className="h-5 w-5" /> {busy ? "กำลังบันทึก…" : "เช็คเอาท์"}
+                </Button>
+              </>
+            )
+          ) : (
+            <>
+              <p className="text-xs text-muted">เมื่อฝึกเสร็จ กด “เช็คเอาท์” เพื่อบันทึก Follow up (รายวัน)</p>
+              {info && <p className="flex items-center gap-1 text-xs text-muted"><WifiOff className="h-3.5 w-3.5" /> {info}</p>}
+              {error && <p className="text-xs text-[var(--danger-fg)]">{error}</p>}
+              <Button size="lg" variant="secondary" className="w-full" onClick={checkout} disabled={busy}>
+                <LogOut className="h-5 w-5" /> {busy ? "กำลังบันทึก…" : "เช็คเอาท์"}
+              </Button>
+            </>
+          )}
         </div>
       )}
 

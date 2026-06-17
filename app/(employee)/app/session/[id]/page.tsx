@@ -92,6 +92,7 @@ export default async function SessionPage({
         lateThresholdMin={checkinCfg.lateThresholdMin}
         earlyThresholdMin={checkinCfg.earlyThresholdMin}
         selfieEnforced={checkinCfg.selfieEnforced}
+        kind={session.kind}
       />
 
       <section className="space-y-2">

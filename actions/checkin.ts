@@ -103,6 +103,24 @@ export async function recordCheckEvent(input: {
   return { ok: true };
 }
 
+/** Complete an ASSESSMENT session ("จบเคส") — requires a saved assessment report
+ *  (no Follow-up for one-time assessments). RPC enforces ownership + report. */
+export async function completeAssessment(sessionId: string): Promise<ActionResult> {
+  const guard = await requireEnabledUser();
+  if (!guard.ok) return { error: guard.error };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("complete_session", { p_session_id: sessionId });
+  if (error) {
+    if (error.message.includes("ASSESSMENT_REQUIRED"))
+      return { error: "บันทึกแบบประเมินก่อนจึงจะจบเคสได้" };
+    return { error: error.message };
+  }
+  await writeAudit({ action: "check_out", entity: "session", entityId: sessionId, actorId: guard.id, context: { complete: "assessment" } });
+  revalidatePath(`/app/session/${sessionId}`);
+  revalidatePath("/app");
+  return { ok: true };
+}
+
 /** Save the Follow-up (daily) report → marks session completed ("จบเคส").
  *  reportId (client UUID) keeps an offline-queued report idempotent on flush. */
 export async function saveFollowup(
