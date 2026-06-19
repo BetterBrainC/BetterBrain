@@ -36,11 +36,11 @@ export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashbo
   { href: "/staff/approvals", label: "อนุมัติ", icon: CheckCircle2, badge: "approvals" },
   { href: "/staff/patients", label: "ผู้รับบริการ", icon: Users },
   { href: "/staff/employees", label: "รายชื่อพนักงาน", icon: UserCog },
-  { href: "/staff/reports", label: "รายงาน", icon: FileText },
-  { href: "/staff/work-summary", label: "สรุปผลงาน", icon: BarChart3 },
+  { href: "/staff/reports", label: "บันทึกรายงาน", icon: FileText },
+  { href: "/staff/work-summary", label: "สรุปการทำงาน", icon: BarChart3 },
   { href: "/staff/measurement", label: "การวัดผล", icon: Activity, directorOnly: true },
   { href: "/staff/audit", label: "บันทึกการใช้งาน", icon: ScrollText, directorOnly: true },
-  { href: "/staff/settings", label: "ตั้งค่า", icon: Settings },
+  { href: "/staff/settings", label: "ตั้งค่า", icon: Settings, directorOnly: true },
 ];
 
 const ITEMS = STAFF_NAV;

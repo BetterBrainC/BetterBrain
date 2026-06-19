@@ -388,13 +388,41 @@ export interface EmployeeWorkSummary {
   rescheduled: number;
 }
 
-/** Per-employee case summary for staff: totals split by kind + attendance outcomes. */
-export async function getEmployeeWorkSummary(): Promise<EmployeeWorkSummary[]> {
+export type WorkPeriod = "day" | "month" | "year" | "all";
+
+/** Bangkok-local [from,to] (inclusive) for the work-summary period tabs. */
+export function workPeriodRange(
+  period: WorkPeriod,
+  todayISO = bangkokToday(),
+): { from?: string; to?: string } {
+  const y = Number(todayISO.slice(0, 4));
+  const m = Number(todayISO.slice(5, 7));
+  const mm = todayISO.slice(5, 7);
+  if (period === "day") return { from: todayISO, to: todayISO };
+  if (period === "month") {
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return { from: `${y}-${mm}-01`, to: `${y}-${mm}-${String(lastDay).padStart(2, "0")}` };
+  }
+  if (period === "year") return { from: `${y}-01-01`, to: `${y}-12-31` };
+  return {};
+}
+
+/**
+ * Per-employee case summary for staff: totals split by kind + attendance
+ * outcomes. Optional Bangkok-local date range [from, to] (inclusive) drives the
+ * รายวัน/รายเดือน/รายปี views.
+ */
+export async function getEmployeeWorkSummary(
+  range?: { from?: string; to?: string },
+): Promise<EmployeeWorkSummary[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let q = supabase
     .from("schedule_sessions")
     .select("status, kind, employee:profiles!schedule_sessions_employee_id_fkey(id, full_name)")
     .limit(5000);
+  if (range?.from) q = q.gte("scheduled_date", range.from);
+  if (range?.to) q = q.lte("scheduled_date", range.to);
+  const { data } = await q;
   const evs = rows<{
     status: SessionStatus; kind: "assessment" | "treatment";
     employee: { id: string; full_name: string | null } | null;
@@ -609,7 +637,6 @@ export interface DashboardData {
   checkedIn: number;
   inProgress: number;
   pendingApprovals: number;
-  diagnosis: { label: string; count: number; varName: string }[];
   monitor: { name: string; patient: string; time: string; status: SessionStatus; early: boolean }[];
   employeeCount: number;
   patients: PatientRow[];
@@ -689,19 +716,6 @@ export async function getDashboard(): Promise<DashboardData> {
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
 
-  const { data: dxData } = await supabase.from("patients").select("diagnosis_category");
-  const dx = rows<{ diagnosis_category: Diagnosis | null }>(dxData);
-  const counts = new Map<Diagnosis, number>();
-  for (const r of dx) {
-    if (r.diagnosis_category)
-      counts.set(r.diagnosis_category, (counts.get(r.diagnosis_category) ?? 0) + 1);
-  }
-  const diagnosis = (Object.keys(DX_META) as Diagnosis[]).map((k) => ({
-    label: DX_META[k].label,
-    varName: DX_META[k].varName,
-    count: counts.get(k) ?? 0,
-  }));
-
   const { count: employeeCount } = await supabase
     .from("profiles")
     .select("id", { count: "exact", head: true })
@@ -712,7 +726,6 @@ export async function getDashboard(): Promise<DashboardData> {
     checkedIn,
     inProgress,
     pendingApprovals: pendingApprovals ?? 0,
-    diagnosis,
     monitor: sessions.map((s) => ({
       name: s.employee?.full_name ?? "—",
       patient: s.patients?.full_name ?? "—",
@@ -1258,6 +1271,120 @@ export async function getReports(): Promise<ReportRow[]> {
     date: r.report_date,
     status: r.status,
   }));
+}
+
+export interface ReportField {
+  key: string;
+  value: string;
+}
+export interface ReportDetail {
+  id: string;
+  typeLabel: string;
+  patientId: string | null;
+  patientName: string;
+  authorName: string;
+  date: string;
+  status: string;
+  fields: ReportField[];
+}
+
+/** Flatten a clinical report's jsonb payload into ordered key/value rows. */
+function flattenReportPayload(payload: unknown, prefix = ""): ReportField[] {
+  if (payload === null || payload === undefined) return [];
+  if (typeof payload !== "object") {
+    return [{ key: prefix || "ค่า", value: String(payload) }];
+  }
+  if (Array.isArray(payload)) {
+    return payload.flatMap((v, i) => flattenReportPayload(v, prefix ? `${prefix} [${i + 1}]` : `[${i + 1}]`));
+  }
+  return Object.entries(payload as Record<string, unknown>).flatMap(([k, v]) => {
+    const key = prefix ? `${prefix} · ${k}` : k;
+    if (v !== null && typeof v === "object") return flattenReportPayload(v, key);
+    if (typeof v === "boolean") return [{ key, value: v ? "ใช่" : "ไม่" }];
+    return [{ key, value: v === null || v === undefined ? "—" : String(v) }];
+  });
+}
+
+/** Full detail of one report (Admin/Director) — for click-through + per-person export. */
+export async function getReportDetail(id: string): Promise<ReportDetail | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reports")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name), author:profiles!reports_author_id_fkey(full_name)")
+    .eq("id", id)
+    .maybeSingle();
+  const r = one<{
+    id: string; report_type: string; report_date: string; status: string;
+    payload: unknown; patient_id: string | null;
+    patients: { full_name: string | null } | null;
+    author: { full_name: string | null } | null;
+  }>(data);
+  if (!r) return null;
+  return {
+    id: r.id,
+    typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
+    patientId: r.patient_id,
+    patientName: r.patients?.full_name ?? "—",
+    authorName: r.author?.full_name ?? "—",
+    date: r.report_date,
+    status: r.status,
+    fields: flattenReportPayload(r.payload),
+  };
+}
+
+// ── patient statistics (สถิติผู้รับบริการ) ──────────────────────────────
+const THAI_MONTHS_SHORT = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+export interface PatientStatsData {
+  diagnosis: { label: string; count: number; varName: string }[];
+  monthly: { label: string; total: number; done: number }[];
+  monthlyTotal: number;
+  buddhistYear: number;
+}
+
+/**
+ * Patient-facing statistics: diagnosis breakdown + monthly case table for the
+ * current calendar year (client 18/6/2569: stats live under ผู้รับบริการ).
+ */
+export async function getPatientStats(): Promise<PatientStatsData> {
+  const supabase = await createClient();
+  const today = bangkokToday();
+  const year = Number(today.slice(0, 4));
+
+  const { data: dxData } = await supabase.from("patients").select("diagnosis_category");
+  const dx = rows<{ diagnosis_category: Diagnosis | null }>(dxData);
+  const counts = new Map<Diagnosis, number>();
+  for (const r of dx) {
+    if (r.diagnosis_category) counts.set(r.diagnosis_category, (counts.get(r.diagnosis_category) ?? 0) + 1);
+  }
+  const diagnosis = (Object.keys(DX_META) as Diagnosis[]).map((k) => ({
+    label: DX_META[k].label,
+    varName: DX_META[k].varName,
+    count: counts.get(k) ?? 0,
+  }));
+
+  const { data: sData } = await supabase
+    .from("schedule_sessions")
+    .select("scheduled_date, status")
+    .gte("scheduled_date", `${year}-01-01`)
+    .lte("scheduled_date", `${year}-12-31`)
+    .limit(10000);
+  const sessions = rows<{ scheduled_date: string; status: SessionStatus }>(sData);
+  const byMonth = Array.from({ length: 12 }, () => ({ total: 0, done: 0 }));
+  for (const s of sessions) {
+    const bucket = byMonth[Number(s.scheduled_date.slice(5, 7)) - 1];
+    if (!bucket) continue;
+    bucket.total += 1;
+    if (["completed", "attended", "late"].includes(s.status)) bucket.done += 1;
+  }
+  const monthly = byMonth.map((m, i) => ({ label: THAI_MONTHS_SHORT[i] ?? "", total: m.total, done: m.done }));
+
+  return {
+    diagnosis,
+    monthly,
+    monthlyTotal: sessions.length,
+    buddhistYear: year + 543,
+  };
 }
 
 // ── settings ────────────────────────────────────────────────────────────

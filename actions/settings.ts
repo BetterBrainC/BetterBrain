@@ -9,14 +9,15 @@ export interface ActionResult {
   error?: string;
 }
 
-async function requireStaffRole() {
+// ตั้งค่าระบบเป็นสิทธิ Director เท่านั้น (client 18/6/2569 — เอาสิทธิ Admin ออก).
+async function requireDirectorRole() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle();
   const role = (me as { role?: string } | null)?.role;
-  return role === "admin" || role === "director";
+  return role === "director";
 }
 
 /** Upload a logo image to the public `branding` bucket; returns its public URL. */
@@ -24,7 +25,7 @@ export async function uploadLogo(formData: FormData): Promise<{ url?: string; er
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "ไม่พบไฟล์" };
   if (file.size > 2_097_152) return { error: "ไฟล์ใหญ่เกิน 2MB" };
-  if (!(await requireStaffRole())) return { error: "ไม่มีสิทธิ์" };
+  if (!(await requireDirectorRole())) return { error: "ไม่มีสิทธิ์" };
 
   const admin = createAdminClient();
   const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -47,6 +48,7 @@ export async function saveSettings(input: {
   earlyThresholdMin: number;
   geofenceRadiusM: number;
 }): Promise<ActionResult> {
+  if (!(await requireDirectorRole())) return { error: "ไม่มีสิทธิ์" };
   if (!input.companyName.trim()) return { error: "กรอกชื่อบริษัท" };
   const supabase = await createClient();
   const { error } = await supabase

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PatientsTable } from "@/components/staff/patients-table";
-import { getPatients } from "@/lib/data/queries";
+import { PatientStats } from "@/components/staff/patient-stats";
+import { getPatients, getPatientStats } from "@/lib/data/queries";
 
 export default async function PatientsPage() {
-  const patients = await getPatients();
+  const [patients, stats] = await Promise.all([getPatients(), getPatientStats()]);
   return (
     <div className="space-y-5">
       <header className="flex items-end justify-between">
@@ -16,6 +17,7 @@ export default async function PatientsPage() {
           <Button>+ เพิ่มผู้รับบริการ</Button>
         </Link>
       </header>
+      <PatientStats stats={stats} />
       <PatientsTable patients={patients} />
     </div>
   );

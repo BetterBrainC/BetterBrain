@@ -1,12 +1,29 @@
+import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireStaff } from "@/lib/auth";
-import { getEmployeeWorkSummary } from "@/lib/data/queries";
+import { getEmployeeWorkSummary, workPeriodRange, type WorkPeriod } from "@/lib/data/queries";
+import { cn } from "@/lib/utils";
+
+const PERIODS: { key: WorkPeriod; label: string }[] = [
+  { key: "day", label: "รายวัน" },
+  { key: "month", label: "รายเดือน" },
+  { key: "year", label: "รายปี" },
+  { key: "all", label: "ทั้งหมด" },
+];
 
 /** Staff: per-employee case summary (totals, treatment/assessment, outcomes). */
-export default async function WorkSummaryPage() {
+export default async function WorkSummaryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
   await requireStaff();
-  const rows = await getEmployeeWorkSummary();
+  const sp = await searchParams;
+  const period: WorkPeriod = PERIODS.some((p) => p.key === sp.period)
+    ? (sp.period as WorkPeriod)
+    : "all";
+  const rows = await getEmployeeWorkSummary(workPeriodRange(period));
 
   const COLS: { key: keyof (typeof rows)[number]; label: string; tone?: string }[] = [
     { key: "total", label: "ทั้งหมด" },
@@ -21,15 +38,34 @@ export default async function WorkSummaryPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="font-display text-2xl font-bold text-navy">สรุปผลการทำงาน</h1>
-        <p className="text-sm text-muted">เคสรายพนักงาน — แยกการรักษา/ประเมิน และผลการเข้างาน</p>
+      <header className="space-y-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-navy">สรุปการทำงาน</h1>
+          <p className="text-sm text-muted">เคสรายพนักงาน — แยกการรักษา/ประเมิน และผลการเข้างาน</p>
+        </div>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="ช่วงเวลา">
+          {PERIODS.map((p) => (
+            <Link
+              key={p.key}
+              href={`/staff/work-summary?period=${p.key}`}
+              aria-current={period === p.key ? "page" : undefined}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                period === p.key
+                  ? "bg-primary text-white"
+                  : "bg-surface-tint text-ink hover:bg-surface-sunken",
+              )}
+            >
+              {p.label}
+            </Link>
+          ))}
+        </div>
       </header>
 
       <Card className="space-y-3">
         <CardTitle className="text-base">พนักงาน ({rows.length})</CardTitle>
         {rows.length === 0 ? (
-          <EmptyState title="ยังไม่มีข้อมูล" description="เมื่อมีการมอบหมายเคส สรุปจะปรากฏที่นี่" />
+          <EmptyState title="ยังไม่มีข้อมูล" description="ไม่พบเคสในช่วงเวลาที่เลือก" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-sm">

@@ -67,6 +67,8 @@ function patientFromForm(formData: FormData) {
     past_history: String(formData.get("past_history") ?? "").trim() || null,
     surgery_history: String(formData.get("surgery_history") ?? "").trim() || null,
     chief_complaint: String(formData.get("chief_complaint") ?? "").trim() || null,
+    diagnosis_category: (String(formData.get("diagnosis_category") ?? "").trim() || null) as
+      | "stroke" | "parkinson" | "dementia_alzheimer" | "als" | "ms" | "other" | null,
     training_program: String(formData.get("training_program") ?? "").trim() || null,
     emergency_contact_name: String(formData.get("ec_name") ?? "").trim() || null,
     emergency_contact_relation: String(formData.get("ec_relation") ?? "").trim() || null,

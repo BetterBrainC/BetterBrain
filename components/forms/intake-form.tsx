@@ -7,6 +7,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Textarea, Select } from "@/components/ui/field";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
+import { DIAGNOSIS_LABEL } from "@/lib/i18n/th";
 import type { FormResult } from "@/actions/patients";
 
 type Action = (prev: FormResult, formData: FormData) => Promise<FormResult>;
@@ -16,6 +17,7 @@ export type IntakeInitial = Partial<
     | "full_name" | "age_years" | "dob" | "national_id" | "nationality" | "race"
     | "marital_status" | "gender" | "phone" | "address" | "underlying"
     | "drug_allergy" | "past_history" | "surgery_history" | "chief_complaint"
+    | "diagnosis_category"
     | "training_program" | "ec_name" | "ec_relation" | "ec_phone",
     string | number | null
   >
@@ -104,7 +106,17 @@ export function IntakeForm({
           <Field label="สถานภาพ"><TextInput name="marital_status" defaultValue={dv("marital_status")} /></Field>
         </div>
         <Field label="ที่อยู่"><Textarea name="address" defaultValue={dv("address")} /></Field>
-        <Field label="โปรแกรมการฝึก"><TextInput name="training_program" placeholder="เช่น Swallowing Rehab" defaultValue={dv("training_program")} /></Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="การวินิจฉัย">
+            <Select name="diagnosis_category" defaultValue={dv("diagnosis_category") ?? ""}>
+              <option value="">— ไม่ระบุ —</option>
+              {(Object.keys(DIAGNOSIS_LABEL) as (keyof typeof DIAGNOSIS_LABEL)[]).map((k) => (
+                <option key={k} value={k}>{DIAGNOSIS_LABEL[k]}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="คอร์สการฟื้นฟู (โปรแกรมการฝึก)"><TextInput name="training_program" placeholder="เช่น Swallowing Rehab" defaultValue={dv("training_program")} /></Field>
+        </div>
       </Card>
 
       <Card className="space-y-4">

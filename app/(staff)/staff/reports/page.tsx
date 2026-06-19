@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, Td } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -19,15 +20,15 @@ export default async function ReportsPage() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-navy">รายงาน</h1>
+          <h1 className="font-display text-2xl font-bold text-navy">บันทึกรายงาน</h1>
           <p className="text-sm text-muted">
-            Assessment · Follow up · Summary — เห็นเฉพาะ Admin/Director (หลัง “จบเคส”)
+            Assessment · Follow up · Summary — คลิกเพื่อดูข้อมูลเต็ม/Export รายคน (หลัง “จบเคส”)
           </p>
         </div>
         <ExportButton
           filename="tpm-reports"
-          headers={["ประเภท", "ผู้รับบริการ", "ผู้บันทึก", "วันที่", "สถานะ"]}
-          rows={reports.map((r) => [r.typeLabel, r.patientName, r.authorName, r.date, r.status])}
+          headers={["ผู้รับบริการ", "ประเภท", "ผู้บันทึก", "วันที่", "สถานะ"]}
+          rows={reports.map((r) => [r.patientName, r.typeLabel, r.authorName, r.date, r.status])}
         />
       </header>
 
@@ -36,13 +37,15 @@ export default async function ReportsPage() {
       {reports.length === 0 ? (
         <EmptyState title="ยังไม่มีรายงาน" description="รายงานที่ ‘จบเคส’ แล้วจะปรากฏที่นี่" />
       ) : (
-        <DataTable headers={["ประเภท", "ผู้รับบริการ", "ผู้บันทึก", "วันที่", "สถานะ"]}>
+        <DataTable headers={["ผู้รับบริการ", "ประเภท", "ผู้บันทึก", "วันที่", "สถานะ"]}>
           {reports.map((r) => {
             const st = STATUS[r.status] ?? { label: r.status, tone: "info" as const };
             return (
               <tr key={r.id} className="hover:bg-surface-tint">
-                <Td className="font-medium text-navy">{r.typeLabel}</Td>
-                <Td>{r.patientName}</Td>
+                <Td className="font-medium text-navy">
+                  <Link href={`/staff/reports/${r.id}`} className="text-primary-700 hover:underline">{r.patientName}</Link>
+                </Td>
+                <Td>{r.typeLabel}</Td>
                 <Td className="text-muted">{r.authorName}</Td>
                 <Td className="text-muted"><ThaiDate value={r.date} /></Td>
                 <Td><Badge tone={st.tone}>{st.label}</Badge></Td>

@@ -33,6 +33,7 @@ export default async function EditPatientPage({
     past_history: p.past_history,
     surgery_history: p.surgery_history,
     chief_complaint: p.chief_complaint,
+    diagnosis_category: p.diagnosis_category,
     training_program: p.training_program,
     ec_name: p.emergency_contact_name,
     ec_relation: p.emergency_contact_relation,
