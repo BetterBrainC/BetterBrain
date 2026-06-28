@@ -745,6 +745,7 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           position_title: string | null
+          profession: Database["public"]["Enums"]["profession"] | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -760,6 +761,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           position_title?: string | null
+          profession?: Database["public"]["Enums"]["profession"] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -775,6 +777,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           position_title?: string | null
+          profession?: Database["public"]["Enums"]["profession"] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -1338,6 +1341,7 @@ export type Database = {
         | "substitute_assigned"
         | "generic"
       patient_status: "active" | "hold" | "no_service"
+      profession: "pt" | "ot"
       report_status: "draft" | "completed" | "corrected" | "discarded"
       report_type:
         | "assessment_swallow"
@@ -1536,6 +1540,7 @@ export const Constants = {
         "generic",
       ],
       patient_status: ["active", "hold", "no_service"],
+      profession: ["pt", "ot"],
       report_status: ["draft", "completed", "corrected", "discarded"],
       report_type: [
         "assessment_swallow",

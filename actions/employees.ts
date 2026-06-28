@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +10,8 @@ export interface ActionResult {
   ok?: boolean;
   error?: string;
 }
+
+type Profession = "pt" | "ot";
 
 /** Returns the admin client only if the caller is staff (admin/director). */
 async function adminIfStaff(): Promise<ReturnType<typeof createAdminClient> | null> {
@@ -36,6 +39,8 @@ export async function createEmployee(input: {
   licenseNo: string;
   phone: string;
   employmentType: "monthly" | "part_time";
+  profession?: Profession | null;
+  photoUrl?: string | null;
 }): Promise<ActionResult> {
   if (!input.fullName.trim()) return { error: "กรอกชื่อ-สกุล" };
   if (!/.+@.+\..+/.test(input.email)) return { error: "อีเมลไม่ถูกต้อง" };
@@ -70,11 +75,13 @@ export async function createEmployee(input: {
       license_no: input.licenseNo.trim() || null,
       phone: input.phone.trim() || null,
       employment_type: input.employmentType,
+      profession: input.profession ?? null,
+      photo_url: input.photoUrl ?? null,
     })
     .eq("id", newId);
   if (profErr) return { error: profErr.message };
 
-  await writeAudit({ action: "create", entity: "employee", entityId: newId, after: { fullName: input.fullName.trim(), employmentType: input.employmentType } });
+  await writeAudit({ action: "create", entity: "employee", entityId: newId, after: { fullName: input.fullName.trim(), employmentType: input.employmentType, profession: input.profession ?? null } });
   revalidatePath("/staff/employees");
   return { ok: true };
 }
@@ -88,6 +95,8 @@ export async function updateEmployee(input: {
   licenseNo: string;
   phone: string;
   employmentType: "monthly" | "part_time";
+  profession?: Profession | null;
+  photoUrl?: string | null;
 }): Promise<ActionResult> {
   if (!input.fullName.trim()) return { error: "กรอกชื่อ-สกุล" };
   const admin = await adminIfStaff();
@@ -101,6 +110,8 @@ export async function updateEmployee(input: {
       license_no: input.licenseNo.trim() || null,
       phone: input.phone.trim() || null,
       employment_type: input.employmentType,
+      profession: input.profession ?? null,
+      ...(input.photoUrl !== undefined ? { photo_url: input.photoUrl } : {}),
     })
     .eq("id", input.id)
     .eq("role", "employee");
@@ -136,4 +147,42 @@ export async function setEmployeeEnabled(input: { id: string; enabled: boolean }
   revalidatePath(`/staff/employees/${input.id}`);
   revalidatePath("/staff/employees");
   return { ok: true };
+}
+
+/**
+ * Admin "ลบพนักงาน" — soft delete: disables the account (blocks every write via
+ * is_enabled() + forces sign-out) while keeping the row for schedule/report
+ * history. A true row delete would orphan past cases, so we never hard-delete.
+ */
+export async function deleteEmployee(input: { id: string }): Promise<ActionResult> {
+  const admin = await adminIfStaff();
+  if (!admin) return { error: "ไม่มีสิทธิ์" };
+  const { error } = await admin
+    .from("profiles")
+    .update({ is_enabled: false })
+    .eq("id", input.id)
+    .eq("role", "employee");
+  if (error) return { error: error.message };
+  await writeAudit({ action: "delete", entity: "employee", entityId: input.id, after: { is_enabled: false } });
+  revalidatePath("/staff/employees");
+  return { ok: true };
+}
+
+/** Admin uploads an employee photo to the PUBLIC avatars bucket; returns its URL. */
+export async function uploadEmployeePhoto(formData: FormData): Promise<{ url?: string; error?: string }> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "ไม่พบไฟล์" };
+  if (file.size > 4_194_304) return { error: "ไฟล์ใหญ่เกิน 4MB" };
+  const admin = await adminIfStaff();
+  if (!admin) return { error: "ไม่มีสิทธิ์" };
+
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const path = `employees/${randomUUID()}.${ext}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error } = await admin.storage
+    .from("avatars")
+    .upload(path, bytes, { contentType: file.type || "image/jpeg", upsert: false });
+  if (error) return { error: error.message };
+  const { data } = admin.storage.from("avatars").getPublicUrl(path);
+  return { url: data.publicUrl };
 }

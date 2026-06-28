@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Clock, Navigation } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CheckInPanel } from "@/components/checkin/check-in-panel";
 import { PatientKpiForm } from "@/components/employee/patient-kpi-form";
+import { DailyReportCard } from "@/components/reports/daily-report-card";
 import { getSessionDetail, getCheckinSettings } from "@/lib/data/queries";
 
 export default async function SessionPage({
@@ -35,7 +36,7 @@ export default async function SessionPage({
   return (
     <div className="space-y-5 px-[var(--gutter-page)] pt-4">
       <Link href="/app/schedule" className="inline-flex items-center gap-1 text-sm text-muted">
-        <ArrowLeft className="h-4 w-4" /> ตารางงาน
+        <ArrowLeft className="h-4 w-4" /> ปฏิทินนัดหมาย
       </Link>
 
       <header className="space-y-1">
@@ -45,7 +46,7 @@ export default async function SessionPage({
           {session.kind === "assessment" ? (
             <span className="rounded-pill bg-[var(--info-bg)] px-2 py-0.5 text-2xs font-semibold text-[var(--info-fg)]">ประเมิน · Hand Function</span>
           ) : (
-            <span className="rounded-pill bg-surface-tint px-2 py-0.5 text-2xs font-semibold text-primary-700">การรักษา</span>
+            <span className="rounded-pill bg-surface-tint px-2 py-0.5 text-2xs font-semibold text-primary-700">โปรแกรม</span>
           )}
         </div>
       </header>
@@ -96,7 +97,7 @@ export default async function SessionPage({
       />
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted">รายงาน & ประเมิน</h2>
+        <h2 className="text-sm font-semibold text-muted">บันทึกรายงาน</h2>
         <div className="grid grid-cols-2 gap-2">
           {(session.kind === "assessment"
             ? [
@@ -106,7 +107,7 @@ export default async function SessionPage({
             : [
                 { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
                 { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
-                { href: `/app/session/${session.id}/report/summary`, label: "ความก้าวหน้ารายเดือน (Summary)" },
+                { href: `/app/session/${session.id}/report/summary`, label: "ความก้าวหน้ารายเดือน" },
               ]
           ).map((r) => (
             <Link
@@ -117,6 +118,9 @@ export default async function SessionPage({
               {r.label}
             </Link>
           ))}
+          {session.kind !== "assessment" && (
+            <DailyReportCard sessionId={session.id} patientName={session.patientName} />
+          )}
         </div>
         <p className="text-xs text-faint">
           {session.kind === "assessment"
@@ -126,7 +130,7 @@ export default async function SessionPage({
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted">การวัดผลผู้รับบริการ</h2>
+        <h2 className="text-sm font-semibold text-muted">วัดผลผู้รับบริการ</h2>
         <PatientKpiForm patientId={session.patientId} />
       </section>
     </div>

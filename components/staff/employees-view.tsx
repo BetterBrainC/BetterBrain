@@ -1,0 +1,132 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { DataTable, Td } from "@/components/ui/table";
+import { deleteEmployee } from "@/actions/employees";
+import type { EmployeeLite } from "@/lib/data/queries";
+
+const PROFESSION_LABEL: Record<string, string> = { ot: "นักกิจกรรมบำบัด (OT)", pt: "นักกายภาพบำบัด (PT)" };
+const EMPLOYMENT_LABEL: Record<string, string> = { monthly: "Full-time", part_time: "Part-time" };
+
+type EmploymentFilter = "all" | "monthly" | "part_time";
+
+/** Gradient-initial avatar fallback when an employee has no photo. */
+function Avatar({ name, src }: { name: string; src: string | null }) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" className="h-9 w-9 rounded-full object-cover" />;
+  }
+  const initial = name.trim().charAt(0) || "?";
+  return (
+    <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-tint text-sm font-semibold text-primary-700">
+      {initial}
+    </span>
+  );
+}
+
+export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
+  const router = useRouter();
+  const [filter, setFilter] = React.useState<EmploymentFilter>("all");
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+
+  // Counts broken out by profession × employment type (client brief 28/6/2569).
+  const count = (prof: "ot" | "pt", emp: "monthly" | "part_time") =>
+    employees.filter((e) => e.profession === prof && e.employment_type === emp).length;
+  const groups = [
+    { label: "นักกิจกรรมบำบัด Full-time", n: count("ot", "monthly") },
+    { label: "นักกิจกรรมบำบัด Part-time", n: count("ot", "part_time") },
+    { label: "นักกายภาพบำบัด Full-time", n: count("pt", "monthly") },
+    { label: "นักกายภาพบำบัด Part-time", n: count("pt", "part_time") },
+  ];
+  const unassigned = employees.filter((e) => e.profession !== "ot" && e.profession !== "pt").length;
+
+  const shown = employees.filter((e) => filter === "all" || e.employment_type === filter);
+
+  async function remove(e: EmployeeLite) {
+    if (!window.confirm(`ปิดใช้งานพนักงาน "${e.full_name}"? (เก็บประวัติเคสไว้)`)) return;
+    setBusyId(e.id);
+    const res = await deleteEmployee({ id: e.id });
+    setBusyId(null);
+    if (res.error) return window.alert(res.error);
+    router.refresh();
+  }
+
+  const FILTERS: { key: EmploymentFilter; label: string }[] = [
+    { key: "all", label: "ทั้งหมด" },
+    { key: "monthly", label: "Full-time" },
+    { key: "part_time", label: "Part-time" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {groups.map((g) => (
+          <div key={g.label} className="rounded-lg border border-border bg-surface px-3 py-2.5">
+            <p className="font-display text-xl font-bold tabular-nums text-navy">{g.n}</p>
+            <p className="mt-0.5 text-2xs text-muted">{g.label}</p>
+          </div>
+        ))}
+      </div>
+      {unassigned > 0 && (
+        <p className="text-xs text-muted">ยังไม่ได้ระบุวิชาชีพ {unassigned} คน — แก้ไขในหน้าพนักงาน</p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((ff) => (
+          <button
+            key={ff.key}
+            type="button"
+            onClick={() => setFilter(ff.key)}
+            className={
+              "rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors " +
+              (filter === ff.key
+                ? "border-primary bg-surface-tint text-primary-700"
+                : "border-border text-muted hover:bg-surface-tint")
+            }
+          >
+            {ff.label}
+          </button>
+        ))}
+      </div>
+
+      <DataTable headers={["ชื่อ-สกุล", "รหัส", "วิชาชีพ", "ใบอนุญาตเลขที่", "ประเภท", "สถานะ", ""]}>
+        {shown.map((e) => (
+          <tr key={e.id} className="hover:bg-surface-tint">
+            <Td>
+              <Link href={`/staff/employees/${e.id}`} className="flex items-center gap-2.5 font-medium text-navy">
+                <Avatar name={e.full_name} src={e.photo_url} />
+                {e.full_name}
+              </Link>
+            </Td>
+            <Td className="tabular-nums text-muted">{e.employee_code ?? "—"}</Td>
+            <Td>{e.profession ? PROFESSION_LABEL[e.profession] : (e.position_title ?? "—")}</Td>
+            <Td className="text-muted">{e.license_no ?? "—"}</Td>
+            <Td>{EMPLOYMENT_LABEL[e.employment_type]}</Td>
+            <Td>
+              <Badge tone={e.is_enabled ? "completed" : "nocheckin"}>
+                {e.is_enabled ? "ใช้งาน" : "ปิด"}
+              </Badge>
+            </Td>
+            <Td>
+              {e.is_enabled && (
+                <button
+                  type="button"
+                  onClick={() => remove(e)}
+                  disabled={busyId === e.id}
+                  aria-label={`ลบ ${e.full_name}`}
+                  className="rounded-md p-1.5 text-muted hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)] disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </Td>
+          </tr>
+        ))}
+      </DataTable>
+    </div>
+  );
+}

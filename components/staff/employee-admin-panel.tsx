@@ -15,6 +15,7 @@ export interface EmployeeAdminData {
   licenseNo: string;
   phone: string;
   employmentType: "monthly" | "part_time";
+  profession: "pt" | "ot" | "";
   isEnabled: boolean;
 }
 
@@ -45,6 +46,7 @@ export function EmployeeAdminPanel({ employee }: { employee: EmployeeAdminData }
       licenseNo: f.licenseNo,
       phone: f.phone,
       employmentType: f.employmentType,
+      profession: f.profession || null,
     });
     setBusy(false);
     setMsg(res);
@@ -79,13 +81,20 @@ export function EmployeeAdminPanel({ employee }: { employee: EmployeeAdminData }
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="ชื่อ-สกุล"><TextInput value={f.fullName} onChange={set("fullName")} required /></Field>
             <Field label="รหัสพนักงาน"><TextInput value={f.employeeCode} onChange={set("employeeCode")} /></Field>
+            <Field label="วิชาชีพ">
+              <Select value={f.profession} onChange={set("profession")}>
+                <option value="">— ไม่ระบุ —</option>
+                <option value="ot">นักกิจกรรมบำบัด (OT)</option>
+                <option value="pt">นักกายภาพบำบัด (PT)</option>
+              </Select>
+            </Field>
             <Field label="ตำแหน่ง"><TextInput value={f.positionTitle} onChange={set("positionTitle")} /></Field>
             <Field label="ใบอนุญาตเลขที่"><TextInput value={f.licenseNo} onChange={set("licenseNo")} /></Field>
             <Field label="โทรศัพท์"><TextInput type="tel" value={f.phone} onChange={set("phone")} /></Field>
             <Field label="ประเภทการจ้าง">
               <Select value={f.employmentType} onChange={set("employmentType")}>
-                <option value="monthly">รายเดือน</option>
-                <option value="part_time">พาร์ทไทม์</option>
+                <option value="monthly">Full-time</option>
+                <option value="part_time">Part-time</option>
               </Select>
             </Field>
           </div>

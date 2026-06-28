@@ -12,6 +12,7 @@ create extension if not exists pgcrypto;
 -- ── Enums ───────────────────────────────────────────────────────────────
 create type user_role          as enum ('employee','admin','director');  -- director=top approver, admin=ops (was owner/hr)
 create type employment_type    as enum ('monthly','part_time');
+create type profession         as enum ('pt','ot');  -- นักกายภาพบำบัด=pt / นักกิจกรรมบำบัด=ot
 create type gender             as enum ('male','female','other');
 create type booking_status     as enum ('booked','awaiting_payment','cancelled');
 create type patient_status     as enum ('active','hold','no_service');
@@ -58,6 +59,7 @@ create table public.profiles (
   phone         text,
   photo_url     text,
   employment_type employment_type not null default 'monthly',
+  profession    profession,
   is_enabled    boolean not null default true,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
@@ -955,6 +957,11 @@ on conflict (id) do nothing;
 -- Private storage bucket for report photos + check-in selfies.
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('attachments', 'attachments', false, 8388608)
+on conflict (id) do nothing;
+
+-- Public storage bucket for employee photos (รูปพนักงาน; non-clinical, served by URL).
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('avatars', 'avatars', true, 4194304)
 on conflict (id) do nothing;
 
 -- Diagnosis categories (for statistics; store full English names).

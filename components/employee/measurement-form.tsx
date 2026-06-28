@@ -44,7 +44,7 @@ export function MeasurementForm({
   return (
     <div className="space-y-5 px-[var(--gutter-page)] pt-6">
       <header>
-        <h1 className="font-display text-2xl font-bold text-navy">แบบประเมินตนเอง</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">เรียนรู้ด้วยตนเอง</h1>
         <p className="text-sm text-muted">แบบประเมินความเครียด + ทดสอบความรู้ประจำปี</p>
       </header>
 
@@ -62,12 +62,12 @@ export function MeasurementForm({
           ))}
           {stress.questions.length === 0 && <p className="text-sm text-muted">ยังไม่มีชุดคำถามปีนี้</p>}
           <Button type="button" className="w-full" disabled={eBusy || stress.questions.length === 0} onClick={() => submitSelf("stress")}>
-            {eBusy ? "กำลังบันทึก…" : "ส่งแบบประเมินความเครียด"}
+            {eBusy ? "กำลังบันทึก…" : "ส่งคำตอบ"}
           </Button>
         </Card>
 
         <Card className="space-y-3">
-          <CardTitle className="text-base">แบบทดสอบความรู้ (ประจำปี)</CardTitle>
+          <CardTitle className="text-base">แบบทดสอบความรู้</CardTitle>
           {knowledge.questions.map((q) =>
             q.answerType === "choice" && q.options ? (
               <div key={q.id} className="space-y-1.5">
@@ -99,7 +99,7 @@ export function MeasurementForm({
           {knowledge.questions.length === 0 && <p className="text-sm text-muted">ยังไม่มีชุดคำถามปีนี้</p>}
           <p className="text-xs text-faint">ชุดคำถามแก้ไขได้รายปีโดย Director (kpi_templates)</p>
           <Button type="button" className="w-full" disabled={eBusy || knowledge.questions.length === 0} onClick={() => submitSelf("knowledge")}>
-            {eBusy ? "กำลังบันทึก…" : "ส่งแบบทดสอบความรู้"}
+            {eBusy ? "กำลังบันทึก…" : "ส่งคำตอบ"}
           </Button>
         </Card>
 

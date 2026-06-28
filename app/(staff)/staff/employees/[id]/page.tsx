@@ -38,6 +38,7 @@ export default async function EmployeeDetail({
           licenseNo: e.license_no ?? "",
           phone: e.phone ?? "",
           employmentType: e.employment_type,
+          profession: e.profession ?? "",
           isEnabled: e.is_enabled,
         }}
       />

@@ -343,17 +343,17 @@ export async function getAuditLogs(): Promise<AuditLogRow[]> {
   }));
 }
 
-type EmployeeLite = {
+export type EmployeeLite = {
   id: string; full_name: string; employee_code: string | null; position_title: string | null;
   license_no: string | null; phone: string | null; employment_type: "monthly" | "part_time";
-  is_enabled: boolean;
+  profession: "pt" | "ot" | null; photo_url: string | null; is_enabled: boolean;
 };
 
 export async function getEmployees(): Promise<EmployeeLite[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, employee_code, position_title, license_no, phone, employment_type, is_enabled")
+    .select("id, full_name, employee_code, position_title, license_no, phone, employment_type, profession, photo_url, is_enabled")
     .eq("role", "employee")
     .order("employee_code");
   return rows<EmployeeLite>(data);
@@ -1340,6 +1340,7 @@ export interface PatientStatsData {
   monthly: { label: string; total: number; done: number }[];
   monthlyTotal: number;
   buddhistYear: number;
+  repeatCourse: { repeatCount: number; totalWithCourse: number };
 }
 
 /**
@@ -1379,11 +1380,22 @@ export async function getPatientStats(): Promise<PatientStatsData> {
   }
   const monthly = byMonth.map((m, i) => ({ label: THAI_MONTHS_SHORT[i] ?? "", total: m.total, done: m.done }));
 
+  // Repeat course purchase (สถิติซื้อคอร์สซ้ำ): patients holding ≥2 courses.
+  const { data: cData } = await supabase.from("courses").select("patient_id").limit(20000);
+  const courseRows = rows<{ patient_id: string | null }>(cData);
+  const perPatient = new Map<string, number>();
+  for (const c of courseRows) {
+    if (c.patient_id) perPatient.set(c.patient_id, (perPatient.get(c.patient_id) ?? 0) + 1);
+  }
+  let repeatCount = 0;
+  for (const n of perPatient.values()) if (n >= 2) repeatCount += 1;
+
   return {
     diagnosis,
     monthly,
     monthlyTotal: sessions.length,
     buddhistYear: year + 543,
+    repeatCourse: { repeatCount, totalWithCourse: perPatient.size },
   };
 }
 

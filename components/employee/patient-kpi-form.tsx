@@ -80,7 +80,7 @@ export function PatientKpiForm({ patientId }: { patientId: string }) {
   return (
     <form onSubmit={submit}>
       <Card className="space-y-4">
-        <CardTitle className="text-base">การวัดผลผู้รับบริการ</CardTitle>
+        <CardTitle className="text-base">วัดผลผู้รับบริการ</CardTitle>
         <p className="text-xs text-muted">บันทึกการวัดผลก่อนปิดเคส · ผลเห็นเฉพาะ Director</p>
         <FoisPicker value={fois} onChange={setFois} />
         <Field label="Barthel Index (0–100)">

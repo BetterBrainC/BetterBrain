@@ -22,6 +22,26 @@ function FoisSelect({ label = "Functional Oral Intake Scale (FOIS)", name = "foi
   );
 }
 
+/**
+ * A list of labeled fill-in fields — mirrors the paper assessment where each item
+ * (Tracheostomy : ____, Bed mobility : ____) has a blank to write in. Names are
+ * slugged from the label so saved payloads stay stable.
+ */
+function FillInList({ prefix, items }: { prefix: string; items: string[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {items.map((it) => {
+        const slug = it.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+        return (
+          <Field key={it} label={it}>
+            <TextInput name={`${prefix}_${slug}`} />
+          </Field>
+        );
+      })}
+    </div>
+  );
+}
+
 function Vitals({ withTemp = false, withSpO2 = true }: { withTemp?: boolean; withSpO2?: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -47,7 +67,10 @@ function PlanSection() {
 }
 
 const ADL = ["Bed mobility", "Locomotion", "Eating", "Bathing", "Transfer", "Toileting", "Dressing", "Hygiene/Grooming"];
-const SWALLOW_EVAL = ["Tracheostomy", "Lips control", "Cough reflex", "Bite reflex", "Tongue movement", "Gag reflex", "Jaw control", "Drooling", "Swallow reflex"];
+// Swallowing Evaluation — order + wording follow the paper sample. FOIS (a defined
+// scale) is rendered as its own select between the two halves.
+const SWALLOW_EVAL_A = ["Tracheostomy", "Lips control", "Cough reflex", "Feeding by", "Bite reflex", "Tongue movement", "Gag reflex"];
+const SWALLOW_EVAL_B = ["Jaw control", "Drooling", "Swallow reflex"];
 
 // ── Swallowing Assessment ─────────────────────────────────────────────────
 export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) {
@@ -65,40 +88,61 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
         <span className="text-sm font-medium text-ink">Underlying</span>
         <CheckRow name="underlying" options={["DM", "Hypertension", "Heart disease", "Dyslipidemia", "CKD", "Rheumatoid", "Gout", "No"]} />
-        <span className="text-sm font-medium text-ink">Mobility / Risk</span>
-        <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Cane", "Fall risk", "Fracture risk"]} />
+        <span className="text-sm font-medium text-ink">Mobility</span>
+        <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Stretcher/Cane"]} />
+        <span className="text-sm font-medium text-ink">Fall risk</span>
+        <CheckRow name="fall_risk" options={["Yes", "No"]} />
+        <span className="text-sm font-medium text-ink">Fracture risk</span>
+        <CheckRow name="fracture_risk" options={["Yes", "No"]} />
       </ReportSection>
 
-      <ReportSection title="Vital signs">
+      <ReportSection title="Subjective & Objective">
+        <span className="text-sm font-medium text-ink">Vital signs</span>
         <Vitals />
+        <Field label="Subjective & Objective"><Textarea name="subjective_objective" /></Field>
+      </ReportSection>
+
+      <ReportSection title="Physical examination">
+        <Field label="Physical examination"><Textarea name="physical_exam" /></Field>
       </ReportSection>
 
       <ReportSection title="Swallowing Evaluation">
-        <CheckRow name="swallow_eval" options={SWALLOW_EVAL} />
-        <Field label="Feeding by"><TextInput name="feeding_by" /></Field>
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_A} />
         <FoisSelect />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_B} />
       </ReportSection>
 
       <ReportSection title="Part 1 · Indirect Swallowing Test">
-        <CheckRow name="indirect_test" options={["ตื่นตัว ≥ 10 นาที", "ไอ/ขากเสมหะได้เอง", "กลืนน้ำลายได้"]} />
+        <CheckRow
+          name="indirect_test"
+          options={[
+            "1.1 Being vigilant at least 10 minutes",
+            "1.2 Able to cough (voluntary) or throat clearing",
+            "1.3 Able to swallow saliva",
+          ]}
+        />
+        <p className="text-xs text-muted">If Yes to all, continue to part 2</p>
       </ReportSection>
 
       <ReportSection title="Part 2 · Direct Swallowing Test">
-        <span className="text-sm text-ink">2.1 Semi-solid (พุดดิ้ง ½ ช้อน)</span>
+        <span className="text-sm text-ink">2.1 Semi solid trial : Pudding level ½ teaspoon</span>
         <CheckRow name="semisolid" options={["1st", "2nd", "3rd", "4th", "5th"]} />
-        <span className="text-sm text-ink">2.2 Liquid (น้ำ)</span>
+        <span className="text-sm text-ink">2.2 Liquid trial : Water (ml)</span>
         <CheckRow name="liquid" options={["3 ml", "5 ml", "10 ml", "20 ml", "50 ml"]} />
-        <span className="text-sm text-ink">2.3 Solid (cracker)</span>
+        <span className="text-sm text-ink">2.3 Solid trial : Cracker</span>
         <CheckRow name="solid" options={["1st", "2nd", "3rd", "4th", "5th"]} />
-        <CheckRow name="result" options={["Result: safe to swallow (minimal aspiration risk)"]} />
-        <Field label="Recommendations / Remarks"><Textarea name="recommendations" /></Field>
+        <CheckRow name="result" options={["Result : safe to swallow, minimal risk of aspiration"]} />
+        <Field label="Recommendations">
+          <Textarea name="recommendations" placeholder="Soft diet to regular diet, Regular liquids (First time under supervision of the OT)" />
+        </Field>
+        <Field label="Remarks"><Textarea name="remarks" /></Field>
       </ReportSection>
 
       <ReportSection title="Activities Daily Living">
-        <CheckRow name="adl" options={ADL} />
+        <FillInList prefix="adl" items={ADL} />
       </ReportSection>
 
-      <ReportSection title="รูปภาพ / หลักฐาน">
+      <ReportSection title="รูปภาพ">
         <ReportPhotoUpload sessionId={sessionId} />
       </ReportSection>
 
@@ -123,7 +167,12 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
         <span className="text-sm font-medium text-ink">Precaution</span>
         <CheckRow name="precaution" options={["DM", "Hypertension", "Heart disease", "N/A", "Others"]} />
-        <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Cane", "Fall risk", "Fracture risk"]} />
+        <span className="text-sm font-medium text-ink">Mobility</span>
+        <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Stretcher/Cane"]} />
+        <span className="text-sm font-medium text-ink">Fall risk</span>
+        <CheckRow name="fall_risk" options={["Yes", "No"]} />
+        <span className="text-sm font-medium text-ink">Fracture risk</span>
+        <CheckRow name="fracture_risk" options={["Yes", "No"]} />
         <Field label="Operation / Lab / X-ray result"><Textarea name="operation_result" /></Field>
         <Field label="Subjective"><Textarea name="subjective" /></Field>
       </ReportSection>
@@ -168,15 +217,16 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       </ReportSection>
 
       <ReportSection title="Swallowing Evaluation">
-        <CheckRow name="swallow_eval" options={SWALLOW_EVAL} />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_A} />
         <FoisSelect />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_B} />
       </ReportSection>
 
       <ReportSection title="Activities Daily Living">
-        <CheckRow name="adl" options={ADL} />
+        <FillInList prefix="adl" items={ADL} />
       </ReportSection>
 
-      <ReportSection title="รูปภาพ / หลักฐาน">
+      <ReportSection title="รูปภาพ">
         <ReportPhotoUpload sessionId={sessionId} />
       </ReportSection>
 
@@ -189,7 +239,7 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
 export function SummaryReportForm({ patientName, backHref, sessionId }: FormProps) {
   return (
     <ReportFormShell
-      title="ความก้าวหน้ารายเดือน (Summary report)"
+      title="ความก้าวหน้ารายเดือน"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}
@@ -207,7 +257,7 @@ export function SummaryReportForm({ patientName, backHref, sessionId }: FormProp
         <Field label="ความก้าวหน้าการฟื้นฟู"><Textarea name="progress" /></Field>
         <Field label="เป้าหมายการฟื้นฟูต่อไป"><Textarea name="next_goal" /></Field>
       </ReportSection>
-      <ReportSection title="รูปภาพ / หลักฐาน">
+      <ReportSection title="รูปภาพ">
         <ReportPhotoUpload sessionId={sessionId} />
       </ReportSection>
     </ReportFormShell>

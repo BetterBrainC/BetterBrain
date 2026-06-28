@@ -25,6 +25,17 @@ export function PatientStats({ stats }: { stats: PatientStatsData }) {
             </li>
           ))}
         </ul>
+
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-surface-tint px-3 py-2.5">
+          <div>
+            <p className="text-sm font-medium text-ink">สถิติซื้อคอร์สซ้ำ</p>
+            <p className="text-2xs text-muted">ผู้รับบริการที่ซื้อคอร์สตั้งแต่ 2 ครั้งขึ้นไป</p>
+          </div>
+          <p className="text-right">
+            <span className="font-display text-xl font-bold tabular-nums text-navy">{stats.repeatCourse.repeatCount}</span>
+            <span className="text-sm text-muted"> / {stats.repeatCourse.totalWithCourse} ราย</span>
+          </p>
+        </div>
       </Card>
 
       <Card className="space-y-3">

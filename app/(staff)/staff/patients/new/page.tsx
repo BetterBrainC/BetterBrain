@@ -9,7 +9,7 @@ export default function NewPatientPage() {
       <Link href="/staff/patients" className="inline-flex items-center gap-1 text-sm text-muted">
         <ArrowLeft className="h-4 w-4" /> ผู้รับบริการทั้งหมด
       </Link>
-      <h1 className="font-display text-2xl font-bold text-navy">ประวัติผู้รับบริการ (ใบประวัติการรักษา)</h1>
+      <h1 className="font-display text-2xl font-bold text-navy">ประวัติผู้รับบริการ</h1>
       <IntakeForm action={createPatient} mode="staff" backHref="/staff/patients" />
     </div>
   );

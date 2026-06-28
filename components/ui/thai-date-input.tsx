@@ -47,6 +47,18 @@ export function ThaiDateInput({
 
   const label = value ? formatThaiDate(value) : placeholder;
 
+  // Desktop browsers only open the native date popup when the (hidden) picker
+  // indicator is clicked — clicking the field does nothing. Force it open from
+  // anywhere on the control via showPicker(); guarded for older browsers.
+  function openPicker(el: HTMLInputElement) {
+    if (disabled) return;
+    try {
+      el.showPicker?.();
+    } catch {
+      // showPicker throws if not allowed (cross-origin iframe etc.) — ignore
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -65,6 +77,8 @@ export function ThaiDateInput({
         required={required}
         disabled={disabled}
         onChange={(e) => handle(e.target.value)}
+        onClick={(e) => openPicker(e.currentTarget)}
+        onFocus={(e) => openPicker(e.currentTarget)}
         aria-label={value ? `วันที่ ${label}` : placeholder}
         className="absolute inset-0 w-full cursor-pointer rounded-md border-0 bg-transparent text-transparent caret-transparent outline-none [color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
       />
