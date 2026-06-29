@@ -492,16 +492,17 @@ export async function getEmployeeWorkHours(
   return { totalHours: Math.round(totalMs / 360_000) / 10, sessionCount };
 }
 
-type BookingLite = {
+export type BookingLite = {
   id: string; full_name: string; phone: string; area: string | null;
   status: Database["public"]["Enums"]["booking_status"]; created_at: string;
+  patient_id: string | null;
 };
 
 export async function getBookings(): Promise<BookingLite[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("bookings")
-    .select("id, full_name, phone, area, status, created_at")
+    .select("id, full_name, phone, area, status, created_at, patient_id")
     .order("created_at", { ascending: false });
   return rows<BookingLite>(data);
 }

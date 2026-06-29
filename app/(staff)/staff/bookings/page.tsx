@@ -1,10 +1,12 @@
 import { RegisterLinkModal } from "@/components/staff/register-link-modal";
 import { NewBookingModal } from "@/components/staff/new-booking-modal";
 import { BookingsTable } from "@/components/staff/bookings-table";
-import { getBookings } from "@/lib/data/queries";
+import { getBookings, getEmployees } from "@/lib/data/queries";
 
 export default async function BookingsPage() {
-  const bookings = await getBookings();
+  const [bookings, employees] = await Promise.all([getBookings(), getEmployees()]);
+  const empOpts = employees.map((e) => ({ id: e.id, name: e.full_name, code: e.employee_code }));
+
   return (
     <div className="space-y-5">
       <header className="flex items-end justify-between">
@@ -18,7 +20,7 @@ export default async function BookingsPage() {
         </div>
       </header>
 
-      <BookingsTable bookings={bookings} />
+      <BookingsTable bookings={bookings} employees={empOpts} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -78,10 +77,12 @@ export async function createBooking(input: {
 
 /**
  * Admin converts a booking into a service recipient (ผู้รับบริการ): creates a
- * patient pre-filled from the booking, links it back, then opens the patient so
- * staff can complete the intake. HN is left blank (digits-only, filled later).
+ * patient pre-filled from the booking and links it back. Returns the patientId so
+ * the caller can decide navigation (no redirect — stays on bookings page).
  */
-export async function convertBookingToPatient(bookingId: string): Promise<void> {
+export async function convertBookingToPatient(
+  bookingId: string,
+): Promise<{ patientId?: string; error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -95,10 +96,10 @@ export async function convertBookingToPatient(bookingId: string): Promise<void> 
   const b = booking as
     | { id: string; full_name: string; phone: string | null; status: string; patient_id: string | null }
     | null;
-  if (!b || b.status === "cancelled") return;
+  if (!b || b.status === "cancelled") return { error: "ไม่พบการจองหรือถูกยกเลิกแล้ว" };
 
-  // Already converted → just open the existing patient.
-  if (b.patient_id) redirect(`/staff/patients/${b.patient_id}`);
+  // Already converted → return existing patientId.
+  if (b.patient_id) return { patientId: b.patient_id };
 
   const { data: inserted, error } = await supabase
     .from("patients")
@@ -110,12 +111,12 @@ export async function convertBookingToPatient(bookingId: string): Promise<void> 
     })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   const patientId = (inserted as { id: string }).id;
 
   await supabase.from("bookings").update({ patient_id: patientId }).eq("id", bookingId);
 
   revalidatePath("/staff/bookings");
   revalidatePath("/staff/patients");
-  redirect(`/staff/patients/${patientId}`);
+  return { patientId };
 }
