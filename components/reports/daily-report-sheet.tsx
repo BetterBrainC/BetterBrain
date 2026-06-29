@@ -1,22 +1,29 @@
 "use client";
 
 import * as React from "react";
+import { Minus, Plus } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ThaiDate } from "@/components/ui/thai-date";
+import { ThaiDateInput } from "@/components/ui/thai-date-input";
+import { ReportPhotoUpload } from "@/components/reports/report-photo-upload";
 import { saveFollowup } from "@/actions/checkin";
 import { enqueueReport } from "@/lib/sync/checkin-sync";
 
 function Field({
   label,
+  required,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <label className="block space-y-1">
-      <span className="text-sm font-medium text-ink">{label}</span>
+      <span className="text-sm font-medium text-ink">
+        {label}
+        {required && <span className="text-[var(--danger-fg)]"> *</span>}
+      </span>
       {children}
     </label>
   );
@@ -25,35 +32,99 @@ function Field({
 const inputCls =
   "h-11 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary";
 
+/** SpO2 % stepper (0–100) — mirrors the client's daily report sample. */
+function Spo2Stepper({ name, value, onChange }: { name: string; value: number; onChange: (n: number) => void }) {
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  return (
+    <div className="flex items-center gap-1 rounded-md border border-border bg-surface pl-3 pr-1 focus-within:border-primary">
+      <span className="text-sm text-muted">%</span>
+      <input
+        type="number"
+        name={name}
+        min={0}
+        max={100}
+        value={value}
+        onChange={(e) => onChange(clamp(Number(e.target.value)))}
+        className="h-11 w-full border-0 bg-transparent text-base outline-none"
+      />
+      <button type="button" aria-label="ลด" onClick={() => onChange(clamp(value - 1))} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-surface-tint">
+        <Minus className="h-4 w-4" />
+      </button>
+      <button type="button" aria-label="เพิ่ม" onClick={() => onChange(clamp(value + 1))} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-surface-tint">
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+/** Serialize a form; repeated names (e.g. photos) collapse into an array. */
+function serialize(form: HTMLFormElement): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of new FormData(form).entries()) {
+    if (k in out) {
+      const cur = out[k];
+      out[k] = Array.isArray(cur) ? [...cur, v] : [cur, v];
+    } else out[k] = v;
+  }
+  return out;
+}
+
+/** Current date/time in Asia/Bangkok as {date: yyyy-mm-dd, time: HH:MM:SS}. */
+function bangkokNow() {
+  const now = new Date();
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(now);
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).format(now);
+  return { date, time };
+}
+
 /**
- * Daily report — opened automatically after the employee presses "เช็คเอาท์".
- * Fields mirror บันทึกรายวัน (docs/DOMAIN-SPEC §E). Demo: save is local only.
+ * Daily report (รายงานประจำวัน / Follow up) — opens automatically after the
+ * employee presses "เช็คเอาท์", and also via the รายงานประจำวัน card. Fields mirror
+ * the client's sample (28/6/2569): date/time, patient, vitals before→after,
+ * problem/goal/treatment, image, OT name.
  */
 export function DailyReportSheet({
   open,
   onClose,
   sessionId,
   patientName,
+  otName = "",
   onSaved,
 }: {
   open: boolean;
   onClose: () => void;
   sessionId: string;
   patientName: string;
+  otName?: string;
   onSaved: () => void;
 }) {
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [date, setDate] = React.useState("");
+  const [time, setTime] = React.useState("");
+  const [spo2Before, setSpo2Before] = React.useState(0);
+  const [spo2After, setSpo2After] = React.useState(0);
+
+  // Default date/time to "now" (Bangkok) when the sheet opens — set client-side
+  // to avoid an SSR hydration mismatch.
+  React.useEffect(() => {
+    if (!open) return;
+    const { date: d, time: t } = bangkokNow();
+    setDate((cur) => cur || d);
+    setTime((cur) => cur || t);
+  }, [open]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd.entries());
+    const payload = serialize(e.currentTarget);
 
-    // Offline (e.g. at the patient's home with no signal): queue the report and
-    // flush on reconnect — idempotent via the client report id.
+    // Offline (e.g. at the patient's home with no signal): queue + flush on reconnect.
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       await enqueueReport({ clientUuid: crypto.randomUUID(), reportType: "followup", sessionId, payload });
       setSaving(false);
@@ -73,38 +144,52 @@ export function DailyReportSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="บันทึกรายวัน (Follow up)">
+    <Sheet open={open} onClose={onClose} title="รายงานประจำวัน (Follow up)">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-sm text-muted">
-          {patientName} · <ThaiDate value={new Date()} />
-        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Date" required>
+            <ThaiDateInput name="date" value={date} onChange={setDate} required />
+          </Field>
+          <Field label="Time" required>
+            <input type="time" name="time" step={1} value={time} onChange={(e) => setTime(e.target.value)} required className={inputCls} />
+          </Field>
+        </div>
+
+        <Field label="Patient Name" required>
+          <input name="patient_name" defaultValue={patientName} required className={inputCls} />
+        </Field>
 
         <div className="rounded-md bg-surface-tint p-3">
-          <p className="mb-2 text-xs font-semibold text-muted">
-            สัญญาณชีพ ก่อน → หลัง
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {["BP", "HR", "SpO2"].map((v) => (
-              <div key={v} className="space-y-1">
-                <span className="text-2xs text-muted">{v}</span>
-                <input name={`${v}_before`} className={inputCls} placeholder="ก่อน" />
-                <input name={`${v}_after`} className={inputCls} placeholder="หลัง" />
-              </div>
-            ))}
+          <p className="mb-2 text-xs font-semibold text-muted">สัญญาณชีพ — ก่อน</p>
+          <div className="space-y-3">
+            <Field label="BP Before" required><input name="bp_before" required className={inputCls} /></Field>
+            <Field label="HR Before" required><input name="hr_before" required className={inputCls} /></Field>
+            <Field label="SpO2 Before" required><Spo2Stepper name="spo2_before" value={spo2Before} onChange={setSpo2Before} /></Field>
           </div>
         </div>
 
-        <Field label="Problem list">
-          <textarea name="problem_list" className={`${inputCls} h-20 py-2`} />
+        <div className="rounded-md bg-surface-tint p-3">
+          <p className="mb-2 text-xs font-semibold text-muted">สัญญาณชีพ — หลัง</p>
+          <div className="space-y-3">
+            <Field label="BP After" required><input name="bp_after" required className={inputCls} /></Field>
+            <Field label="HR After" required><input name="hr_after" required className={inputCls} /></Field>
+            <Field label="SpO2 After" required><Spo2Stepper name="spo2_after" value={spo2After} onChange={setSpo2After} /></Field>
+          </div>
+        </div>
+
+        <Field label="Diagnosis"><input name="diagnosis" className={inputCls} /></Field>
+        <Field label="Problem List" required><textarea name="problem_list" required className={`${inputCls} h-20 py-2`} /></Field>
+        <Field label="Goal" required><input name="goal" required className={inputCls} /></Field>
+        <Field label="Subject"><input name="subject" className={inputCls} /></Field>
+        <Field label="Treatment" required><textarea name="treatment" required className={`${inputCls} h-20 py-2`} /></Field>
+        <Field label="Post Treatment" required><textarea name="post_treatment" required className={`${inputCls} h-16 py-2`} /></Field>
+
+        <Field label="Image">
+          <ReportPhotoUpload sessionId={sessionId} />
         </Field>
-        <Field label="Goal">
-          <input name="goal" className={inputCls} />
-        </Field>
-        <Field label="Treatment">
-          <textarea name="treatment" className={`${inputCls} h-20 py-2`} />
-        </Field>
-        <Field label="Post-treatment">
-          <textarea name="post_treatment" className={`${inputCls} h-16 py-2`} />
+
+        <Field label="OT Name" required>
+          <input name="ot_name" defaultValue={otName} required className={inputCls} />
         </Field>
 
         {error && (

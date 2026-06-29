@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { CheckInPanel } from "@/components/checkin/check-in-panel";
 import { PatientKpiForm } from "@/components/employee/patient-kpi-form";
 import { DailyReportCard } from "@/components/reports/daily-report-card";
-import { getSessionDetail, getCheckinSettings } from "@/lib/data/queries";
+import { getSessionDetail, getCheckinSettings, getMyName } from "@/lib/data/queries";
 
 export default async function SessionPage({
   params,
@@ -13,9 +13,10 @@ export default async function SessionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [session, checkinCfg] = await Promise.all([
+  const [session, checkinCfg, myName] = await Promise.all([
     getSessionDetail(id),
     getCheckinSettings(),
+    getMyName(),
   ]);
   if (!session) notFound();
 
@@ -94,6 +95,7 @@ export default async function SessionPage({
         earlyThresholdMin={checkinCfg.earlyThresholdMin}
         selfieEnforced={checkinCfg.selfieEnforced}
         kind={session.kind}
+        otName={myName}
       />
 
       <section className="space-y-2">
@@ -119,7 +121,7 @@ export default async function SessionPage({
             </Link>
           ))}
           {session.kind !== "assessment" && (
-            <DailyReportCard sessionId={session.id} patientName={session.patientName} />
+            <DailyReportCard sessionId={session.id} patientName={session.patientName} otName={myName} />
           )}
         </div>
         <p className="text-xs text-faint">

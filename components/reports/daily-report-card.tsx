@@ -13,9 +13,11 @@ import { DailyReportSheet } from "@/components/reports/daily-report-sheet";
 export function DailyReportCard({
   sessionId,
   patientName,
+  otName,
 }: {
   sessionId: string;
   patientName: string;
+  otName?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -34,6 +36,7 @@ export function DailyReportCard({
         onClose={() => setOpen(false)}
         sessionId={sessionId}
         patientName={patientName}
+        otName={otName}
         onSaved={() => {
           setOpen(false);
           router.refresh();

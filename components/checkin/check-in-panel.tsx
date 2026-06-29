@@ -33,6 +33,7 @@ export function CheckInPanel({
   earlyThresholdMin,
   selfieEnforced,
   kind,
+  otName,
 }: {
   sessionId: string;
   patientName: string;
@@ -46,6 +47,7 @@ export function CheckInPanel({
   earlyThresholdMin: number;
   selfieEnforced: boolean;
   kind: "assessment" | "treatment";
+  otName?: string;
 }) {
   const router = useRouter();
   const alreadyDone = initialStatus === "completed";
@@ -311,6 +313,7 @@ export function CheckInPanel({
         open={sheetOpen}
         sessionId={sessionId}
         patientName={patientName}
+        otName={otName}
         onClose={() => setSheetOpen(false)}
         onSaved={() => {
           setSheetOpen(false);

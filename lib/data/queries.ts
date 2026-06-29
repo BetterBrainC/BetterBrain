@@ -119,6 +119,15 @@ export interface SessionDetail {
   kind: "assessment" | "treatment";
 }
 
+/** Current user's display name — prefills "OT Name" on the daily report. */
+export async function getMyName(): Promise<string> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "";
+  const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+  return one<{ full_name: string }>(data)?.full_name ?? "";
+}
+
 export async function getSessionDetail(id: string): Promise<SessionDetail | null> {
   const supabase = await createClient();
   const { data } = await supabase
