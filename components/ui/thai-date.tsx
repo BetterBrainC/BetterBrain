@@ -1,19 +1,14 @@
-import { formatThaiDate, formatThaiDateShort, formatThaiTime } from "@/lib/date/buddhist";
+import { formatThaiDate, formatThaiTime } from "@/lib/date/buddhist";
 
 type DateValue = Date | string | number;
 
 /**
- * Buddhist-era date, responsive: "17 มิถุนายน 2569" on ≥sm, "17 มิ.ย. 69" on
- * small screens. Pure (no hooks) so it works in both server and client trees.
- * Use this everywhere a date is shown to the user.
+ * Buddhist-era date in the canonical app format: "17 มิ.ย. 2569". Pure (no hooks)
+ * so it works in both server and client trees. Use this everywhere a date is
+ * shown to the user, so the whole system reads one consistent format.
  */
 export function ThaiDate({ value, className }: { value: DateValue; className?: string }) {
-  return (
-    <span className={className}>
-      <span className="hidden sm:inline">{formatThaiDate(value)}</span>
-      <span className="sm:hidden">{formatThaiDateShort(value)}</span>
-    </span>
-  );
+  return <span className={className}>{formatThaiDate(value)}</span>;
 }
 
 /** Date + time shown as separate parts (date responsive, 24h Bangkok time). */

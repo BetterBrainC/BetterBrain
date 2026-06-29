@@ -10,7 +10,11 @@ function toDate(input: DateInput): Date {
   return input instanceof Date ? input : new Date(input);
 }
 
-/** e.g. "14 มิถุนายน 2569" */
+/**
+ * Canonical app-wide date format: "14 มิ.ย. 2569" (day · short month · พ.ศ. year).
+ * Used everywhere a date is shown — keep ONE format across the whole system.
+ * Pass opts to override only for special cases (e.g. weekday-only greetings).
+ */
 export function formatThaiDate(
   input: DateInput,
   opts: Intl.DateTimeFormatOptions = {},
@@ -18,29 +22,9 @@ export function formatThaiDate(
   return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
     timeZone: APP_TZ,
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
     ...opts,
-  }).format(toDate(input));
-}
-
-/** e.g. "20/06/2569" — numeric dd/mm/พ.ศ. */
-export function formatThaiDateNumeric(input: DateInput): string {
-  return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
-    timeZone: APP_TZ,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(toDate(input));
-}
-
-/** e.g. "17 มิ.ย. 69" — compact form for small screens. */
-export function formatThaiDateShort(input: DateInput): string {
-  return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
-    timeZone: APP_TZ,
-    day: "numeric",
-    month: "short",
-    year: "2-digit",
   }).format(toDate(input));
 }
 

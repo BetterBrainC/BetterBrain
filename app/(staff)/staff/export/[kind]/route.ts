@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
-import { formatThaiDateTime } from "@/lib/date/buddhist";
+import { formatThaiDateTime, formatThaiDate } from "@/lib/date/buddhist";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { writeAudit } from "@/lib/audit/log";
 
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     const co = r.check_ins?.find((c) => c.kind === "check_out");
     const hours = ci && co ? Math.round((new Date(co.client_event_at).getTime() - new Date(ci.client_event_at).getTime()) / 360_000) / 10 : null;
     ws.addRow({
-      date: r.scheduled_date,
+      date: formatThaiDate(r.scheduled_date),
       patient: r.patients?.full_name ?? "",
       emp: r.employee?.full_name ?? "",
       status: SESSION_STATUS_LABEL[r.status] ?? r.status,

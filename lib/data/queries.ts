@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
-import { formatThaiTime, formatThaiDateTime, formatThaiDateNumeric } from "@/lib/date/buddhist";
+import { formatThaiTime, formatThaiDateTime, formatThaiDate } from "@/lib/date/buddhist";
 import { DEFAULT_EXERCISE_GUIDE } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
@@ -98,7 +98,7 @@ export async function getMyRecentSessions(): Promise<{ id: string; label: string
     .limit(50);
   return rows<{ id: string; scheduled_date: string; patients: { full_name: string | null } | null }>(data).map((s) => ({
     id: s.id,
-    label: `${formatThaiDateNumeric(s.scheduled_date)} · ${s.patients?.full_name ?? "—"}`,
+    label: `${formatThaiDate(s.scheduled_date)} · ${s.patients?.full_name ?? "—"}`,
   }));
 }
 
@@ -582,7 +582,7 @@ export async function getCorrections(): Promise<CorrectionItem[]> {
     id: c.id,
     employeeName: c.employee?.full_name ?? "—",
     patientName: c.session?.patients?.full_name ?? "—",
-    dateLabel: c.session?.scheduled_date ?? "",
+    dateLabel: c.session?.scheduled_date ? formatThaiDate(c.session.scheduled_date) : "",
     reason: c.reason,
     status: c.status,
     changes: diffChanges(c.before_snapshot, c.requested_changes),
@@ -614,7 +614,7 @@ export async function getMyCorrections(): Promise<MyCorrection[]> {
   }>(data).map((c) => ({
     id: c.id,
     patientName: c.session?.patients?.full_name ?? "—",
-    dateLabel: c.session?.scheduled_date ?? "",
+    dateLabel: c.session?.scheduled_date ? formatThaiDate(c.session.scheduled_date) : "",
     reason: c.reason,
     status: c.status,
     createdAt: c.created_at,
@@ -1241,7 +1241,7 @@ export async function getUpcomingSessions(): Promise<{ id: string; label: string
     employee: { full_name: string | null } | null;
   }>(data).map((s) => ({
     id: s.id,
-    label: `${s.scheduled_date} ${formatThaiTime(s.scheduled_start)} · ${(s.patients?.full_name ?? "—")} · ${(s.employee?.full_name ?? "—")}`,
+    label: `${formatThaiDate(s.scheduled_date)} ${formatThaiTime(s.scheduled_start)} · ${(s.patients?.full_name ?? "—")} · ${(s.employee?.full_name ?? "—")}`,
   }));
 }
 
