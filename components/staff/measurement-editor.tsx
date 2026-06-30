@@ -63,13 +63,6 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <header>
-        <h1 className="font-display text-2xl font-bold text-navy">ตัวชี้วัด</h1>
-        <p className="text-sm text-muted">
-          จัดการชุดคำถามประเมินความรู้รายปี · ผลการวัด (ผู้รับบริการ/พนักงาน) เห็นเฉพาะ Director
-        </p>
-      </header>
-
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">แบบทบทวนความรู้</CardTitle>

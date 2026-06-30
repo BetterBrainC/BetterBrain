@@ -9,7 +9,8 @@ import { FOIS_LABEL } from "@/lib/i18n/th";
 import { cn } from "@/lib/utils";
 import { savePatientKpi } from "@/actions/kpi";
 
-const FUNCTION_ITEMS = ["ลุกนั่ง", "ยืน", "เดิน", "กินได้", "ถอดสายได้"];
+// Functional checklist (client Final brief #22) — NOT scored; captured as flags.
+const FUNCTION_ITEMS = ["พูดได้เป็นคำ", "พูดได้เข้าใจ", "กินได้ มีสายอยู่", "ถอดสายได้"];
 const FOIS_ENTRIES = Object.entries(FOIS_LABEL) as [string, string][];
 
 function FoisPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -43,7 +44,7 @@ function FoisPicker({ value, onChange }: { value: string; onChange: (v: string) 
 }
 
 /**
- * Patient measurement (FOIS/Barthel/Function/FIM/MFS) recorded INSIDE a case —
+ * Patient measurement (FOIS/Barthel/Functional/FIM) recorded INSIDE a case —
  * the recipient is fixed (no picker). Moved here from the standalone measurement
  * page because การวัดผล must be recorded before the case is closed.
  */
@@ -53,7 +54,6 @@ export function PatientKpiForm({ patientId }: { patientId: string }) {
   const [barthel, setBarthel] = React.useState("");
   const [fn, setFn] = React.useState<Record<string, boolean>>({});
   const [fim, setFim] = React.useState("");
-  const [mfs, setMfs] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
 
@@ -67,12 +67,11 @@ export function PatientKpiForm({ patientId }: { patientId: string }) {
       barthel: barthel === "" ? null : Number(barthel),
       functionChecklist: fn,
       fim: fim === "" ? null : Number(fim),
-      mfs: mfs === "" ? null : Number(mfs),
     });
     setBusy(false);
     setMsg(res);
     if (res.ok) {
-      setFois(""); setBarthel(""); setFn({}); setFim(""); setMfs("");
+      setFois(""); setBarthel(""); setFn({}); setFim("");
       router.refresh();
     }
   }
@@ -83,24 +82,21 @@ export function PatientKpiForm({ patientId }: { patientId: string }) {
         <CardTitle className="text-base">วัดผลผู้รับบริการ</CardTitle>
         <p className="text-xs text-muted">บันทึกการวัดผลก่อนปิดเคส · ผลเห็นเฉพาะ Director</p>
         <FoisPicker value={fois} onChange={setFois} />
-        <Field label="Barthel Index (0–100)">
+        <Field label="Barthel score (0–100)">
           <TextInput type="number" min={0} max={100} value={barthel} onChange={(e) => setBarthel(e.target.value)} />
         </Field>
-        <div>
-          <span className="text-sm font-medium text-ink">Function (ทำได้)</span>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-2">
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-ink">Functional (สิ่งที่ทำได้)</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
             {FUNCTION_ITEMS.map((f) => (
-              <label key={f} className="flex items-center gap-2 text-sm text-ink">
+              <label key={f} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-ink hover:bg-surface-tint">
                 <input type="checkbox" checked={!!fn[f]} onChange={(e) => setFn((s) => ({ ...s, [f]: e.target.checked }))} /> {f}
               </label>
             ))}
           </div>
-        </div>
-        <Field label="FIM (Functional Independence Measure)" hint="บันทึกคะแนนรวมได้ · เกณฑ์ย่อยรอจากลูกค้า">
+        </fieldset>
+        <Field label="FIM score" hint="บันทึกคะแนนรวมได้ · เกณฑ์ย่อยรอจากลูกค้า">
           <TextInput type="number" placeholder="คะแนน FIM" value={fim} onChange={(e) => setFim(e.target.value)} />
-        </Field>
-        <Field label="MFS (Morse Fall Scale)" hint="บันทึกคะแนนรวมได้ · เกณฑ์ย่อยรอจากลูกค้า">
-          <TextInput type="number" placeholder="คะแนน MFS" value={mfs} onChange={(e) => setMfs(e.target.value)} />
         </Field>
         {msg?.error && <p className="text-sm text-[var(--danger-fg)]">{msg.error}</p>}
         {msg?.ok && <p className="text-sm text-teal">บันทึกการวัดผลแล้ว</p>}

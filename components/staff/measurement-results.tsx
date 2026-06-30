@@ -19,7 +19,7 @@ export function MeasurementResults({
       <Card className="space-y-3">
         <CardTitle className="text-base">การวัดผลผู้รับบริการ ({patient.length})</CardTitle>
         {patient.length === 0 ? (
-          <EmptyState title="ยังไม่มีผลการวัดผล" description="FOIS / Barthel / Function / FIM / MFS ที่พนักงานบันทึกจะปรากฏที่นี่" />
+          <EmptyState title="ยังไม่มีผลการวัดผล" description="FOIS / Barthel / Functional / FIM ที่พนักงานบันทึกจะปรากฏที่นี่" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[36rem] text-sm">
@@ -29,9 +29,8 @@ export function MeasurementResults({
                   <th className="py-1.5 pr-2 font-medium">ผู้รับบริการ</th>
                   <th className="py-1.5 pr-2 font-medium">FOIS score</th>
                   <th className="py-1.5 pr-2 font-medium">Barthel</th>
-                  <th className="py-1.5 pr-2 font-medium">Function</th>
-                  <th className="py-1.5 pr-2 font-medium">FIM</th>
-                  <th className="py-1.5 font-medium">MFS</th>
+                  <th className="py-1.5 pr-2 font-medium">Functional</th>
+                  <th className="py-1.5 font-medium">FIM</th>
                 </tr>
               </thead>
               <tbody>
@@ -41,9 +40,8 @@ export function MeasurementResults({
                     <td className="py-1.5 pr-2 text-ink">{r.patientName}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.fois ?? "—"}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.barthel ?? "—"}</td>
-                    <td className="py-1.5 pr-2 tabular-nums">{r.functionTotal ? `${r.functionDone}/${r.functionTotal}` : "—"}</td>
-                    <td className="py-1.5 pr-2 tabular-nums">{r.fim ?? "—"}</td>
-                    <td className="py-1.5 tabular-nums">{r.mfs ?? "—"}</td>
+                    <td className="py-1.5 pr-2 text-xs text-ink">{r.functionItems.length ? r.functionItems.join(", ") : "—"}</td>
+                    <td className="py-1.5 tabular-nums">{r.fim ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

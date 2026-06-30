@@ -103,21 +103,20 @@ export async function removeKpiQuestion(input: {
   return { ok: true };
 }
 
-/** Employee records a service-recipient KPI evaluation (FOIS / Barthel / Function / FIM / MFS). */
+/** Employee records a service-recipient KPI evaluation (FOIS / Barthel / Functional / FIM). */
 export async function savePatientKpi(input: {
   patientId: string;
   fois: string | null;
   barthel: number | null;
   functionChecklist: Record<string, boolean>;
   fim: number | null;
-  mfs: number | null;
 }): Promise<ActionResult> {
   if (!input.patientId) return { error: "เลือกผู้รับบริการ" };
   const { supabase, userId } = await authed();
   if (!userId) return { error: "ไม่ได้เข้าสู่ระบบ" };
-  // FIM/MFS scoring criteria are still pending from the client; capture raw
-  // scores in `answers` so data can be collected now without losing it.
-  const answers = { fim: input.fim, mfs: input.mfs };
+  // FIM scoring criteria are still pending from the client; capture the raw
+  // score in `answers` so data can be collected now without losing it.
+  const answers = { fim: input.fim };
   const { error } = await supabase.from("kpi_evaluations").insert({
     target: "patient",
     patient_id: input.patientId,

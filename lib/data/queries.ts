@@ -1112,10 +1112,8 @@ export interface PatientKpiResult {
   patientName: string;
   fois: string | null;
   barthel: number | null;
-  functionDone: number;
-  functionTotal: number;
+  functionItems: string[]; // checked Functional flags (not scored)
   fim: number | null;
-  mfs: number | null;
   dateISO: string;
 }
 export interface EmployeeKpiResult {
@@ -1141,20 +1139,17 @@ export async function getMeasurementResults(): Promise<{
     .limit(200);
   const patient = rows<{
     id: string; fois_level: string | null; barthel_index: number | null;
-    function_checklist: Record<string, boolean> | null; answers: { fim?: number | null; mfs?: number | null } | null;
+    function_checklist: Record<string, boolean> | null; answers: { fim?: number | null } | null;
     evaluated_on: string; patients: { full_name: string | null } | null;
   }>(pData).map((r) => {
     const fc = r.function_checklist ?? {};
-    const vals = Object.values(fc);
     return {
       id: r.id,
       patientName: r.patients?.full_name ?? "—",
       fois: r.fois_level,
       barthel: r.barthel_index,
-      functionDone: vals.filter(Boolean).length,
-      functionTotal: vals.length,
+      functionItems: Object.entries(fc).filter(([, v]) => v).map(([k]) => k),
       fim: r.answers?.fim ?? null,
-      mfs: r.answers?.mfs ?? null,
       dateISO: r.evaluated_on,
     };
   });
