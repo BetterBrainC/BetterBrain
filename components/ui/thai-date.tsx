@@ -15,7 +15,7 @@ export function ThaiDate({ value, className }: { value: DateValue; className?: s
 export function ThaiDateTime({ value, className }: { value: DateValue; className?: string }) {
   return (
     <span className={className}>
-      <ThaiDate value={value} /> <span className="tabular-nums">{formatThaiTime(value)} น.</span>
+      <ThaiDate value={value} /> <span className="tabular-nums">{formatThaiTime(value)}</span>
     </span>
   );
 }

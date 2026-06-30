@@ -158,8 +158,8 @@ function SessionActions({ session, employees, onDone }: { session: CalendarSessi
 type View = "day" | "week" | "month";
 type SessionStatus = CalendarSession["status"];
 
-// Monday-first weekday headers (matches Thai clinic calendars).
-const WEEKDAYS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
+// Sunday-first weekday headers (อา–ส) — same across every calendar (client Final brief).
+const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 
 // Map each session status to the design-system status tokens (never colour-only:
 // the label always travels with the chip + appears in the legend).
@@ -444,12 +444,12 @@ export function SchedulingCalendar({
 }
 
 function weekDays(cursor: Date): Date[] {
-  const monIdx = (cursor.getDay() + 6) % 7;
-  const monday = new Date(cursor);
-  monday.setDate(cursor.getDate() - monIdx);
+  const sunIdx = cursor.getDay();
+  const sunday = new Date(cursor);
+  sunday.setDate(cursor.getDate() - sunIdx);
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
     return d;
   });
 }
@@ -529,7 +529,7 @@ function MonthGrid({
 }) {
   const y = cursor.getFullYear();
   const m = cursor.getMonth();
-  const firstWeekday = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-first
+  const firstWeekday = new Date(y, m, 1).getDay(); // Sunday-first (0 = Sun)
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const cells: (Date | null)[] = [
     ...Array.from({ length: firstWeekday }, () => null),

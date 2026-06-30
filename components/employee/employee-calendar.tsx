@@ -11,7 +11,7 @@ import type { CalendarSession } from "@/lib/data/queries";
 type View = "month" | "week" | "day";
 type SessionStatus = CalendarSession["status"];
 
-const WEEKDAYS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
+const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 const TONE: Record<SessionStatus, { fg: string; bg: string }> = {
   scheduled: { fg: "--info-fg", bg: "--info-bg" },
   rescheduled: { fg: "--info-fg", bg: "--info-bg" },
@@ -38,10 +38,10 @@ function monthTitle(d: Date) {
   return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { month: "long", year: "numeric", timeZone: "Asia/Bangkok" }).format(d);
 }
 function weekDays(cursor: Date): Date[] {
-  const monIdx = (cursor.getDay() + 6) % 7;
-  const monday = new Date(cursor);
-  monday.setDate(cursor.getDate() - monIdx);
-  return Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; });
+  const sunIdx = cursor.getDay();
+  const sunday = new Date(cursor);
+  sunday.setDate(cursor.getDate() - sunIdx);
+  return Array.from({ length: 7 }, (_, i) => { const d = new Date(sunday); d.setDate(sunday.getDate() + i); return d; });
 }
 
 /** Employee schedule: monthly calendar (month/week/day), tap a day → time-ordered cards → session. */
@@ -59,7 +59,7 @@ export function EmployeeCalendar({ sessions }: { sessions: CalendarSession[] }) 
 
   const y = cursor.getFullYear();
   const mo = cursor.getMonth();
-  const firstWeekday = (new Date(y, mo, 1).getDay() + 6) % 7;
+  const firstWeekday = new Date(y, mo, 1).getDay(); // Sunday-first (0 = Sun)
   const daysInMonth = new Date(y, mo + 1, 0).getDate();
   const cells: (Date | null)[] = [
     ...Array.from({ length: firstWeekday }, () => null),

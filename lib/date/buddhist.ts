@@ -28,21 +28,30 @@ export function formatThaiDate(
   }).format(toDate(input));
 }
 
-/** e.g. "14 มิ.ย. 2569 15:10 น." */
+/** e.g. "14 มิ.ย. 2569 13.10 น." */
 export function formatThaiDateTime(input: DateInput): string {
   const date = formatThaiDate(input, { month: "short" });
-  const time = formatThaiTime(input);
-  return `${date} ${time} น.`;
+  return `${date} ${formatThaiTime(input)}`;
 }
 
-/** 24-hour clock in Bangkok time, e.g. "15:10" */
-export function formatThaiTime(input: DateInput): string {
+/**
+ * Bare 24-hour clock in Bangkok time, Thai dot style, e.g. "13.10" (no "น.").
+ * Use for building time ranges; for a standalone time use formatThaiTime.
+ */
+export function formatThaiClock(input: DateInput): string {
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: APP_TZ,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(toDate(input));
+  })
+    .format(toDate(input))
+    .replace(":", ".");
+}
+
+/** Standalone Thai time, e.g. "13.10 น." (dot separator + น. suffix). */
+export function formatThaiTime(input: DateInput): string {
+  return `${formatThaiClock(input)} น.`;
 }
 
 /** Buddhist-era year for the given instant in Bangkok time, e.g. 2569. */

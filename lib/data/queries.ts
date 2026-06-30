@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
-import { formatThaiTime, formatThaiDateTime, formatThaiDate } from "@/lib/date/buddhist";
+import { formatThaiTime, formatThaiClock, formatThaiDateTime, formatThaiDate } from "@/lib/date/buddhist";
 import { DEFAULT_EXERCISE_GUIDE } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
@@ -32,8 +32,8 @@ export function bangkokToday(): string {
 
 function timeLabel(startISO: string | null, endISO: string | null): string {
   if (!startISO) return "";
-  const s = formatThaiTime(startISO);
-  return endISO ? `${s}–${formatThaiTime(endISO)}` : s;
+  const s = formatThaiClock(startISO);
+  return endISO ? `${s}–${formatThaiClock(endISO)} น.` : `${s} น.`;
 }
 
 export interface SessionRow {
