@@ -1315,7 +1315,7 @@ export type Database = {
       checkin_kind: "check_in" | "check_out"
       course_outcome: "continue" | "no_service"
       course_status: "on_process" | "hold" | "course_complete" | "no_service"
-      course_type: "pkg_10_plus_1" | "pkg_30"
+      course_type: "pkg_10_plus_1" | "pkg_30" | "custom"
       coverage_status: "not_required" | "needs_substitute" | "covered"
       diagnosis_category:
         | "stroke"
@@ -1512,7 +1512,7 @@ export const Constants = {
       checkin_kind: ["check_in", "check_out"],
       course_outcome: ["continue", "no_service"],
       course_status: ["on_process", "hold", "course_complete", "no_service"],
-      course_type: ["pkg_10_plus_1", "pkg_30"],
+      course_type: ["pkg_10_plus_1", "pkg_30", "custom"],
       coverage_status: ["not_required", "needs_substitute", "covered"],
       diagnosis_category: [
         "stroke",

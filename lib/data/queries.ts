@@ -1350,7 +1350,7 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
 }
 
 // ── patient statistics (สถิติผู้รับบริการ) ──────────────────────────────
-const THAI_MONTHS_SHORT = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const THAI_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
 export interface PatientStatsData {
   diagnosis: { label: string; count: number; varName: string }[];
@@ -1395,7 +1395,7 @@ export async function getPatientStats(): Promise<PatientStatsData> {
     bucket.total += 1;
     if (["completed", "attended", "late"].includes(s.status)) bucket.done += 1;
   }
-  const monthly = byMonth.map((m, i) => ({ label: THAI_MONTHS_SHORT[i] ?? "", total: m.total, done: m.done }));
+  const monthly = byMonth.map((m, i) => ({ label: THAI_MONTHS_FULL[i] ?? "", total: m.total, done: m.done }));
 
   // Repeat course purchase (สถิติซื้อคอร์สซ้ำ): patients holding ≥2 courses.
   const { data: cData } = await supabase.from("courses").select("patient_id").limit(20000);

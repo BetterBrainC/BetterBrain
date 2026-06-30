@@ -24,16 +24,31 @@ async function requireStaffUser(): Promise<{ ok: true; id: string } | { ok: fals
   return { ok: true, id: u!.id };
 }
 
-/** Staff creates a course package for a patient (base/bonus derived from type). */
+/**
+ * Staff opens a course for a patient. Presets derive base/bonus from the package;
+ * `courseType: "custom"` lets Admin type the number of sessions directly
+ * (client Final brief — no fixed package required).
+ */
 export async function createCourse(input: {
   patientId: string;
-  courseType: CoursePackage;
+  courseType: CoursePackage | "custom";
+  baseSessions?: number;
+  bonusSessions?: number;
   price?: number | null;
 }): Promise<ActionResult> {
   const guard = await requireStaffUser();
   if (!guard.ok) return { error: guard.error };
-  if (!PKG[input.courseType]) return { error: "ชนิดคอร์สไม่ถูกต้อง" };
-  const { base, bonus } = PKG[input.courseType];
+  let base: number;
+  let bonus: number;
+  if (input.courseType === "custom") {
+    base = Math.floor(Number(input.baseSessions));
+    bonus = Math.floor(Number(input.bonusSessions ?? 0));
+    if (!Number.isFinite(base) || base < 1) return { error: "ระบุจำนวนครั้งของคอร์ส (อย่างน้อย 1)" };
+    if (!Number.isFinite(bonus) || bonus < 0) bonus = 0;
+  } else {
+    if (!PKG[input.courseType]) return { error: "ชนิดคอร์สไม่ถูกต้อง" };
+    ({ base, bonus } = PKG[input.courseType]);
+  }
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("courses")
@@ -50,7 +65,7 @@ export async function createCourse(input: {
     .select("id")
     .single();
   if (error) return { error: error.message };
-  await writeAudit({ action: "create", entity: "course", entityId: (data as { id: string }).id, actorId: guard.id, after: { courseType: input.courseType } });
+  await writeAudit({ action: "create", entity: "course", entityId: (data as { id: string }).id, actorId: guard.id, after: { courseType: input.courseType, base, bonus } });
   revalidatePath(`/staff/patients/${input.patientId}`);
   return { ok: true };
 }

@@ -149,6 +149,13 @@ export function IntakeForm({
         <p role="alert" className="rounded-md bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger-fg)]">{state.error}</p>
       )}
 
+      {state.duplicate && (
+        <label className="flex items-start gap-2 rounded-md bg-[var(--warning-bg)] px-3 py-2 text-xs text-[var(--warning-fg)]">
+          <input type="checkbox" name="allow_duplicate" className="mt-0.5" />
+          <span>ยืนยันเพิ่มผู้รับบริการแม้มีชื่อซ้ำในระบบ</span>
+        </label>
+      )}
+
       <div className="flex justify-end gap-3">
         {backHref && (
           <Link href={backHref}>

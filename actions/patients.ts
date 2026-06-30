@@ -11,6 +11,7 @@ import { writeAudit } from "@/lib/audit/log";
 export interface FormResult {
   ok?: boolean;
   error?: string;
+  duplicate?: boolean; // a same-name recipient exists — confirm to add anyway
 }
 
 // Registration links stay valid for a bounded window (the relative may re-open
@@ -82,15 +83,30 @@ export async function createPatient(
   _prev: FormResult,
   formData: FormData,
 ): Promise<FormResult> {
+  const guard = await requireStaffAction();
+  if (!guard.ok) return { error: guard.error };
   const row = patientFromForm(formData);
   if (!row.full_name) return { error: "กรอกชื่อ-สกุล" };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Prevent accidental duplicate names; Admin can confirm to add anyway
+  // (same names are common in Thai healthcare) — client Final brief (Admin #5).
+  const allowDuplicate = formData.get("allow_duplicate") === "on";
+  if (!allowDuplicate) {
+    const { data: dup } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("full_name", row.full_name)
+      .limit(1);
+    if (dup && dup.length > 0) {
+      return {
+        error: `มีผู้รับบริการชื่อ "${row.full_name}" อยู่แล้วในระบบ — หากต้องการเพิ่มจริง ติ๊กยืนยันด้านล่างแล้วบันทึกอีกครั้ง`,
+        duplicate: true,
+      };
+    }
+  }
   const { error } = await supabase
     .from("patients")
-    .insert({ ...row, created_by: user?.id ?? null });
+    .insert({ ...row, created_by: guard.userId });
   if (error) return { error: error.message };
   revalidatePath("/staff/patients");
   redirect("/staff/patients");
