@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Check } from "lucide-react";
+import { Plus, Trash2, Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Textarea, Select } from "@/components/ui/field";
-import { addKpiQuestion, removeKpiQuestion } from "@/actions/kpi";
-import type { KpiTemplate } from "@/lib/data/queries";
+import { addKpiQuestion, removeKpiQuestion, updateKpiQuestion } from "@/actions/kpi";
+import type { KpiTemplate, KpiQuestion } from "@/lib/data/queries";
 
 const YEARS = [2569, 2568] as const;
 const DEFAULT_YEAR = YEARS[0];
@@ -23,29 +23,38 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
   const [qType, setQType] = React.useState<"text" | "choice">("text");
   const [optionsText, setOptionsText] = React.useState("");
   const [answer, setAnswer] = React.useState("");
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
 
   const tmpl = templates.find((t) => t.kind === "knowledge" && t.periodYear === year) ?? null;
   const questions = tmpl?.questions ?? [];
 
-  function add() {
+  function resetForm() {
+    setDraft(""); setOptionsText(""); setAnswer(""); setQType("text"); setEditingId(null);
+  }
+  function startEdit(q: KpiQuestion) {
+    setEditingId(q.id);
+    setDraft(q.question);
+    setQType(q.answerType);
+    setOptionsText((q.options ?? []).join("\n"));
+    setAnswer(q.answer ?? "");
+    setError(null);
+  }
+  function save() {
     const q = draft.trim();
     if (!q) return;
     setError(null);
     const options = qType === "choice" ? optionsText.split("\n").map((o) => o.trim()).filter(Boolean) : undefined;
+    const choiceAnswer = qType === "choice" ? answer.trim() : undefined;
     start(async () => {
-      const res = await addKpiQuestion({
-        year,
-        kind: "knowledge",
-        question: q,
-        answerType: qType,
-        options,
-        answer: qType === "choice" ? answer.trim() : undefined,
-      });
+      const res =
+        editingId && tmpl
+          ? await updateKpiQuestion({ templateId: tmpl.id, questionId: editingId, kind: "knowledge", question: q, answerType: qType, options, answer: choiceAnswer })
+          : await addKpiQuestion({ year, kind: "knowledge", question: q, answerType: qType, options, answer: choiceAnswer });
       if (res.error) setError(res.error);
       else {
-        setDraft(""); setOptionsText(""); setAnswer(""); setQType("text");
+        resetForm();
         router.refresh();
       }
     });
@@ -98,15 +107,26 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
                   </ul>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => remove(q.id)}
-                disabled={pending}
-                aria-label="ลบคำถาม"
-                className="text-faint hover:text-[var(--danger-fg)] disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => startEdit(q)}
+                  disabled={pending}
+                  aria-label="แก้ไขคำถาม"
+                  className="text-faint hover:text-primary disabled:opacity-50"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(q.id)}
+                  disabled={pending}
+                  aria-label="ลบคำถาม"
+                  className="text-faint hover:text-[var(--danger-fg)] disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </li>
           ))}
           {questions.length === 0 && (
@@ -141,9 +161,22 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
             </>
           )}
           {error && <p className="text-xs text-[var(--danger-fg)]">{error}</p>}
-          <Button onClick={add} disabled={!draft.trim() || pending} className="w-full">
-            <Plus className="h-4 w-4" /> เพิ่มคำถาม
+          <Button onClick={save} disabled={!draft.trim() || pending} className="w-full">
+            {editingId ? (
+              <>
+                <Check className="h-4 w-4" /> บันทึกการแก้ไข
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" /> เพิ่มคำถาม
+              </>
+            )}
           </Button>
+          {editingId && (
+            <Button variant="secondary" onClick={resetForm} disabled={pending} className="w-full">
+              ยกเลิกการแก้ไข
+            </Button>
+          )}
         </div>
         <p className="text-xs text-faint">บันทึกเป็น kpi_templates · เฉลยเก็บฝั่งเซิร์ฟเวอร์ (พนักงานมองไม่เห็น)</p>
       </Card>

@@ -2,6 +2,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ThaiDate } from "@/components/ui/thai-date";
+import { MoodFace } from "@/components/ui/mood";
 import type { PatientKpiResult, EmployeeKpiResult } from "@/lib/data/queries";
 
 const KIND_LABEL = { knowledge: "แบบทบทวนความรู้", stress: "ความเครียด" } as const;
@@ -61,7 +62,9 @@ export function MeasurementResults({
                 <span className="text-ink">{r.employeeName}</span>
                 <span className="flex items-center gap-2">
                   <Badge tone={r.kind === "stress" ? "info" : "completed"}>{r.kind ? KIND_LABEL[r.kind] : "—"}</Badge>
-                  {r.score != null && <span className="tabular-nums text-muted">{r.score}%</span>}
+                  {r.kind === "stress"
+                    ? (r.mood != null ? <MoodFace value={r.mood} /> : <span className="text-muted">—</span>)
+                    : (r.score != null && <span className="tabular-nums text-muted">{r.score}%</span>)}
                   <span className="text-2xs text-faint">{r.year ?? ""} · <ThaiDate value={r.dateISO} /></span>
                 </span>
               </li>

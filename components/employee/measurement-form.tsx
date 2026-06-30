@@ -4,12 +4,11 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, TextInput, Select } from "@/components/ui/field";
+import { Field, TextInput } from "@/components/ui/field";
+import { MoodPicker } from "@/components/ui/mood";
 import { cn } from "@/lib/utils";
 import { saveEmployeeKpi } from "@/actions/kpi";
 import type { EmployeeKpiTemplate } from "@/lib/data/queries";
-
-const STRESS_CHOICES = ["น้อย", "ปานกลาง", "มาก"];
 
 /**
  * Employee self-assessment: stress + yearly knowledge test. (Patient KPI moved
@@ -25,14 +24,14 @@ export function MeasurementForm({
   year: number;
 }) {
   const router = useRouter();
-  const [stressAns, setStressAns] = React.useState<Record<string, string>>({});
+  const [mood, setMood] = React.useState<number | null>(null);
   const [knowAns, setKnowAns] = React.useState<Record<string, string>>({});
   const [eBusy, setEBusy] = React.useState(false);
   const [eMsg, setEMsg] = React.useState<{ ok?: boolean; error?: string; score?: number | null; graded?: boolean } | null>(null);
 
   async function submitSelf(kind: "stress" | "knowledge") {
     const templateId = (kind === "stress" ? stress : knowledge).templateId;
-    const answers = kind === "stress" ? stressAns : knowAns;
+    const answers = kind === "stress" ? { mood: String(mood ?? "") } : knowAns;
     setEBusy(true);
     setEMsg(null);
     const res = await saveEmployeeKpi({ kind, templateId, year, answers });
@@ -45,23 +44,15 @@ export function MeasurementForm({
     <div className="space-y-5 px-[var(--gutter-page)] pt-6">
       <header>
         <h1 className="font-display text-2xl font-bold text-navy">เรียนรู้ด้วยตนเอง</h1>
-        <p className="text-sm text-muted">แบบประเมินความเครียด + ทดสอบความรู้ประจำปี</p>
+        <p className="text-sm text-muted">เช็คสุขภาพใจ + แบบทบทวนความรู้</p>
       </header>
 
       <div className="space-y-4">
         <Card className="space-y-3">
-          <CardTitle className="text-base">แบบประเมินความเครียด</CardTitle>
-          {stress.questions.map((q) => (
-            <div key={q.id} className="space-y-1">
-              <p className="text-sm text-ink">{q.question}</p>
-              <Select value={stressAns[q.id] ?? ""} onChange={(e) => setStressAns((s) => ({ ...s, [q.id]: e.target.value }))}>
-                <option value="" disabled>เลือก</option>
-                {STRESS_CHOICES.map((c) => (<option key={c} value={c}>{c}</option>))}
-              </Select>
-            </div>
-          ))}
-          {stress.questions.length === 0 && <p className="text-sm text-muted">ยังไม่มีชุดคำถามปีนี้</p>}
-          <Button type="button" className="w-full" disabled={eBusy || stress.questions.length === 0} onClick={() => submitSelf("stress")}>
+          <CardTitle className="text-base">เช็คสุขภาพใจ</CardTitle>
+          <p className="text-sm text-ink">วันนี้คุณรู้สึกอย่างไร?</p>
+          <MoodPicker value={mood} onChange={setMood} />
+          <Button type="button" className="w-full" disabled={eBusy || mood === null} onClick={() => submitSelf("stress")}>
             {eBusy ? "กำลังบันทึก…" : "ส่งคำตอบ"}
           </Button>
         </Card>

@@ -103,6 +103,55 @@ export async function removeKpiQuestion(input: {
   return { ok: true };
 }
 
+/** Director: edit an existing question in the year-versioned KPI question bank. */
+export async function updateKpiQuestion(input: {
+  templateId: string;
+  questionId: string;
+  kind: Kind;
+  question: string;
+  answerType?: "text" | "choice";
+  options?: string[];
+  answer?: string;
+}): Promise<ActionResult> {
+  const question = input.question.trim();
+  if (!question) return { error: "กรอกคำถาม" };
+  const { supabase } = await authed();
+
+  const at = input.kind === "stress" ? "scale" : (input.answerType ?? "text");
+  let opts: string[] = [];
+  if (at === "choice") {
+    opts = (input.options ?? []).map((o) => o.trim()).filter(Boolean);
+    if (opts.length < 2) return { error: "ต้องมีตัวเลือกอย่างน้อย 2 ข้อ" };
+    if (!input.answer || !opts.includes(input.answer)) return { error: "เลือกคำตอบที่ถูกต้อง" };
+  }
+
+  const { data: tmpl } = await supabase
+    .from("kpi_templates")
+    .select("questions")
+    .eq("id", input.templateId)
+    .maybeSingle();
+  const prev = Array.isArray((tmpl as { questions?: unknown })?.questions)
+    ? ((tmpl as { questions: { id: string }[] }).questions)
+    : [];
+  if (!prev.some((q) => q.id === input.questionId)) return { error: "ไม่พบคำถาม" };
+  const next = prev.map((q) => {
+    if (q.id !== input.questionId) return q;
+    const nq: Record<string, unknown> = { id: input.questionId, question, answer_type: at };
+    if (at === "choice") {
+      nq.options = opts;
+      nq.answer = input.answer;
+    }
+    return nq;
+  });
+  const { error } = await supabase
+    .from("kpi_templates")
+    .update({ questions: next as never })
+    .eq("id", input.templateId);
+  if (error) return { error: error.message };
+  revalidatePath("/staff/measurement");
+  return { ok: true };
+}
+
 /** Employee records a service-recipient KPI evaluation (FOIS / Barthel / Functional / FIM). */
 export async function savePatientKpi(input: {
   patientId: string;

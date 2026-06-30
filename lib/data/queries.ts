@@ -1121,6 +1121,7 @@ export interface EmployeeKpiResult {
   employeeName: string;
   kind: "knowledge" | "stress" | null;
   score: number | null;
+  mood: number | null; // 0–4 face index for stress (เช็คสุขภาพใจ)
   year: number | null;
   dateISO: string;
 }
@@ -1156,21 +1157,26 @@ export async function getMeasurementResults(): Promise<{
 
   const { data: eData } = await supabase
     .from("kpi_evaluations")
-    .select("id, employee_kpi_kind, score, period_year, evaluated_on, employee:profiles!kpi_evaluations_employee_id_fkey(full_name)")
+    .select("id, employee_kpi_kind, score, period_year, evaluated_on, answers, employee:profiles!kpi_evaluations_employee_id_fkey(full_name)")
     .eq("target", "employee")
     .order("evaluated_on", { ascending: false })
     .limit(200);
   const employee = rows<{
     id: string; employee_kpi_kind: "knowledge" | "stress" | null; score: number | null;
-    period_year: number | null; evaluated_on: string; employee: { full_name: string | null } | null;
-  }>(eData).map((r) => ({
-    id: r.id,
-    employeeName: r.employee?.full_name ?? "—",
-    kind: r.employee_kpi_kind,
-    score: r.score,
-    year: r.period_year,
-    dateISO: r.evaluated_on,
-  }));
+    period_year: number | null; evaluated_on: string; answers: { mood?: number | string | null } | null;
+    employee: { full_name: string | null } | null;
+  }>(eData).map((r) => {
+    const moodNum = Number(r.answers?.mood);
+    return {
+      id: r.id,
+      employeeName: r.employee?.full_name ?? "—",
+      kind: r.employee_kpi_kind,
+      score: r.score,
+      mood: r.employee_kpi_kind === "stress" && Number.isFinite(moodNum) ? moodNum : null,
+      year: r.period_year,
+      dateISO: r.evaluated_on,
+    };
+  });
 
   return { patient, employee };
 }
