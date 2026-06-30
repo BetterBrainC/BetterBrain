@@ -395,6 +395,8 @@ export interface EmployeeWorkSummary {
   absent: number; // ไม่ได้เช็คอิน (ขาด)
   late: number;
   rescheduled: number;
+  cancelled: number; // ยกเลิก
+  onTime: number;    // ตรงเวลา = completed/attended (ไม่รวมสาย)
 }
 
 export type WorkPeriod = "day" | "month" | "year" | "all";
@@ -442,16 +444,18 @@ export async function getEmployeeWorkSummary(
     const id = r.employee.id;
     let e = map.get(id);
     if (!e) {
-      e = { employeeId: id, name: r.employee.full_name ?? "—", total: 0, treatment: 0, assessment: 0, passed: 0, upcoming: 0, absent: 0, late: 0, rescheduled: 0 };
+      e = { employeeId: id, name: r.employee.full_name ?? "—", total: 0, treatment: 0, assessment: 0, passed: 0, upcoming: 0, absent: 0, late: 0, rescheduled: 0, cancelled: 0, onTime: 0 };
       map.set(id, e);
     }
     e.total += 1;
     if (r.kind === "assessment") e.assessment += 1; else e.treatment += 1;
     if (["completed", "attended", "late"].includes(r.status)) e.passed += 1;
+    if (["completed", "attended"].includes(r.status)) e.onTime += 1;
     if (["scheduled", "rescheduled", "in_progress"].includes(r.status)) e.upcoming += 1;
     if (r.status === "no_checkin") e.absent += 1;
     if (r.status === "late") e.late += 1;
     if (r.status === "rescheduled") e.rescheduled += 1;
+    if (r.status === "cancelled") e.cancelled += 1;
   }
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
@@ -1256,6 +1260,7 @@ const REPORT_TYPE_LABEL: Record<string, string> = {
 export interface ReportRow {
   id: string;
   typeLabel: string;
+  patientHn: string | null;
   patientName: string;
   authorName: string;
   date: string;
@@ -1266,16 +1271,17 @@ export async function getReports(): Promise<ReportRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status, patients(full_name), author:profiles!reports_author_id_fkey(full_name)")
+    .select("id, report_type, report_date, status, patients(full_name, hn), author:profiles!reports_author_id_fkey(full_name)")
     .order("report_date", { ascending: false })
     .limit(200);
   return rows<{
     id: string; report_type: string; report_date: string; status: string;
-    patients: { full_name: string | null } | null;
+    patients: { full_name: string | null; hn: string | null } | null;
     author: { full_name: string | null } | null;
   }>(data).map((r) => ({
     id: r.id,
     typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
+    patientHn: r.patients?.hn ?? null,
     patientName: r.patients?.full_name ?? "—",
     authorName: r.author?.full_name ?? "—",
     date: r.report_date,

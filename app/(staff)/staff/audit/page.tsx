@@ -34,11 +34,11 @@ export default async function AuditPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted">
-                <th className="px-4 py-2.5 font-medium">เวลา</th>
-                <th className="px-4 py-2.5 font-medium">ผู้ทำรายการ</th>
-                <th className="px-4 py-2.5 font-medium">การกระทำ</th>
-                <th className="px-4 py-2.5 font-medium">รายการ</th>
-                <th className="px-4 py-2.5 font-medium">ฟิลด์ที่เปลี่ยน</th>
+                <th className="px-4 py-2.5 font-medium">วันที่/เวลา</th>
+                <th className="px-4 py-2.5 font-medium">ผู้ใช้งาน</th>
+                <th className="px-4 py-2.5 font-medium">บทบาท</th>
+                <th className="px-4 py-2.5 font-medium">การดำเนินการ</th>
+                <th className="px-4 py-2.5 font-medium">รายละเอียด</th>
               </tr>
             </thead>
             <tbody>
@@ -47,11 +47,9 @@ export default async function AuditPage() {
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted">
                     <ThaiDateTime value={l.occurredAt} />
                   </td>
-                  <td className="px-4 py-2.5">
-                    <span className="text-ink">{l.actorName}</span>
-                    {l.actorRole && (
-                      <span className="ml-1 text-2xs text-faint">({ROLE_LABEL[l.actorRole as keyof typeof ROLE_LABEL] ?? l.actorRole})</span>
-                    )}
+                  <td className="px-4 py-2.5 text-ink">{l.actorName}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted">
+                    {l.actorRole ? (ROLE_LABEL[l.actorRole as keyof typeof ROLE_LABEL] ?? l.actorRole) : "—"}
                   </td>
                   <td className="px-4 py-2.5">
                     <Badge tone={ACTION_TONE[l.action] ?? "neutral"}>
@@ -61,9 +59,9 @@ export default async function AuditPage() {
                   <td className="px-4 py-2.5 text-xs text-muted">
                     {l.entity ?? "—"}
                     {l.entityId && <span className="ml-1 text-faint">#{l.entityId.slice(0, 8)}</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-muted">
-                    {l.changedCols && l.changedCols.length ? l.changedCols.join(", ") : "—"}
+                    {l.changedCols && l.changedCols.length > 0 && (
+                      <span className="ml-1 text-faint">· {l.changedCols.join(", ")}</span>
+                    )}
                   </td>
                 </tr>
               ))}

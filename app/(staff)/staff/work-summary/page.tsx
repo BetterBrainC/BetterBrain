@@ -25,23 +25,35 @@ export default async function WorkSummaryPage({
     : "all";
   const rows = await getEmployeeWorkSummary(workPeriodRange(period));
 
-  const COLS: { key: keyof (typeof rows)[number]; label: string; tone?: string }[] = [
-    { key: "total", label: "ทั้งหมด" },
-    { key: "treatment", label: "รักษา" },
-    { key: "assessment", label: "ประเมิน" },
-    { key: "passed", label: "ผ่านมาแล้ว" },
-    { key: "upcoming", label: "ยังไม่ถึง" },
-    { key: "absent", label: "ขาด", tone: "var(--status-nocheckin-fg)" },
-    { key: "late", label: "สาย", tone: "var(--status-late-fg)" },
-    { key: "rescheduled", label: "เลื่อน", tone: "var(--info-fg)" },
+  const GROUPS: {
+    label: string;
+    cols: { key: keyof (typeof rows)[number]; label: string; tone?: string }[];
+  }[] = [
+    {
+      label: "รวมชั่วโมงทำงาน",
+      cols: [
+        { key: "total", label: "เคสทั้งหมด" },
+        { key: "assessment", label: "เคสรับใหม่" },
+        { key: "treatment", label: "การรักษา" },
+        { key: "cancelled", label: "ยกเลิก", tone: "var(--status-nocheckin-fg)" },
+      ],
+    },
+    {
+      label: "การเข้างาน",
+      cols: [
+        { key: "onTime", label: "ตรงเวลา", tone: "var(--status-completed-fg)" },
+        { key: "late", label: "มาสาย", tone: "var(--status-late-fg)" },
+      ],
+    },
   ];
+  const COLS = GROUPS.flatMap((g) => g.cols);
 
   return (
     <div className="space-y-5">
       <header className="space-y-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">สรุปการทำงาน</h1>
-          <p className="text-sm text-muted">เคสรายพนักงาน — แยกการรักษา/ประเมิน และผลการเข้างาน</p>
+          <p className="text-sm text-muted">เคสรายพนักงาน — รวมชั่วโมงทำงาน และผลการเข้างาน</p>
         </div>
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="ช่วงเวลา">
           {PERIODS.map((p) => (
@@ -70,11 +82,22 @@ export default async function WorkSummaryPage({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-2xs text-muted">
-                  <th className="py-2 pr-2 font-medium">พนักงาน</th>
-                  {COLS.map((c) => (
-                    <th key={c.key} className="px-2 py-2 text-right font-medium">{c.label}</th>
+                <tr className="border-b border-border text-2xs text-muted">
+                  <th rowSpan={2} className="py-2 pr-2 text-left align-bottom font-medium">พนักงาน</th>
+                  {GROUPS.map((g) => (
+                    <th key={g.label} colSpan={g.cols.length} className="border-l border-border px-2 py-1.5 text-center font-semibold text-ink">
+                      {g.label}
+                    </th>
                   ))}
+                </tr>
+                <tr className="border-b border-border text-2xs text-muted">
+                  {GROUPS.flatMap((g) =>
+                    g.cols.map((c, i) => (
+                      <th key={c.key} className={"px-2 py-2 text-right font-medium" + (i === 0 ? " border-l border-border" : "")}>
+                        {c.label}
+                      </th>
+                    )),
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -92,7 +115,7 @@ export default async function WorkSummaryPage({
             </table>
           </div>
         )}
-        <p className="text-xs text-faint">ผ่านมาแล้ว = เข้าฝึก/จบเคส/สาย · ยังไม่ถึง = นัดไว้/เลื่อน/กำลังทำ · ขาด = ไม่ได้เช็คอิน</p>
+        <p className="text-xs text-faint">เคสรับใหม่ = เคสประเมินครั้งแรก · ตรงเวลา = เข้าฝึก/จบเคส (ไม่รวมสาย) · ยกเลิก = นัดที่ยกเลิก</p>
       </Card>
     </div>
   );

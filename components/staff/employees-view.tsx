@@ -93,16 +93,16 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
         ))}
       </div>
 
-      <DataTable headers={["ชื่อ-สกุล", "รหัส", "วิชาชีพ", "ใบอนุญาตเลขที่", "ประเภท", "สถานะ", ""]}>
+      <DataTable headers={["รหัสพนักงาน", "ชื่อ-สกุล", "ตำแหน่ง", "ใบอนุญาตเลขที่", "ประเภท", "สถานะ", ""]}>
         {shown.map((e) => (
           <tr key={e.id} className="hover:bg-surface-tint">
+            <Td className="tabular-nums text-muted">{e.employee_code ?? "—"}</Td>
             <Td>
               <Link href={`/staff/employees/${e.id}`} className="flex items-center gap-2.5 font-medium text-navy">
                 <Avatar name={e.full_name} src={e.photo_url} />
                 {e.full_name}
               </Link>
             </Td>
-            <Td className="tabular-nums text-muted">{e.employee_code ?? "—"}</Td>
             <Td>{e.profession ? PROFESSION_LABEL[e.profession] : (e.position_title ?? "—")}</Td>
             <Td className="text-muted">{e.license_no ?? "—"}</Td>
             <Td>{EMPLOYMENT_LABEL[e.employment_type]}</Td>

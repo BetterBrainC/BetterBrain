@@ -92,11 +92,6 @@ export function CourseCard({
         </div>
       )}
 
-      {decision === "continue" && (
-        <p className="rounded-md bg-[var(--info-bg)] px-3 py-2 text-sm text-[var(--info-fg)]">
-          เปิดคอร์สใหม่แล้ว — จัดคิวต่อได้เลย
-        </p>
-      )}
       {decision === "no_service" && (
         <p className="rounded-md bg-[var(--surface-sunken)] px-3 py-2 text-sm text-muted">
           ตั้งสถานะ No service แล้ว — ทำ Summary report + ประเมิน Score (การวัดผล)

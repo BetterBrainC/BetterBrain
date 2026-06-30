@@ -27,8 +27,8 @@ export default async function ReportsPage() {
         </div>
         <ExportButton
           filename="tpm-reports"
-          headers={["ผู้รับบริการ", "ประเภท", "ผู้บันทึก", "วันที่", "สถานะ"]}
-          rows={reports.map((r) => [r.patientName, r.typeLabel, r.authorName, r.date, r.status])}
+          headers={["Patient ID", "ชื่อ-สกุล", "รายงาน", "ผู้บันทึก", "วันที่", "สถานะ"]}
+          rows={reports.map((r) => [r.patientHn ?? "", r.patientName, r.typeLabel, r.authorName, r.date, r.status])}
         />
       </header>
 
@@ -37,11 +37,12 @@ export default async function ReportsPage() {
       {reports.length === 0 ? (
         <EmptyState title="ยังไม่มีรายงาน" description="รายงานที่ ‘จบเคส’ แล้วจะปรากฏที่นี่" />
       ) : (
-        <DataTable headers={["ผู้รับบริการ", "ประเภท", "ผู้บันทึก", "วันที่", "สถานะ"]}>
+        <DataTable headers={["Patient ID", "ชื่อ-สกุล", "รายงาน", "ผู้บันทึก", "วันที่", "สถานะ"]}>
           {reports.map((r) => {
             const st = STATUS[r.status] ?? { label: r.status, tone: "info" as const };
             return (
               <tr key={r.id} className="hover:bg-surface-tint">
+                <Td className="tabular-nums text-muted">{r.patientHn ?? "—"}</Td>
                 <Td className="font-medium text-navy">
                   <Link href={`/staff/reports/${r.id}`} className="text-primary-700 hover:underline">{r.patientName}</Link>
                 </Td>

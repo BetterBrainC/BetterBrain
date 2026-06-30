@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/card";
 import { DataTable, Td } from "@/components/ui/table";
-import { ExportButton } from "@/components/staff/export-button";
 import { DashboardTrend } from "@/components/staff/dashboard-charts";
 import { LiveMonitor } from "@/components/staff/live-monitor";
 import { buddhistYear } from "@/lib/date/buddhist";
@@ -27,18 +26,6 @@ export default async function StaffDashboard() {
           <h1 className="font-display text-2xl font-bold text-navy">Dashboard</h1>
           <p className="text-sm text-muted"><ThaiDate value={new Date()} /></p>
         </div>
-        <ExportButton
-          filename={`tpm-cases-${buddhistYear(new Date())}`}
-          headers={["Patient ID", "ผู้รับบริการ", "โปรแกรม", "ใช้ไป", "ทั้งหมด", "สถานะ"]}
-          rows={d.patients.map((p) => [
-            p.hn ?? "",
-            p.name,
-            p.program ?? "",
-            p.courseUsed,
-            p.courseTotal,
-            PATIENT_STATUS_LABEL[p.status],
-          ])}
-        />
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
