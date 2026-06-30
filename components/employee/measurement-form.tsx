@@ -67,7 +67,7 @@ export function MeasurementForm({
         </Card>
 
         <Card className="space-y-3">
-          <CardTitle className="text-base">แบบทดสอบความรู้</CardTitle>
+          <CardTitle className="text-base">แบบทบทวนความรู้</CardTitle>
           {knowledge.questions.map((q) =>
             q.answerType === "choice" && q.options ? (
               <div key={q.id} className="space-y-1.5">

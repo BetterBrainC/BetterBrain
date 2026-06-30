@@ -1,4 +1,4 @@
-# TPM · Better Brain Swallow Rehab
+# TPM · Better Brain Rehab at Home
 
 Back-office + employee PWA for an in-home swallowing/neuro rehab clinic.
 **Authoritative docs:** [CLAUDE.md](CLAUDE.md) (rules/conventions) and

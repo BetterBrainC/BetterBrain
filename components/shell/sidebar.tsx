@@ -30,15 +30,15 @@ export interface NavCounts {
 }
 
 export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashboard; directorOnly?: boolean; badge?: NavBadge }[] = [
-  { href: "/staff", label: "ภาพรวม", icon: LayoutDashboard },
-  { href: "/staff/bookings", label: "การจอง", icon: Inbox, badge: "bookings" },
+  { href: "/staff", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/staff/bookings", label: "การทำนัด", icon: Inbox, badge: "bookings" },
   { href: "/staff/assign", label: "มอบหมายงาน", icon: CalendarRange },
-  { href: "/staff/approvals", label: "อนุมัติ", icon: CheckCircle2, badge: "approvals" },
+  { href: "/staff/approvals", label: "การอนุมัติ", icon: CheckCircle2, badge: "approvals" },
   { href: "/staff/patients", label: "ผู้รับบริการ", icon: Users },
   { href: "/staff/employees", label: "รายชื่อพนักงาน", icon: UserCog },
   { href: "/staff/reports", label: "บันทึกรายงาน", icon: FileText },
   { href: "/staff/work-summary", label: "สรุปการทำงาน", icon: BarChart3 },
-  { href: "/staff/measurement", label: "การวัดผล", icon: Activity, directorOnly: true },
+  { href: "/staff/measurement", label: "ตัวชี้วัด", icon: Activity, directorOnly: true },
   { href: "/staff/audit", label: "บันทึกการใช้งาน", icon: ScrollText, directorOnly: true },
   { href: "/staff/settings", label: "ตั้งค่า", icon: Settings, directorOnly: true },
 ];

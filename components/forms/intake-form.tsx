@@ -85,7 +85,7 @@ export function IntakeForm({
       <Card className="space-y-4">
         <CardTitle className="text-base">ข้อมูลทั่วไป</CardTitle>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="HN (เลขล้วน)">
+          <Field label="Patient ID">
             <TextInput name="hn" inputMode="numeric" placeholder="69010000" defaultValue={hn} readOnly={mode === "relative"} />
           </Field>
           <Field label="ชื่อ-สกุล"><TextInput name="full_name" required defaultValue={dv("full_name")} /></Field>

@@ -15,7 +15,7 @@ const FOIS_ENTRIES = Object.entries(FOIS_LABEL) as [string, string][];
 function FoisPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="space-y-1.5">
-      <span className="text-sm font-medium text-ink">FOIS (ระดับการกินทางปาก)</span>
+      <span className="text-sm font-medium text-ink">FOIS score</span>
       <div className="grid gap-1.5">
         {FOIS_ENTRIES.map(([k, label], i) => {
           const active = value === k;

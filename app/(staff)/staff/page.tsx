@@ -24,12 +24,12 @@ export default async function StaffDashboard() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-navy">ภาพรวมพนักงาน</h1>
+          <h1 className="font-display text-2xl font-bold text-navy">Dashboard</h1>
           <p className="text-sm text-muted"><ThaiDate value={new Date()} /></p>
         </div>
         <ExportButton
           filename={`tpm-cases-${buddhistYear(new Date())}`}
-          headers={["HN", "ผู้รับบริการ", "โปรแกรม", "ใช้ไป", "ทั้งหมด", "สถานะ"]}
+          headers={["Patient ID", "ผู้รับบริการ", "โปรแกรม", "ใช้ไป", "ทั้งหมด", "สถานะ"]}
           rows={d.patients.map((p) => [
             p.hn ?? "",
             p.name,
@@ -60,10 +60,10 @@ export default async function StaffDashboard() {
 
       <Card className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-1">
-          <CardTitle className="text-base">ตารางเคสรายปี · {buddhistYear(new Date())}</CardTitle>
+          <CardTitle className="text-base">จำนวนผู้รับบริการรายปี {buddhistYear(new Date())}</CardTitle>
           <p className="text-xs text-faint">คลิกชื่อผู้รับบริการเพื่อแก้โปรแกรม / คอร์ส / สถานะ</p>
         </div>
-        <DataTable headers={["HN", "ผู้รับบริการ", "โปรแกรม", "คอร์ส", "สถานะ"]}>
+        <DataTable headers={["Patient ID", "ผู้รับบริการ", "โปรแกรม", "คอร์ส", "สถานะ"]}>
           {d.patients.map((p) => (
             <tr key={p.id} className="hover:bg-surface-tint">
               <Td className="tabular-nums text-muted">{p.hn ?? "—"}</Td>

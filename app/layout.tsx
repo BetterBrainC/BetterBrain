@@ -6,11 +6,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "TPM · Better Brain Swallow Rehab",
+    default: "TPM · Better Brain Rehab at Home",
     template: "%s · TPM",
   },
   description:
-    "ระบบหลังบ้านจัดการพนักงานและคอร์สกายภาพบำบัด — Better Brain · Swallow Rehab",
+    "ระบบหลังบ้านจัดการพนักงานและคอร์สกายภาพบำบัด — Better Brain Rehab at Home",
   applicationName: "TPM",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "TPM" },

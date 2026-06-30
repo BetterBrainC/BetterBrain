@@ -4,7 +4,7 @@
  * Editable by the Director via `settings.extra.exercise_guide` (an array of
  * `{ title, detail }`); this curated list is the fallback when none is set, so
  * the section always shows real, useful content. Swallowing-rehab focused to
- * match Better Brain · Swallow Rehab.
+ * match Better Brain Rehab at Home.
  */
 export interface ExerciseGuideItem {
   title: string;

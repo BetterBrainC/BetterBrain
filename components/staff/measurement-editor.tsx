@@ -64,7 +64,7 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
   return (
     <div className="max-w-2xl space-y-5">
       <header>
-        <h1 className="font-display text-2xl font-bold text-navy">การวัดผล</h1>
+        <h1 className="font-display text-2xl font-bold text-navy">ตัวชี้วัด</h1>
         <p className="text-sm text-muted">
           จัดการชุดคำถามประเมินความรู้รายปี · ผลการวัด (ผู้รับบริการ/พนักงาน) เห็นเฉพาะ Director
         </p>
@@ -72,7 +72,7 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
 
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">แบบทดสอบความรู้ (รายปี)</CardTitle>
+          <CardTitle className="text-base">แบบทบทวนความรู้</CardTitle>
           <div className="w-32">
             <Select value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
               {YEARS.map((y) => (
@@ -130,7 +130,7 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
                 onClick={() => setQType(t)}
                 className={"flex-1 rounded-pill py-1.5 font-medium " + (qType === t ? "bg-surface text-primary-700 shadow-sm" : "text-muted")}
               >
-                {t === "text" ? "พิมพ์ตอบ" : "เลือกตอบ (ให้คะแนน)"}
+                {t === "text" ? "คำถามแบบอัตนัย" : "คำถามแบบปรนัย"}
               </button>
             ))}
           </div>

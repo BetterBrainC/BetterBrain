@@ -94,6 +94,6 @@ export const REPORT_LABEL = {
 
 export const APP = {
   name: "TPM",
-  org: "Better Brain · Swallow Rehab",
+  org: "Better Brain Rehab at Home",
   tagline: "ระบบจัดการพนักงานและคอร์สกายภาพบำบัด",
 } as const;

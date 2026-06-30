@@ -10,7 +10,7 @@ export const EMPLOYEE_NAV = [
   { href: "/app", label: "หน้าหลัก", icon: Home },
   { href: "/app/schedule", label: "นัดหมาย", icon: CalendarDays },
   { href: "/app/check-in", label: "เช็คอิน", icon: MapPin },
-  { href: "/app/measurement", label: "การวัดผล", icon: Activity },
+  { href: "/app/measurement", label: "ตัวชี้วัด", icon: Activity },
   { href: "/app/account", label: "บัญชี", icon: User },
 ];
 

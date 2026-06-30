@@ -2,7 +2,7 @@
   "name": "tpm",
   "version": "0.1.0",
   "private": true,
-  "description": "TPM — back-office + employee PWA for Better Brain · Swallow Rehab",
+  "description": "TPM — back-office + employee PWA for Better Brain Rehab at Home",
   "packageManager": "pnpm@11.5.0",
   "engines": {
     "node": ">=20.0.0"

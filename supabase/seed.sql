@@ -4,7 +4,7 @@
 
 -- Singleton settings row.
 insert into public.settings (id, company_name)
-values (1, 'Better Brain - Swallow Rehab')
+values (1, 'Better Brain Rehab at Home')
 on conflict (id) do nothing;
 
 -- Diagnosis categories (for statistics; store full English names).

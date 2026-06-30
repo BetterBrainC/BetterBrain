@@ -1,4 +1,4 @@
-# CLAUDE.md — TPM (Better Brain · Swallow Rehab)
+# CLAUDE.md — TPM (Better Brain Rehab at Home)
 
 > Authoritative entry point for this repository. Read this first. Exhaustive detail lives in `/docs` (linked below). When `/docs` and this file disagree, **this file wins for rules/conventions; `/docs` wins for detailed specs** — keep them in sync.
 
@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-**TPM** is a Thai-language back-office + employee PWA for the in-home therapy clinic **"Better Brain - Swallow Rehab"**, providing at-home physical/occupational therapy focused on **swallowing rehabilitation** and neuro conditions (stroke, Parkinson, dementia/Alzheimer, ALS, MS).
+**TPM** is a Thai-language back-office + employee PWA for the in-home therapy clinic **"Better Brain Rehab at Home"**, providing at-home physical/occupational therapy focused on **swallowing rehabilitation** and neuro conditions (stroke, Parkinson, dementia/Alzheimer, ALS, MS).
 
 The system manages the full lifecycle: **public booking → in-person assessment → course purchase → monthly schedule assignment → GPS check-in at the patient's home → clinical reports → KPI/outcome measurement → course completion**, with a relatives portal, employee KPI, dashboards, and Excel/CSV export.
 
@@ -18,7 +18,7 @@ The system manages the full lifecycle: **public booking → in-person assessment
 - **Reference feel:** the **OOCA app** — clean, light, high whitespace, `rounded-2xl` tinted cards, ONE confident blue pill CTA per surface, a **teal active accent on the bottom-nav item only**, illustration-led empty states (verified against `flow/1.jpg`, `flow/2.jpg`).
 - **Brand:** the logo = navy head outline + sky-blue swallowing pathway + **a single orange epiglottis accent** + silver gradient wordmark (verified against `flow/S__362397734_0.jpg`).
 - **Locked tokens:** `--primary #2F7FF6`, `--teal #14B8A6` (active nav), `--brand-navy #1B3A6B`, `--sky #4AA3E0`, `--accent #F5A623` (orange; "one per screen"), `--surface-tint #EAF2FF`, `--bg #F7FAFC`, neutrals `#1F2A37 / #6B7280`.
-- **Typography:** **Google Prompt** (Thai-aware geometric sans; used for body + display), self-hosted at build via `next/font` (matches the original build). Never letter-space Thai runs. Full spec in **docs/DESIGN-SYSTEM.md**.
+- **Typography:** **Google Sarabun** (looped/มีหัว Thai-first humanist sans; used for body + display), self-hosted at build via `next/font` (client-requested for readability, replaces the earlier loopless Prompt). Never letter-space Thai runs. Full spec in **docs/DESIGN-SYSTEM.md**.
 
 ## 3. Tech Stack (LOCKED — do not substitute)
 

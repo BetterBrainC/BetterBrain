@@ -35,13 +35,13 @@ export default async function PatientDetail({
   const courseTotal = course?.total_sessions ?? 0;
   const remaining = course ? Math.max(courseTotal - courseUsed, 0) : 0;
   const stats: [string, string][] = [
-    ["คงเหลือคอร์ส", course ? `${remaining}/${courseTotal}` : "—"],
+    ["คอร์สคงเหลือ", course ? `${remaining}/${courseTotal}` : "—"],
     ["รายงาน", String(reports.length)],
     ["เคสทั้งหมด", String(sessions.length)],
   ];
 
   const info: [string, string][] = [
-    ["HN", p.hn ?? "—"],
+    ["Patient ID", p.hn ?? "—"],
     ["อายุ", p.age_years ? `${p.age_years} ปี` : "—"],
     ["เพศ", p.gender === "male" ? "ชาย" : p.gender === "female" ? "หญิง" : "อื่นๆ"],
     ["โทรศัพท์", p.phone ?? "—"],

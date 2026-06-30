@@ -47,15 +47,15 @@ export function RegisterLinkModal() {
   return (
     <>
       <Button variant="secondary" onClick={() => setOpen(true)}>
-        สร้าง HN + ส่งลิงก์
+        +Patient ID รับลิงก์
       </Button>
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title="สร้าง HN + ส่งลิงก์ลงทะเบียน"
+        title="สร้างลิงก์ลงทะเบียน"
       >
         <div className="space-y-4">
-          <Field label="HN (เลขล้วน)" hint="เช่น 69010000">
+          <Field label="Patient ID" hint="เช่น 69010000">
             <TextInput
               inputMode="numeric"
               value={hn}

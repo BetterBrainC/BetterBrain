@@ -11,7 +11,7 @@ export default async function BookingsPage() {
     <div className="space-y-5">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-navy">การจอง</h1>
+          <h1 className="font-display text-2xl font-bold text-navy">การทำนัด</h1>
           <p className="text-sm text-muted">คำขอจองจากฟอร์มสาธารณะ + Admin ลงเอง</p>
         </div>
         <div className="flex gap-2">

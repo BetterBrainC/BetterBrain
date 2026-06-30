@@ -94,7 +94,7 @@ export function BookingsTable({
         {filtered.length === 0 ? (
           <EmptyState icon={Inbox} title="ไม่พบการจอง" description="ลองปรับคำค้นหาหรือตัวกรอง" />
         ) : (
-          <DataTable headers={["ชื่อ-สกุล", "โทรศัพท์", "พื้นที่", "เมื่อ", "สถานะ", ""]}>
+          <DataTable headers={["ชื่อ-สกุล", "โทรศัพท์", "พื้นที่บริการ", "วันและเวลานัด", "สถานะ", ""]}>
             {filtered.map((b) => (
               <tr key={b.id} className="hover:bg-surface-tint">
                 <Td className="font-medium text-navy">{b.full_name}</Td>

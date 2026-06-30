@@ -1431,7 +1431,7 @@ export async function getSettings(): Promise<SettingsData> {
     late_threshold_minutes: number; early_threshold_minutes: number; geofence_radius_m: number;
   }>(data);
   return {
-    companyName: s?.company_name ?? "Better Brain - Swallow Rehab",
+    companyName: s?.company_name ?? "Better Brain Rehab at Home",
     logoUrl: s?.logo_url ?? null,
     selfieEnforced: s?.selfie_enforced ?? true,
     lateThresholdMin: Number(s?.late_threshold_minutes ?? 15),

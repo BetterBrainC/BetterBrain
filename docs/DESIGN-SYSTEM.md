@@ -2,7 +2,7 @@
 
 > **Client review v3 (2026-06-14) — applied.** Labels: **ผู้รับบริการ** (not ผู้ป่วย); roles **Director / Admin / พนักงาน**; reports **Assessment / Follow up / Summary**; employee course progress = **bar-only**; relatives **phone-verify** gate + **วิธีออกกำลังกาย**. Background blue tone + blue/teal buttons (current). **Synnis** brand (green theme) = separate project.
 
-**Better Brain · Swallow Rehab** | In-home swallowing & neuro rehab back-office.
+**Better Brain Rehab at Home** | In-home swallowing & neuro rehab back-office.
 **Direction:** OOCA-inspired — clean, light, high-whitespace, `rounded-2xl` cards, one confident blue CTA per surface, teal active-nav accent. Brand: navy headings, sky-blue secondary, orange as the single sparing accent (mirrors the lone orange epiglottis in the logo).
 
 Verified against ground truth: `flow/S__362397734_0.jpg` (logo: navy head outline + sky-blue swallow pathway + single orange epiglottis + silver gradient wordmark) and `flow/1.jpg`/`flow/2.jpg` (OOCA: white canvas, `#EAF2FF` soft-blue card, single blue pill CTA "ค้นหาผู้ให้คำปรึกษา", **teal active bottom-nav item "การนัดหมาย"** vs gray siblings, sun+cloud illustration empty state, large whitespace).
@@ -90,7 +90,7 @@ Verified against ground truth: `flow/S__362397734_0.jpg` (logo: navy head outlin
 ---
 
 ## 2. Typography — Thai pairing
-**Google Prompt** (Thai-aware geometric sans; used for both UI/body and display/headings — matches the original build). One family keeps Thai labels + Latin clinical abbreviations (BP, HR, SpO2, FOIS, DM, HT, U/D, ADL) and numerals consistent. Fallback ladder: Noto Sans Thai → LINE Seed Sans TH → system Thai. Loaded via `next/font` (self-hosted woff2 at build), subset thai+latin, weights 300–700, `font-display:swap`.
+**Google Sarabun** (looped/มีหัว Thai-first humanist sans; used for both UI/body and display/headings — client-requested for readability, replaces the earlier loopless Prompt). One family keeps Thai labels + Latin clinical abbreviations (BP, HR, SpO2, FOIS, DM, HT, U/D, ADL) and numerals consistent. Fallback ladder: Noto Sans Thai Looped → Noto Sans Thai → LINE Seed Sans TH → system Thai. Loaded via `next/font` (self-hosted woff2 at build), subset thai+latin, weights 300–700, `font-display:swap`.
 
 | Role | Family/Weight | Size/LH |
 |---|---|---|

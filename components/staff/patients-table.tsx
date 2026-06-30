@@ -31,12 +31,12 @@ export function PatientsTable({ patients }: { patients: PatientRow[] }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="ค้นหา ชื่อ / HN / การวินิจฉัย"
+          placeholder="ค้นหา ชื่อ / Patient ID / การวินิจฉัย"
           className={`${inputCls} pl-9`}
         />
       </div>
 
-      <DataTable headers={["ชื่อ-สกุล", "HN", "การวินิจฉัย", "คอร์ส", "สถานะ"]}>
+      <DataTable headers={["ชื่อ-สกุล", "Patient ID", "การวินิจฉัย", "คอร์ส", "สถานะ"]}>
         {rows.map((p) => (
           <tr key={p.id} className="hover:bg-surface-tint">
             <Td>

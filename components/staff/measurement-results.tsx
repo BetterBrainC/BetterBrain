@@ -1,11 +1,10 @@
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FOIS_LABEL } from "@/lib/i18n/th";
 import { ThaiDate } from "@/components/ui/thai-date";
 import type { PatientKpiResult, EmployeeKpiResult } from "@/lib/data/queries";
 
-const KIND_LABEL = { knowledge: "ความรู้ประจำปี", stress: "ความเครียด" } as const;
+const KIND_LABEL = { knowledge: "แบบทบทวนความรู้", stress: "ความเครียด" } as const;
 
 /** Director-only results view for การวัดผล (patient scales + employee KPI). */
 export function MeasurementResults({
@@ -18,7 +17,7 @@ export function MeasurementResults({
   return (
     <div className="space-y-5">
       <Card className="space-y-3">
-        <CardTitle className="text-base">ผลการวัดผลผู้รับบริการ ({patient.length})</CardTitle>
+        <CardTitle className="text-base">การวัดผลผู้รับบริการ ({patient.length})</CardTitle>
         {patient.length === 0 ? (
           <EmptyState title="ยังไม่มีผลการวัดผล" description="FOIS / Barthel / Function / FIM / MFS ที่พนักงานบันทึกจะปรากฏที่นี่" />
         ) : (
@@ -28,7 +27,7 @@ export function MeasurementResults({
                 <tr className="border-b border-border text-left text-2xs text-muted">
                   <th className="py-1.5 pr-2 font-medium">วันที่</th>
                   <th className="py-1.5 pr-2 font-medium">ผู้รับบริการ</th>
-                  <th className="py-1.5 pr-2 font-medium">FOIS</th>
+                  <th className="py-1.5 pr-2 font-medium">FOIS score</th>
                   <th className="py-1.5 pr-2 font-medium">Barthel</th>
                   <th className="py-1.5 pr-2 font-medium">Function</th>
                   <th className="py-1.5 pr-2 font-medium">FIM</th>
@@ -40,7 +39,7 @@ export function MeasurementResults({
                   <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="py-1.5 pr-2 text-muted"><ThaiDate value={r.dateISO} /></td>
                     <td className="py-1.5 pr-2 text-ink">{r.patientName}</td>
-                    <td className="py-1.5 pr-2 tabular-nums">{r.fois ? (FOIS_LABEL[r.fois as keyof typeof FOIS_LABEL] ?? r.fois) : "—"}</td>
+                    <td className="py-1.5 pr-2 tabular-nums">{r.fois ?? "—"}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.barthel ?? "—"}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.functionTotal ? `${r.functionDone}/${r.functionTotal}` : "—"}</td>
                     <td className="py-1.5 pr-2 tabular-nums">{r.fim ?? "—"}</td>
@@ -54,7 +53,7 @@ export function MeasurementResults({
       </Card>
 
       <Card className="space-y-3">
-        <CardTitle className="text-base">ผลประเมินพนักงาน ({employee.length})</CardTitle>
+        <CardTitle className="text-base">การวัดผลพนักงาน ({employee.length})</CardTitle>
         {employee.length === 0 ? (
           <EmptyState title="ยังไม่มีผลประเมิน" description="แบบประเมินความเครียด + ทดสอบความรู้ประจำปีของพนักงานจะปรากฏที่นี่" />
         ) : (

@@ -40,7 +40,7 @@ export function PatientStats({ stats }: { stats: PatientStatsData }) {
 
       <Card className="space-y-3">
         <div className="flex items-baseline justify-between gap-2">
-          <CardTitle className="text-base">ตารางเคสรายเดือน · {stats.buddhistYear}</CardTitle>
+          <CardTitle className="text-base">จำนวนผู้รับบริการรายปี {stats.buddhistYear}</CardTitle>
           <span className="text-sm text-muted">รวม <span className="font-bold tabular-nums text-navy">{stats.monthlyTotal}</span> เคส</span>
         </div>
         {monthsWithCases.length === 0 ? (
