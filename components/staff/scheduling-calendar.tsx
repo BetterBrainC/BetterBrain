@@ -10,10 +10,11 @@ import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { markSessionSkipped, updateSessionSpecial, substituteSession, rescheduleSession } from "@/actions/scheduling";
+import { APPOINTMENT_SLOTS } from "@/lib/constants/slots";
 import type { CalendarSession } from "@/lib/data/queries";
 
 type EmpOpt = { id: string; name: string; code: string | null };
-const RESCHEDULE_SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
+const RESCHEDULE_SLOTS = APPOINTMENT_SLOTS;
 
 /** Admin controls inside the visit sheet: จัดเวรแทน + งด + edit เคสพิเศษ on an existing session. */
 function SessionActions({ session, employees, onDone }: { session: CalendarSession; employees: EmpOpt[]; onDone: () => void }) {
@@ -240,11 +241,19 @@ function SessionChip({ s, onSelect }: { s: CalendarSession; onSelect?: (s: Calen
 /** Detail sheet shown when a calendar chip is clicked. */
 function VisitDetailSheet({ session, employees, onClose }: { session: CalendarSession | null; employees: EmpOpt[]; onClose: () => void }) {
   const tone = session ? STATUS_TONE[session.status] : null;
-  const mapsHref = session?.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(session.address)}`
+  // Navigation prefers exact home coordinates (→ directions), then the pasted
+  // map link, then a plain address search.
+  const navHref = session
+    ? session.homeLat != null && session.homeLng != null
+      ? `https://www.google.com/maps/dir/?api=1&destination=${session.homeLat},${session.homeLng}`
+      : session.mapUrl
+        ? session.mapUrl
+        : session.address
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(session.address)}`
+          : null
     : null;
   return (
-    <Sheet open={!!session} onClose={onClose} title="รายละเอียดคิว">
+    <Sheet open={!!session} onClose={onClose} title="รายละเอียดเคส">
       {session && tone && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -281,14 +290,14 @@ function VisitDetailSheet({ session, employees, onClose }: { session: CalendarSe
               เคสพิเศษ{session.specialAmount ? ` · เพิ่ม ${session.specialAmount.toLocaleString()} บาท` : ""}
             </p>
           )}
-          {mapsHref && (
+          {navHref && (
             <a
-              href={mapsHref}
+              href={navHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-pill bg-surface-tint text-sm font-medium text-primary-700 hover:bg-surface-sunken"
+              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-pill bg-primary text-sm font-medium text-white hover:brightness-95"
             >
-              <MapPin className="h-4 w-4" /> เปิดแผนที่
+              <MapPin className="h-4 w-4" /> นำทางไปบ้านผู้รับบริการ
             </a>
           )}
           <SessionActions session={session} employees={employees} onDone={onClose} />
@@ -474,7 +483,7 @@ function DayDetails({
         <span className="text-2xs text-muted">{sorted.length} เคส</span>
       </div>
       {sorted.length === 0 ? (
-        <p className="text-sm text-muted">วันนี้ไม่มีคิว</p>
+        <p className="text-sm text-muted">วันนี้ไม่มีเคส</p>
       ) : (
         <ul className="space-y-1">
           {sorted.map((s) => {
@@ -554,7 +563,7 @@ function MonthGrid({
             <div
               key={iso}
               onClick={onCreateForDate ? () => onCreateForDate(iso) : undefined}
-              title={onCreateForDate ? "มอบหมายเคสในวันนี้" : undefined}
+              title={onCreateForDate ? "มอบหมายงานในวันนี้" : undefined}
               className={
                 "min-h-24 rounded-md border p-1.5 " +
                 (onCreateForDate ? "cursor-pointer " : "") +
@@ -632,7 +641,7 @@ function Agenda({
             </div>
             <div className="space-y-1 p-2">
               {chips.length === 0 ? (
-                <p className="px-1 py-2 text-sm text-muted">ไม่มีคิว</p>
+                <p className="px-1 py-2 text-sm text-muted">ไม่มีเคส</p>
               ) : (
                 chips.map((s) => (
                   <div key={s.id} className="flex items-center gap-2">

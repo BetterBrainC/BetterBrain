@@ -26,6 +26,7 @@ export const SESSION_STATUS_LABEL = {
 export const BOOKING_STATUS_LABEL = {
   booked: "ทำนัดแล้ว",
   awaiting_payment: "รอชำระเงิน",
+  awaiting_appointment: "รอทำนัด",
   cancelled: "ยกเลิกนัด",
 } as const;
 

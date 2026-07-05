@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Field, TextInput, Select } from "@/components/ui/field";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { createAssignment } from "@/actions/scheduling";
+import { APPOINTMENT_SLOTS } from "@/lib/constants/slots";
 
 type Opt = { id: string; name: string };
 type EmpOpt = { id: string; name: string; code: string | null };
-
-const SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
 
 /**
  * Admin case assignment (P4): patient → employee → date/time, with the
@@ -39,7 +38,6 @@ export function AssignModal({
   const [employeeId, setEmployeeId] = React.useState("");
   const [date, setDate] = React.useState("");
   const [slot, setSlot] = React.useState("");
-  const [kind, setKind] = React.useState<"treatment" | "assessment">("treatment");
   const [special, setSpecial] = React.useState(false);
   const [amount, setAmount] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -52,7 +50,7 @@ export function AssignModal({
 
   function reset() {
     setPatientId(""); setEmployeeId(""); setDate(""); setSlot("");
-    setKind("treatment"); setSpecial(false); setAmount(""); setError(null);
+    setSpecial(false); setAmount(""); setError(null);
   }
 
   function close() {
@@ -68,7 +66,6 @@ export function AssignModal({
       employeeId,
       date,
       slot,
-      kind,
       isSpecial: special,
       specialAmount: special ? Number(amount) || null : null,
     });
@@ -80,7 +77,7 @@ export function AssignModal({
   }
 
   return (
-    <Sheet open={open} onClose={close} title="มอบหมายเคส">
+    <Sheet open={open} onClose={close} title="มอบหมายงาน">
         <form onSubmit={submit} className="space-y-4">
           <Field label="ผู้รับบริการ">
             <Select value={patientId} onChange={(e) => setPatientId(e.target.value)} required>
@@ -94,18 +91,12 @@ export function AssignModal({
               {employees.map((e) => (<option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ""}</option>))}
             </Select>
           </Field>
-          <Field label="ประเภทงาน">
-            <Select value={kind} onChange={(e) => setKind(e.target.value as "treatment" | "assessment")}>
-              <option value="treatment">การรักษา</option>
-              <option value="assessment">ประเมิน · Hand Function (ครั้งแรก ครั้งเดียว)</option>
-            </Select>
-          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="วันที่"><ThaiDateInput value={date} onChange={setDate} required /></Field>
             <Field label="ช่วงเวลา">
               <Select value={slot} onChange={(e) => setSlot(e.target.value)} required>
                 <option value="" disabled>เลือก slot</option>
-                {SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
+                {APPOINTMENT_SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
               </Select>
             </Field>
           </div>

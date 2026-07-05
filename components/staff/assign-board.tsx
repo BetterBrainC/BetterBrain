@@ -46,7 +46,7 @@ export function AssignBoard({
         </div>
         <div className="flex gap-2">
           <SubstituteModal employees={employees} sessions={upcoming} />
-          <Button onClick={() => openCreate()}>+ มอบหมายเคส</Button>
+          <Button onClick={() => openCreate()}>+ มอบหมายงาน</Button>
         </div>
       </header>
 
