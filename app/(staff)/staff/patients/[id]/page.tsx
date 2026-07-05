@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { CourseCard } from "@/components/course/course-card";
 import { CreateCourseControl } from "@/components/course/create-course-button";
 import { PatientAdminControls } from "@/components/staff/patient-admin-controls";
-import { getPatientDetail, getRelativeVisibility } from "@/lib/data/queries";
+import { PatientTreatmentStats } from "@/components/staff/patient-treatment-stats";
+import { PatientAssessmentCharts } from "@/components/staff/patient-assessment-charts";
+import { getPatientDetail, getPatientAssessmentHistory } from "@/lib/data/queries";
 import { DIAGNOSIS_LABEL, PATIENT_STATUS_LABEL, SESSION_STATUS_LABEL } from "@/lib/i18n/th";
 import { ThaiDate } from "@/components/ui/thai-date";
 
@@ -29,7 +31,7 @@ export default async function PatientDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detail, visibility] = await Promise.all([getPatientDetail(id), getRelativeVisibility(id)]);
+  const [detail, history] = await Promise.all([getPatientDetail(id), getPatientAssessmentHistory(id)]);
   if (!detail) notFound();
   const { patient: p, course, courseUsed, reports, sessions } = detail;
   const courseTotal = course?.total_sessions ?? 0;
@@ -66,7 +68,6 @@ export default async function PatientDetail({
         patientId={p.id}
         patientStatus={p.status}
         course={course ? { id: course.id, status: course.status } : null}
-        visibility={visibility}
       />
 
       <div className="grid grid-cols-3 gap-3">
@@ -108,11 +109,16 @@ export default async function PatientDetail({
             <ul className="space-y-1 text-sm">
               {reports.length === 0 && <li className="text-muted">ยังไม่มีรายงาน</li>}
               {reports.map((r) => (
-                <li key={r.id} className="flex justify-between border-b border-border py-1.5 last:border-0">
-                  <span className="text-ink">{REPORT_LABEL[r.report_type] ?? r.report_type}</span>
-                  <span className="text-xs text-muted">
-                    <ThaiDate value={r.report_date} /> · {r.status === "completed" ? "จบเคส" : "ร่าง"}
-                  </span>
+                <li key={r.id} className="border-b border-border last:border-0">
+                  <Link
+                    href={`/staff/reports/${r.id}`}
+                    className="flex items-center justify-between gap-2 py-1.5 hover:text-primary-700"
+                  >
+                    <span className="text-ink">{REPORT_LABEL[r.report_type] ?? r.report_type}</span>
+                    <span className="text-xs text-muted">
+                      <ThaiDate value={r.report_date} /> · {r.status === "completed" ? "จบเคส" : "ร่าง"}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -135,6 +141,9 @@ export default async function PatientDetail({
           ))}
         </ul>
       </Card>
+
+      <PatientTreatmentStats sessions={sessions} />
+      {history && history.kpi.length > 0 && <PatientAssessmentCharts kpi={history.kpi} />}
     </div>
   );
 }

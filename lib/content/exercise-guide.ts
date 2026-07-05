@@ -11,6 +11,21 @@ export interface ExerciseGuideItem {
   detail: string;
 }
 
+/** Coerce a raw jsonb value into a clean list of {title, detail} (title required). */
+export function parseExerciseItems(value: unknown): ExerciseGuideItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (e): e is { title: string; detail?: unknown } =>
+        !!e && typeof e === "object" && typeof (e as { title?: unknown }).title === "string" &&
+        (e as { title: string }).title.trim().length > 0,
+    )
+    .map((e) => ({
+      title: (e as { title: string }).title.trim(),
+      detail: String((e as { detail?: unknown }).detail ?? "").trim(),
+    }));
+}
+
 export const DEFAULT_EXERCISE_GUIDE: ExerciseGuideItem[] = [
   {
     title: "บริหารริมฝีปากและแก้ม",

@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { getRelativePortal, type RelativePortalData } from "@/lib/data/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
@@ -90,6 +91,42 @@ export async function setRelativeReportVisibility(input: {
     .select("id");
   if (error) return { error: error.message };
   if (!data || data.length === 0) return { error: "ยังไม่มีลิงก์ญาติ — สร้างลิงก์ก่อน" };
+  return { ok: true };
+}
+
+/**
+ * Staff: save the home-exercise guide (วิธีออกกำลังกาย) for one course/program.
+ * Stored as a program→items map in settings.extra.exercise_guides; the relatives
+ * portal pulls the list matching that recipient's โปรแกรมการฝึก.
+ */
+export async function setExerciseGuide(input: {
+  program: string;
+  items: { title: string; detail: string }[];
+}): Promise<{ ok?: boolean; error?: string }> {
+  const u = await getCurrentUser();
+  const role = u?.profile?.role;
+  if (role !== "admin" && role !== "director") return { error: "ไม่มีสิทธิ์" };
+  if (u?.profile?.is_enabled === false) return { error: "บัญชีถูกปิดการใช้งาน" };
+  const program = input.program.trim();
+  if (!program) return { error: "ไม่พบคอร์สการฟื้นฟู" };
+
+  const items = (input.items ?? [])
+    .map((i) => ({ title: String(i.title ?? "").trim(), detail: String(i.detail ?? "").trim() }))
+    .filter((i) => i.title.length > 0);
+
+  const admin = createAdminClient();
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = ((setData as { extra?: Record<string, unknown> } | null)?.extra ?? {}) as Record<string, unknown>;
+  const guides = extra.exercise_guides && typeof extra.exercise_guides === "object"
+    ? { ...(extra.exercise_guides as Record<string, unknown>) }
+    : {};
+  guides[program] = items;
+
+  const { error } = await admin
+    .from("settings")
+    .upsert({ id: 1, extra: { ...extra, exercise_guides: guides } }, { onConflict: "id" });
+  if (error) return { error: error.message };
+  revalidatePath("/staff/relatives");
   return { ok: true };
 }
 
