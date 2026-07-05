@@ -55,7 +55,9 @@ export function PatientsTable({ patients }: { patients: PatientRow[] }) {
         ))}
         {rows.length === 0 && (
           <tr>
-            <Td className="py-6 text-center text-muted">ไม่พบผู้รับบริการที่ตรงกับ “{q}”</Td>
+            <td colSpan={5} className="px-4 py-6 text-center text-muted">
+              {q.trim() ? `ไม่พบผู้รับบริการที่ตรงกับ “${q.trim()}”` : "ยังไม่มีผู้รับบริการ"}
+            </td>
           </tr>
         )}
       </DataTable>
