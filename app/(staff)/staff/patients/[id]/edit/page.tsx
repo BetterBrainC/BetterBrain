@@ -38,6 +38,9 @@ export default async function EditPatientPage({
     ec_name: p.emergency_contact_name,
     ec_relation: p.emergency_contact_relation,
     ec_phone: p.emergency_contact_phone,
+    home_lat: p.home_lat,
+    home_lng: p.home_lng,
+    map_url: p.map_url,
   };
 
   return (

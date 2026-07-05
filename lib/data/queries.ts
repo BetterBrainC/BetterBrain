@@ -824,6 +824,9 @@ export interface CalendarSession {
   employeeFull: string;
   program: string | null;
   address: string | null;
+  homeLat: number | null;
+  homeLng: number | null;
+  mapUrl: string | null;
   timeLabel: string; // HH:MM–HH:MM
   specialAmount: number | null;
 }
@@ -836,13 +839,13 @@ export async function getCalendarSessions(): Promise<CalendarSession[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("schedule_sessions")
-    .select("id, scheduled_date, scheduled_start, scheduled_end, status, kind, is_special_case, special_amount, patients(full_name, training_program, address), employee:profiles!schedule_sessions_employee_id_fkey(full_name)")
+    .select("id, scheduled_date, scheduled_start, scheduled_end, status, kind, is_special_case, special_amount, patients(full_name, training_program, address, home_lat, home_lng, map_url), employee:profiles!schedule_sessions_employee_id_fkey(full_name)")
     .order("scheduled_start")
     .limit(2000);
   return rows<{
     id: string; scheduled_date: string; scheduled_start: string; scheduled_end: string | null;
     status: SessionStatus; kind: "assessment" | "treatment"; is_special_case: boolean; special_amount: number | null;
-    patients: { full_name: string | null; training_program: string | null; address: string | null } | null;
+    patients: { full_name: string | null; training_program: string | null; address: string | null; home_lat: number | null; home_lng: number | null; map_url: string | null } | null;
     employee: { full_name: string | null } | null;
   }>(data).map((s) => {
     const full = s.patients?.full_name ?? "—";
@@ -860,6 +863,9 @@ export async function getCalendarSessions(): Promise<CalendarSession[]> {
       employeeFull: emp,
       program: s.patients?.training_program ?? null,
       address: s.patients?.address ?? null,
+      homeLat: s.patients?.home_lat ?? null,
+      homeLng: s.patients?.home_lng ?? null,
+      mapUrl: s.patients?.map_url ?? null,
       timeLabel: timeLabel(s.scheduled_start, s.scheduled_end),
       specialAmount: s.special_amount,
     };

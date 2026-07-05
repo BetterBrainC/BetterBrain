@@ -121,9 +121,9 @@ export default async function PatientDetail({
       </div>
 
       <Card>
-        <CardTitle className="mb-2 text-base">ประวัติคิว ({sessions.length})</CardTitle>
+        <CardTitle className="mb-2 text-base">ประวัติเคส ({sessions.length})</CardTitle>
         <ul className="space-y-1 text-sm">
-          {sessions.length === 0 && <li className="text-muted">ยังไม่มีคิว</li>}
+          {sessions.length === 0 && <li className="text-muted">ยังไม่มีเคส</li>}
           {sessions.map((s) => (
             <li key={s.id} className="flex items-center justify-between border-b border-border py-1.5 last:border-0">
               <span className="text-ink"><ThaiDate value={s.dateISO} /> · {s.time}</span>

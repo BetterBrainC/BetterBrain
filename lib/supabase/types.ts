@@ -638,6 +638,7 @@ export type Database = {
           home_lat: number | null
           home_lng: number | null
           id: string
+          map_url: string | null
           marital_status: string | null
           national_id: string | null
           nationality: string | null
@@ -675,6 +676,7 @@ export type Database = {
           home_lat?: number | null
           home_lng?: number | null
           id?: string
+          map_url?: string | null
           marital_status?: string | null
           national_id?: string | null
           nationality?: string | null
@@ -712,6 +714,7 @@ export type Database = {
           home_lat?: number | null
           home_lng?: number | null
           id?: string
+          map_url?: string | null
           marital_status?: string | null
           national_id?: string | null
           nationality?: string | null

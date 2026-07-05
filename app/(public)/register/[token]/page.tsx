@@ -64,6 +64,9 @@ export default async function RegisterPage({
         ec_name: p.emergency_contact_name as string | null,
         ec_relation: p.emergency_contact_relation as string | null,
         ec_phone: p.emergency_contact_phone as string | null,
+        home_lat: p.home_lat as number | null,
+        home_lng: p.home_lng as number | null,
+        map_url: p.map_url as string | null,
       }
     : undefined;
 

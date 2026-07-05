@@ -7,14 +7,13 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Textarea, Select } from "@/components/ui/field";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
+import { LocationPicker } from "@/components/forms/location-picker";
 import { DIAGNOSIS_LABEL, BOOKING_STATUS_LABEL } from "@/lib/i18n/th";
+import { APPOINTMENT_SLOTS } from "@/lib/constants/slots";
 import type { FormResult } from "@/actions/patients";
 
 type Action = (prev: FormResult, formData: FormData) => Promise<FormResult>;
 type EmpOpt = { id: string; name: string; code: string | null };
-
-// First-assessment slots (kept in step with the assignment calendar).
-const APPT_SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
 
 export type IntakeInitial = Partial<
   Record<
@@ -22,7 +21,8 @@ export type IntakeInitial = Partial<
     | "marital_status" | "gender" | "phone" | "address" | "underlying"
     | "drug_allergy" | "past_history" | "surgery_history" | "chief_complaint"
     | "diagnosis_category"
-    | "training_program" | "ec_name" | "ec_relation" | "ec_phone",
+    | "training_program" | "ec_name" | "ec_relation" | "ec_phone"
+    | "home_lat" | "home_lng" | "map_url",
     string | number | null
   >
 >;
@@ -114,6 +114,11 @@ export function IntakeForm({
           <Field label="สถานภาพ"><TextInput name="marital_status" defaultValue={dv("marital_status")} /></Field>
         </div>
         <Field label="ที่อยู่"><Textarea name="address" defaultValue={dv("address")} /></Field>
+        <LocationPicker
+          initialLat={initial?.home_lat != null ? Number(initial.home_lat) : null}
+          initialLng={initial?.home_lng != null ? Number(initial.home_lng) : null}
+          initialMapUrl={initial?.map_url != null ? String(initial.map_url) : null}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="การวินิจฉัย">
             <Select name="diagnosis_category" defaultValue={dv("diagnosis_category") ?? ""}>
@@ -185,7 +190,7 @@ export function IntakeForm({
                 <Field label="ช่วงเวลา">
                   <Select name="appt_slot" defaultValue="">
                     <option value="">เลือก slot</option>
-                    {APPT_SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
+                    {APPOINTMENT_SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
                   </Select>
                 </Field>
               </div>

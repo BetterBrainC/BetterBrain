@@ -83,6 +83,9 @@ function patientFromForm(formData: FormData) {
     emergency_contact_name: String(formData.get("ec_name") ?? "").trim() || null,
     emergency_contact_relation: String(formData.get("ec_relation") ?? "").trim() || null,
     emergency_contact_phone: String(formData.get("ec_phone") ?? "").trim() || null,
+    home_lat: num(formData.get("home_lat")),
+    home_lng: num(formData.get("home_lng")),
+    map_url: String(formData.get("map_url") ?? "").trim() || null,
     consent_intake: formData.get("consent") === "on",
   };
 }

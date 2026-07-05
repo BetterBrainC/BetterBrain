@@ -8,11 +8,10 @@ import { Field, Select } from "@/components/ui/field";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { setAppointmentStatus } from "@/actions/bookings";
 import { BOOKING_STATUS_LABEL } from "@/lib/i18n/th";
+import { APPOINTMENT_SLOTS } from "@/lib/constants/slots";
 
 type EmpOpt = { id: string; name: string; code: string | null };
 type Status = keyof typeof BOOKING_STATUS_LABEL;
-
-const SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
 
 /**
  * Change a recipient's appointment status from the การทำนัด list. Choosing
@@ -101,7 +100,7 @@ export function BookingStatusSheet({
               <Field label="ช่วงเวลา">
                 <Select value={slot} onChange={(e) => setSlot(e.target.value)}>
                   <option value="">เลือก slot</option>
-                  {SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
+                  {APPOINTMENT_SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
                 </Select>
               </Field>
             </div>
