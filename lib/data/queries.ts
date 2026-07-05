@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { formatThaiTime, formatThaiClock, formatThaiDateTime, formatThaiDate } from "@/lib/date/buddhist";
-import { DEFAULT_EXERCISE_GUIDE } from "@/lib/content/exercise-guide";
+import { DEFAULT_EXERCISE_GUIDE, parseExerciseItems, type ExerciseGuideItem } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
 type Diagnosis = Database["public"]["Enums"]["diagnosis_category"];
@@ -1028,16 +1028,17 @@ export async function getRelativePortal(
     ? { name: emp.full_name ?? "—", role: emp.position_title ?? "พนักงาน/นักบำบัด", photoUrl: emp.photo_url ?? null }
     : null;
 
-  // Exercise guide: Director-editable (settings.extra.exercise_guide) → fallback.
+  // Exercise guide: per-course (settings.extra.exercise_guides keyed by the
+  // recipient's โปรแกรมการฝึก) → legacy global list → hardcoded default.
   const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
   const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
-  const guide = Array.isArray(extra.exercise_guide)
-    ? (extra.exercise_guide as unknown[]).filter(
-        (e): e is { title: string; detail: string } =>
-          !!e && typeof e === "object" && typeof (e as { title?: unknown }).title === "string",
-      ).map((e) => ({ title: e.title, detail: String((e as { detail?: unknown }).detail ?? "") }))
-    : [];
-  const exercises = guide.length > 0 ? guide : DEFAULT_EXERCISE_GUIDE;
+  const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
+    ? (extra.exercise_guides as Record<string, unknown>)
+    : {};
+  const program = (patient.training_program ?? "").trim();
+  const perProgram = program ? parseExerciseItems(byProgram[program]) : [];
+  const legacy = parseExerciseItems(extra.exercise_guide);
+  const exercises = perProgram.length > 0 ? perProgram : legacy.length > 0 ? legacy : DEFAULT_EXERCISE_GUIDE;
 
   const total = Number(course?.total_sessions ?? 0);
   const courseComplete = course?.status === "course_complete" || (total > 0 && used >= total);
@@ -1077,6 +1078,87 @@ export async function getRelativeVisibility(
     showFollowup: row?.show_followup ?? true,
     showSummary: row?.show_summary ?? true,
   };
+}
+
+// ── จัดการหน้าญาติ (relatives management hub) ───────────────────────────────
+export interface RelativeManagePatient {
+  id: string;
+  name: string;
+  hn: string | null;
+  program: string | null;
+  hasLink: boolean;
+  token: string | null;
+  showFollowup: boolean;
+  showSummary: boolean;
+}
+export interface RelativeManageData {
+  programs: { program: string; items: ExerciseGuideItem[] }[];
+  patients: RelativeManagePatient[];
+}
+
+/**
+ * Data for the "จัดการหน้าญาติ" page: per-course exercise guides (keyed by
+ * โปรแกรมการฝึก) + per-recipient relatives-link + report-visibility state.
+ * Staff-guarded at the page; reads via the service-role admin client (relatives
+ * tables are staff-RLS only and the portal itself is service-role).
+ */
+export async function getRelativeManage(): Promise<RelativeManageData> {
+  const admin = createAdminClient();
+
+  const { data: pData } = await admin
+    .from("patients")
+    .select("id, full_name, hn, training_program, appointment_status")
+    .order("full_name");
+  const active = rows<{
+    id: string; full_name: string; hn: string | null; training_program: string | null; appointment_status: string;
+  }>(pData).filter((p) => p.appointment_status === "booked");
+
+  const { data: raData } = await admin
+    .from("relative_access")
+    .select("patient_id, access_token, show_followup, show_summary, expires_at")
+    .eq("revoked", false)
+    .order("created_at", { ascending: false });
+  const raMap = new Map<string, { token: string | null; showFollowup: boolean; showSummary: boolean }>();
+  for (const r of rows<{
+    patient_id: string; access_token: string; show_followup: boolean; show_summary: boolean; expires_at: string | null;
+  }>(raData)) {
+    if (raMap.has(r.patient_id)) continue; // rows are created_at-desc → first is latest
+    const activeLink = !r.expires_at || new Date(r.expires_at).getTime() > Date.now();
+    raMap.set(r.patient_id, {
+      token: activeLink ? r.access_token : null,
+      showFollowup: r.show_followup,
+      showSummary: r.show_summary,
+    });
+  }
+
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
+  const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
+    ? (extra.exercise_guides as Record<string, unknown>)
+    : {};
+
+  const progSet = new Set<string>();
+  for (const p of active) if (p.training_program?.trim()) progSet.add(p.training_program.trim());
+  for (const k of Object.keys(byProgram)) if (k.trim()) progSet.add(k.trim());
+  const programs = [...progSet]
+    .sort((a, b) => a.localeCompare(b, "th"))
+    .map((program) => ({ program, items: parseExerciseItems(byProgram[program]) }));
+
+  const patients: RelativeManagePatient[] = active.map((p) => {
+    const ra = raMap.get(p.id);
+    return {
+      id: p.id,
+      name: p.full_name,
+      hn: p.hn,
+      program: p.training_program,
+      hasLink: !!ra?.token,
+      token: ra?.token ?? null,
+      showFollowup: ra?.showFollowup ?? true,
+      showSummary: ra?.showSummary ?? true,
+    };
+  });
+
+  return { programs, patients };
 }
 
 // ── KPI templates (year-versioned question bank) ────────────────────────

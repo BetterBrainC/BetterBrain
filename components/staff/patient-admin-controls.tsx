@@ -8,29 +8,24 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Select } from "@/components/ui/field";
 import { setPatientStatus, setCourseStatus } from "@/actions/patients";
-import { createRelativeShareLink, setRelativeReportVisibility } from "@/actions/portal";
+import { createRelativeShareLink } from "@/actions/portal";
 import { PATIENT_STATUS_LABEL, COURSE_STATUS_LABEL } from "@/lib/i18n/th";
 
 type PatientStatus = keyof typeof PATIENT_STATUS_LABEL;
 type CourseStatus = keyof typeof COURSE_STATUS_LABEL;
 
-export interface ReportVisibility {
-  hasLink: boolean;
-  showFollowup: boolean;
-  showSummary: boolean;
-}
-
-/** Director/Admin controls on the patient detail page: status transitions + edit. */
+/**
+ * Director/Admin controls on the patient detail page: status transitions, edit,
+ * and the relatives share-link. Report-visibility now lives on จัดการหน้าญาติ.
+ */
 export function PatientAdminControls({
   patientId,
   patientStatus,
   course,
-  visibility,
 }: {
   patientId: string;
   patientStatus: PatientStatus;
   course: { id: string; status: string } | null;
-  visibility: ReportVisibility;
 }) {
   const router = useRouter();
   const [pStatus, setPStatus] = React.useState<PatientStatus>(patientStatus);
@@ -41,25 +36,6 @@ export function PatientAdminControls({
   const [shareBusy, setShareBusy] = React.useState(false);
   const [shareCopied, setShareCopied] = React.useState(false);
   const [shareErr, setShareErr] = React.useState<string | null>(null);
-  const [hasLink, setHasLink] = React.useState(visibility.hasLink);
-  const [showFollowup, setShowFollowup] = React.useState(visibility.showFollowup);
-  const [showSummary, setShowSummary] = React.useState(visibility.showSummary);
-  const [visBusy, setVisBusy] = React.useState(false);
-  const [visMsg, setVisMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
-
-  async function saveVisibility(next: { followup: boolean; summary: boolean }) {
-    setShowFollowup(next.followup);
-    setShowSummary(next.summary);
-    setVisBusy(true);
-    setVisMsg(null);
-    const res = await setRelativeReportVisibility({
-      patientId,
-      showFollowup: next.followup,
-      showSummary: next.summary,
-    });
-    setVisBusy(false);
-    setVisMsg(res);
-  }
 
   async function genShareLink() {
     setShareBusy(true);
@@ -70,7 +46,6 @@ export function PatientAdminControls({
     if (res.error || !res.token) return setShareErr(res.error ?? "สร้างลิงก์ไม่สำเร็จ");
     const base = typeof window !== "undefined" ? window.location.origin : "";
     setShareLink(`${base}/r/${res.token}`);
-    setHasLink(true);
   }
 
   async function copyShareLink() {
@@ -164,35 +139,6 @@ export function PatientAdminControls({
           </span>
         </div>
       )}
-
-      <div className="space-y-2 border-t border-border pt-4">
-        <p className="text-sm font-medium text-ink">รายงานที่ให้ญาติเห็น</p>
-        {!hasLink && <p className="text-xs text-muted">สร้างลิงก์ญาติก่อน แล้วจึงเลือกได้ว่าจะให้เห็นรายงานใด</p>}
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-[var(--primary)]"
-              checked={showFollowup}
-              disabled={!hasLink || visBusy}
-              onChange={(e) => saveVisibility({ followup: e.target.checked, summary: showSummary })}
-            />
-            บันทึกรายวัน (Follow up)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-[var(--primary)]"
-              checked={showSummary}
-              disabled={!hasLink || visBusy}
-              onChange={(e) => saveVisibility({ followup: showFollowup, summary: e.target.checked })}
-            />
-            ความก้าวหน้ารายเดือน (Summary)
-          </label>
-        </div>
-        {visMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{visMsg.error}</p>}
-        {visMsg?.ok && <p className="text-sm text-teal">บันทึกการมองเห็นแล้ว</p>}
-      </div>
     </Card>
   );
 }
