@@ -198,9 +198,12 @@ export interface PatientRow {
 
 export async function getPatients(): Promise<PatientRow[]> {
   const supabase = await createClient();
+  // Only booked (ทำนัดแล้ว) recipients belong on the patients page; รอชำระเงิน /
+  // รอทำนัด / ยกเลิกนัด live on the การทำนัด (bookings) page instead.
   const { data } = await supabase
     .from("patients")
     .select("id, hn, full_name, age_years, training_program, diagnosis_category, status")
+    .eq("appointment_status", "booked")
     .order("created_at", { ascending: true });
   const patients = rows<{
     id: string; hn: string | null; full_name: string; age_years: number | null;
@@ -499,16 +502,32 @@ export async function getEmployeeWorkHours(
 export type BookingLite = {
   id: string; full_name: string; phone: string; area: string | null;
   status: Database["public"]["Enums"]["booking_status"]; created_at: string;
-  patient_id: string | null;
 };
 
+/**
+ * The การทำนัด (bookings) list = recipients still in the pre-appointment pipeline
+ * (รอชำระเงิน / รอทำนัด / ยกเลิกนัด). Once booked (ทำนัดแล้ว) a recipient moves to
+ * the ผู้รับบริการ (patients) page. Backed by patients.appointment_status.
+ */
 export async function getBookings(): Promise<BookingLite[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("bookings")
-    .select("id, full_name, phone, area, status, created_at, patient_id")
+    .from("patients")
+    .select("id, full_name, phone, address, appointment_status, created_at")
+    .in("appointment_status", ["awaiting_payment", "awaiting_appointment", "cancelled"])
     .order("created_at", { ascending: false });
-  return rows<BookingLite>(data);
+  const raw = rows<{
+    id: string; full_name: string; phone: string | null; address: string | null;
+    appointment_status: Database["public"]["Enums"]["booking_status"]; created_at: string;
+  }>(data);
+  return raw.map((r) => ({
+    id: r.id,
+    full_name: r.full_name,
+    phone: r.phone ?? "",
+    area: r.address,
+    status: r.appointment_status,
+    created_at: r.created_at,
+  }));
 }
 
 export type CorrectionField = { label: string; before: string | null; after: string | null };
@@ -671,7 +690,7 @@ export async function getNavCounts(): Promise<{ approvals: number; bookings: num
   const supabase = await createClient();
   const [{ count: approvals }, { count: bookings }] = await Promise.all([
     supabase.from("correction_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["booked", "awaiting_payment"]),
+    supabase.from("patients").select("id", { count: "exact", head: true }).in("appointment_status", ["awaiting_payment", "awaiting_appointment"]),
   ]);
   return { approvals: approvals ?? 0, bookings: bookings ?? 0 };
 }
@@ -1369,7 +1388,10 @@ export async function getPatientStats(): Promise<PatientStatsData> {
   const today = bangkokToday();
   const year = Number(today.slice(0, 4));
 
-  const { data: dxData } = await supabase.from("patients").select("diagnosis_category");
+  const { data: dxData } = await supabase
+    .from("patients")
+    .select("diagnosis_category")
+    .eq("appointment_status", "booked");
   const dx = rows<{ diagnosis_category: Diagnosis | null }>(dxData);
   const counts = new Map<Diagnosis, number>();
   for (const r of dx) {

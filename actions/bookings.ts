@@ -3,16 +3,42 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth";
+import { writeAudit } from "@/lib/audit/log";
+import { createAssignment } from "@/actions/scheduling";
 
 export interface ActionResult {
   ok?: boolean;
   error?: string;
 }
 
+const BOOKING_STATUSES = [
+  "booked",
+  "awaiting_payment",
+  "awaiting_appointment",
+  "cancelled",
+] as const;
+type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+/** Non-redirecting staff guard (role + live is_enabled). */
+async function requireStaff(): Promise<
+  { ok: true; userId: string } | { ok: false; error: string }
+> {
+  const u = await getCurrentUser();
+  if (!u) return { ok: false, error: "ไม่ได้เข้าสู่ระบบ" };
+  const role = u.profile?.role;
+  if (role !== "admin" && role !== "director")
+    return { ok: false, error: "ไม่มีสิทธิ์ดำเนินการ" };
+  if (u.profile?.is_enabled === false)
+    return { ok: false, error: "บัญชีถูกปิดการใช้งาน" };
+  return { ok: true, userId: u.id };
+}
+
 /**
  * Public booking submission (unauthenticated). RLS blocks anon writes, so this
- * inserts via the service-role client. Honeypot + required-field + consent
- * checks stand in for the P2 rate-limited RPC.
+ * inserts via the service-role client. A self-service submission always lands as
+ * a รอชำระเงิน (awaiting_payment) recipient in the การทำนัด pipeline; staff/an
+ * employee tops up the remaining intake fields at the first assessment.
  */
 export async function submitPublicBooking(input: {
   fullName: string;
@@ -26,97 +52,67 @@ export async function submitPublicBooking(input: {
   if (!/\d{6,}/.test(input.phone.replace(/\D/g, ""))) return { error: "กรอกเบอร์โทรให้ถูกต้อง" };
   if (!input.consent) return { error: "กรุณายินยอมตาม PDPA" };
   const admin = createAdminClient();
-  const { error } = await admin.from("bookings").insert({
+  const { error } = await admin.from("patients").insert({
     full_name: input.fullName.trim(),
-    phone: input.phone.trim(),
-    area: input.area.trim() || null,
-    source: "public_form",
-    consent_booking: true,
-    status: "booked",
+    phone: input.phone.trim() || null,
+    address: input.area.trim() || null,
+    referral_source: "public_form",
+    consent_intake: true,
+    appointment_status: "awaiting_payment",
   });
   if (error) return { error: error.message };
-  return { ok: true };
-}
-
-/** Admin cancels a booking (optional reason kept in note). */
-export async function cancelBooking(input: { id: string; reason?: string }): Promise<ActionResult> {
-  const supabase = await createClient();
-  const patch: Record<string, unknown> = { status: "cancelled" };
-  if (input.reason?.trim()) patch.note = input.reason.trim();
-  const { error } = await supabase.from("bookings").update(patch).eq("id", input.id);
-  if (error) return { error: error.message };
-  revalidatePath("/staff/bookings");
-  return { ok: true };
-}
-
-/** Admin manually creates a booking/appointment (fallback to the public form). */
-export async function createBooking(input: {
-  fullName: string;
-  phone: string;
-  area: string;
-  status: "booked" | "awaiting_payment" | "cancelled";
-}): Promise<ActionResult> {
-  if (!input.fullName.trim()) return { error: "กรอกชื่อ-สกุล" };
-  if (!input.phone.trim()) return { error: "กรอกเบอร์โทร" };
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { error } = await supabase.from("bookings").insert({
-    full_name: input.fullName.trim(),
-    phone: input.phone.trim(),
-    area: input.area.trim() || null,
-    source: "manual",
-    status: input.status,
-    created_by: user?.id ?? null,
-  });
-  if (error) return { error: error.message };
-  revalidatePath("/staff/bookings");
   return { ok: true };
 }
 
 /**
- * Admin converts a booking into a service recipient (ผู้รับบริการ): creates a
- * patient pre-filled from the booking and links it back. Returns the patientId so
- * the caller can decide navigation (no redirect — stays on bookings page).
+ * Staff moves a recipient along the appointment pipeline (รอชำระเงิน / รอทำนัด /
+ * ทำนัดแล้ว / ยกเลิกนัด). Choosing ทำนัดแล้ว optionally books the first assessment
+ * (employee + date + slot) in the same step, which also moves the recipient off
+ * the การทำนัด list and onto the ผู้รับบริการ page.
  */
-export async function convertBookingToPatient(
-  bookingId: string,
-): Promise<{ patientId?: string; error?: string }> {
+export async function setAppointmentStatus(input: {
+  patientId: string;
+  status: BookingStatus;
+  assignment?: { employeeId: string; date: string; slot: string } | null;
+}): Promise<ActionResult> {
+  const guard = await requireStaff();
+  if (!guard.ok) return { error: guard.error };
+  if (!input.patientId) return { error: "ไม่พบผู้รับบริการ" };
+  if (!BOOKING_STATUSES.includes(input.status)) return { error: "สถานะไม่ถูกต้อง" };
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: booking } = await supabase
-    .from("bookings")
-    .select("id, full_name, phone, status, patient_id")
-    .eq("id", bookingId)
-    .maybeSingle();
-  const b = booking as
-    | { id: string; full_name: string; phone: string | null; status: string; patient_id: string | null }
-    | null;
-  if (!b || b.status === "cancelled") return { error: "ไม่พบการจองหรือถูกยกเลิกแล้ว" };
-
-  // Already converted → return existing patientId.
-  if (b.patient_id) return { patientId: b.patient_id };
-
-  const { data: inserted, error } = await supabase
+  const { error } = await supabase
     .from("patients")
-    .insert({
-      full_name: b.full_name,
-      phone: b.phone,
-      referral_source: "booking",
-      created_by: user?.id ?? null,
-    })
-    .select("id")
-    .single();
+    .update({ appointment_status: input.status })
+    .eq("id", input.patientId);
   if (error) return { error: error.message };
-  const patientId = (inserted as { id: string }).id;
 
-  await supabase.from("bookings").update({ patient_id: patientId }).eq("id", bookingId);
+  // Book the first assessment right away when confirming ทำนัดแล้ว.
+  if (input.status === "booked" && input.assignment) {
+    const a = input.assignment;
+    if (a.employeeId && a.date && a.slot) {
+      const res = await createAssignment({
+        patientId: input.patientId,
+        employeeId: a.employeeId,
+        date: a.date,
+        slot: a.slot,
+        kind: "assessment",
+        isSpecial: false,
+        specialAmount: null,
+      });
+      if (res.error) return { error: res.error };
+    }
+  }
 
+  await writeAudit({
+    action: "update",
+    entity: "patient",
+    entityId: input.patientId,
+    actorId: guard.userId,
+    after: { appointment_status: input.status },
+  });
   revalidatePath("/staff/bookings");
   revalidatePath("/staff/patients");
-  return { patientId };
+  revalidatePath("/staff");
+  return { ok: true };
 }

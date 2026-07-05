@@ -1,16 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Textarea, Select } from "@/components/ui/field";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
-import { DIAGNOSIS_LABEL } from "@/lib/i18n/th";
+import { DIAGNOSIS_LABEL, BOOKING_STATUS_LABEL } from "@/lib/i18n/th";
 import type { FormResult } from "@/actions/patients";
 
 type Action = (prev: FormResult, formData: FormData) => Promise<FormResult>;
+type EmpOpt = { id: string; name: string; code: string | null };
+
+// First-assessment slots (kept in step with the assignment calendar).
+const APPT_SLOTS = ["09:00-10:00", "10:30-11:30", "13:00-14:00", "14:30-15:30"];
 
 export type IntakeInitial = Partial<
   Record<
@@ -38,6 +42,7 @@ export function IntakeForm({
   patientId,
   initial,
   backHref,
+  employees = [],
 }: {
   action: Action;
   mode: "staff" | "relative" | "edit";
@@ -46,11 +51,14 @@ export function IntakeForm({
   patientId?: string;
   initial?: IntakeInitial;
   backHref?: string;
+  employees?: EmpOpt[];
 }) {
   const [state, formAction, pending] = useActionState<FormResult, FormData>(
     action,
     {},
   );
+  // Appointment status is set only when Admin creates a new recipient.
+  const [apptStatus, setApptStatus] = useState<keyof typeof BOOKING_STATUS_LABEL>("booked");
   const dv = (k: keyof IntakeInitial): string | undefined => {
     const v = initial?.[k];
     return v === null || v === undefined ? undefined : String(v);
@@ -144,6 +152,47 @@ export function IntakeForm({
           </label>
         )}
       </Card>
+
+      {mode === "staff" && (
+        <Card className="space-y-4">
+          <CardTitle className="text-base">สถานะการนัด</CardTitle>
+          <Field label="สถานะ">
+            <Select
+              name="appointment_status"
+              value={apptStatus}
+              onChange={(e) => setApptStatus(e.target.value as keyof typeof BOOKING_STATUS_LABEL)}
+            >
+              {(Object.keys(BOOKING_STATUS_LABEL) as (keyof typeof BOOKING_STATUS_LABEL)[]).map((k) => (
+                <option key={k} value={k}>{BOOKING_STATUS_LABEL[k]}</option>
+              ))}
+            </Select>
+          </Field>
+          {apptStatus === "booked" && (
+            <div className="space-y-3 rounded-md bg-surface-tint p-3">
+              <p className="text-xs text-muted">นัดประเมินครั้งแรก (ไม่บังคับ — เว้นว่างเพื่อมอบหมายภายหลัง)</p>
+              <Field label="พนักงาน">
+                <Select name="appt_employee" defaultValue="">
+                  <option value="">— ยังไม่เลือก —</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}{emp.code ? ` (${emp.code})` : ""}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="วันที่"><ThaiDateInput name="appt_date" /></Field>
+                <Field label="ช่วงเวลา">
+                  <Select name="appt_slot" defaultValue="">
+                    <option value="">เลือก slot</option>
+                    {APPT_SLOTS.map((s) => (<option key={s} value={s}>{s}</option>))}
+                  </Select>
+                </Field>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {state.error && (
         <p role="alert" className="rounded-md bg-[var(--danger-bg)] px-3 py-2 text-sm text-[var(--danger-fg)]">{state.error}</p>

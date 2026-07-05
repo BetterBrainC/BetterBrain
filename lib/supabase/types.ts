@@ -617,6 +617,7 @@ export type Database = {
         Row: {
           address: string | null
           age_years: number | null
+          appointment_status: Database["public"]["Enums"]["booking_status"]
           archived_at: string | null
           chief_complaint: string | null
           consent_intake: boolean
@@ -653,6 +654,7 @@ export type Database = {
         Insert: {
           address?: string | null
           age_years?: number | null
+          appointment_status?: Database["public"]["Enums"]["booking_status"]
           archived_at?: string | null
           chief_complaint?: string | null
           consent_intake?: boolean
@@ -689,6 +691,7 @@ export type Database = {
         Update: {
           address?: string | null
           age_years?: number | null
+          appointment_status?: Database["public"]["Enums"]["booking_status"]
           archived_at?: string | null
           chief_complaint?: string | null
           consent_intake?: boolean
@@ -1311,7 +1314,11 @@ export type Database = {
         | "apply_correction"
         | "password_change"
         | "export"
-      booking_status: "booked" | "awaiting_payment" | "cancelled"
+      booking_status:
+        | "booked"
+        | "awaiting_payment"
+        | "awaiting_appointment"
+        | "cancelled"
       checkin_kind: "check_in" | "check_out"
       course_outcome: "continue" | "no_service"
       course_status: "on_process" | "hold" | "course_complete" | "no_service"
@@ -1508,7 +1515,7 @@ export const Constants = {
         "password_change",
         "export",
       ],
-      booking_status: ["booked", "awaiting_payment", "cancelled"],
+      booking_status: ["booked", "awaiting_payment", "awaiting_appointment", "cancelled"],
       checkin_kind: ["check_in", "check_out"],
       course_outcome: ["continue", "no_service"],
       course_status: ["on_process", "hold", "course_complete", "no_service"],

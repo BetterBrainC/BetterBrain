@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit/log";
+import { createAssignment } from "@/actions/scheduling";
 
 export interface FormResult {
   ok?: boolean;
@@ -28,8 +29,16 @@ function isRegistrationLinkExpired(createdAt: string): boolean {
 
 const PATIENT_STATUSES = ["active", "hold", "no_service"] as const;
 const COURSE_STATUSES = ["on_process", "hold", "course_complete", "no_service"] as const;
+const BOOKING_STATUSES = ["booked", "awaiting_payment", "awaiting_appointment", "cancelled"] as const;
 type PatientStatus = (typeof PATIENT_STATUSES)[number];
 type CourseStatus = (typeof COURSE_STATUSES)[number];
+type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+/** Reads the appointment status from an intake form, defaulting to ทำนัดแล้ว. */
+function readBookingStatus(v: FormDataEntryValue | null): BookingStatus {
+  const s = String(v ?? "").trim();
+  return (BOOKING_STATUSES as readonly string[]).includes(s) ? (s as BookingStatus) : "booked";
+}
 
 /** Non-redirecting staff guard for server actions (role + live is_enabled). */
 async function requireStaffAction(): Promise<
@@ -104,12 +113,42 @@ export async function createPatient(
       };
     }
   }
-  const { error } = await supabase
+  const appointmentStatus = readBookingStatus(formData.get("appointment_status"));
+
+  // Confirming ทำนัดแล้ว may book the first assessment (พนักงาน/วัน/เวลา) inline.
+  // Validate all-or-nothing up front so a partial entry never orphans a record.
+  const employeeId = String(formData.get("appt_employee") ?? "").trim();
+  const apptDate = String(formData.get("appt_date") ?? "").trim();
+  const apptSlot = String(formData.get("appt_slot") ?? "").trim();
+  const wantsAssign = appointmentStatus === "booked" && (employeeId || apptDate || apptSlot);
+  if (wantsAssign && (!employeeId || !apptDate || !apptSlot))
+    return { error: "เลือกพนักงาน วันที่ และช่วงเวลานัดประเมินให้ครบ" };
+
+  const { data: inserted, error } = await supabase
     .from("patients")
-    .insert({ ...row, created_by: guard.userId });
+    .insert({ ...row, appointment_status: appointmentStatus, created_by: guard.userId })
+    .select("id")
+    .single();
   if (error) return { error: error.message };
+  const patientId = (inserted as { id: string }).id;
+
+  if (wantsAssign) {
+    const res = await createAssignment({
+      patientId,
+      employeeId,
+      date: apptDate,
+      slot: apptSlot,
+      kind: "assessment",
+      isSpecial: false,
+      specialAmount: null,
+    });
+    if (res.error) return { error: res.error };
+  }
+
   revalidatePath("/staff/patients");
-  redirect("/staff/patients");
+  revalidatePath("/staff/bookings");
+  // ทำนัดแล้ว shows on the patients page; the rest stay in the การทำนัด pipeline.
+  redirect(appointmentStatus === "booked" ? "/staff/patients" : "/staff/bookings");
 }
 
 /** Staff edits an existing service recipient → updates editable fields. */
@@ -220,9 +259,19 @@ export async function submitRegistration(
 
   const row = patientFromForm(formData);
   if (!row.full_name) return { error: "กรอกชื่อ-สกุล" };
+  // A relative filling the link starts a รอชำระเงิน recipient, but re-opening the
+  // link to correct data must not regress an already-advanced appointment status.
+  const { data: existing } = await admin
+    .from("patients")
+    .select("id")
+    .eq("hn", hn)
+    .maybeSingle();
+  const upsertRow = existing
+    ? { ...row, hn }
+    : { ...row, hn, appointment_status: "awaiting_payment" as const };
   const { error } = await admin
     .from("patients")
-    .upsert({ ...row, hn }, { onConflict: "hn" });
+    .upsert(upsertRow, { onConflict: "hn" });
   if (error) return { error: error.message };
   const { error: markErr } = await admin
     .from("registration_links")
