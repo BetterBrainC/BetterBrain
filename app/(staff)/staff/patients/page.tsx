@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PatientsTable } from "@/components/staff/patients-table";
-import { PatientStats } from "@/components/staff/patient-stats";
-import { getPatients, getPatientStats } from "@/lib/data/queries";
+import { PatientCharts } from "@/components/staff/patient-charts";
+import { getPatients, getPatientStats, getRecipientTimeSeries } from "@/lib/data/queries";
 
 export default async function PatientsPage() {
-  const [patients, stats] = await Promise.all([getPatients(), getPatientStats()]);
+  const [patients, stats, series] = await Promise.all([
+    getPatients(),
+    getPatientStats(),
+    getRecipientTimeSeries(),
+  ]);
   return (
     <div className="space-y-5">
       <header className="flex items-end justify-between">
@@ -17,7 +21,7 @@ export default async function PatientsPage() {
           <Button>+ เพิ่มผู้รับบริการ</Button>
         </Link>
       </header>
-      <PatientStats stats={stats} />
+      <PatientCharts stats={stats} series={series} />
       <PatientsTable patients={patients} />
     </div>
   );

@@ -1374,6 +1374,126 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
   };
 }
 
+// ── reports grouped by recipient (บันทึกรายงาน list = one row per ผู้รับบริการ) ──
+export interface ReportPatientRow {
+  patientId: string;
+  patientName: string;
+  patientHn: string | null;
+  reportCount: number;
+  assessmentCount: number;
+  lastDate: string;
+  lastStatus: string;
+}
+
+/** Unique recipients that have any report, with per-recipient report tallies. */
+export async function getReportPatients(): Promise<ReportPatientRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reports")
+    .select("report_type, report_date, status, patient_id, patients(full_name, hn)")
+    .order("report_date", { ascending: false })
+    .limit(1000);
+  const raw = rows<{
+    report_type: string; report_date: string; status: string; patient_id: string | null;
+    patients: { full_name: string | null; hn: string | null } | null;
+  }>(data);
+  const byPatient = new Map<string, ReportPatientRow>();
+  for (const r of raw) {
+    if (!r.patient_id) continue;
+    const existing = byPatient.get(r.patient_id);
+    if (existing) {
+      existing.reportCount += 1;
+      if (r.report_type.startsWith("assessment")) existing.assessmentCount += 1;
+    } else {
+      // Rows arrive date-desc, so the first seen per patient is the latest.
+      byPatient.set(r.patient_id, {
+        patientId: r.patient_id,
+        patientName: r.patients?.full_name ?? "—",
+        patientHn: r.patients?.hn ?? null,
+        reportCount: 1,
+        assessmentCount: r.report_type.startsWith("assessment") ? 1 : 0,
+        lastDate: r.report_date,
+        lastStatus: r.status,
+      });
+    }
+  }
+  return [...byPatient.values()].sort((a, b) => b.lastDate.localeCompare(a.lastDate));
+}
+
+// ── per-recipient assessment history + KPI trend (report drill-in) ──────────
+export interface PatientAssessmentHistory {
+  patientId: string;
+  patientName: string;
+  patientHn: string | null;
+  reports: { id: string; typeLabel: string; date: string; status: string }[];
+  kpi: { dateISO: string; fois: number | null; barthel: number | null; fim: number | null; functionItems: string[] }[];
+  latest: { fois: number | null; barthel: number | null; fim: number | null };
+  totals: { reports: number; assessments: number; evaluations: number };
+}
+
+/** All reports + KPI evaluations for one recipient — powers the report drill-in. */
+export async function getPatientAssessmentHistory(patientId: string): Promise<PatientAssessmentHistory | null> {
+  const supabase = await createClient();
+  const { data: pData } = await supabase
+    .from("patients")
+    .select("full_name, hn")
+    .eq("id", patientId)
+    .maybeSingle();
+  const p = one<{ full_name: string | null; hn: string | null }>(pData);
+  if (!p) return null;
+
+  const { data: rData } = await supabase
+    .from("reports")
+    .select("id, report_type, report_date, status")
+    .eq("patient_id", patientId)
+    .order("report_date", { ascending: false })
+    .limit(300);
+  const reports = rows<{ id: string; report_type: string; report_date: string; status: string }>(rData).map((r) => ({
+    id: r.id,
+    typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
+    date: r.report_date,
+    status: r.status,
+  }));
+
+  const { data: kData } = await supabase
+    .from("kpi_evaluations")
+    .select("fois_level, barthel_index, function_checklist, answers, evaluated_on")
+    .eq("target", "patient")
+    .eq("patient_id", patientId)
+    .order("evaluated_on", { ascending: true })
+    .limit(300);
+  const kpi = rows<{
+    fois_level: string | null; barthel_index: number | null;
+    function_checklist: Record<string, boolean> | null; answers: { fim?: number | null } | null;
+    evaluated_on: string;
+  }>(kData).map((r) => {
+    const fc = r.function_checklist ?? {};
+    const foisNum = r.fois_level ? Number(r.fois_level.replace(/\D/g, "")) || null : null;
+    return {
+      dateISO: r.evaluated_on,
+      fois: foisNum,
+      barthel: r.barthel_index,
+      fim: r.answers?.fim ?? null,
+      functionItems: Object.entries(fc).filter(([, v]) => v).map(([k]) => k),
+    };
+  });
+
+  const last = kpi[kpi.length - 1];
+  return {
+    patientId,
+    patientName: p.full_name ?? "—",
+    patientHn: p.hn,
+    reports,
+    kpi,
+    latest: { fois: last?.fois ?? null, barthel: last?.barthel ?? null, fim: last?.fim ?? null },
+    totals: {
+      reports: reports.length,
+      assessments: reports.filter((r) => r.typeLabel.startsWith("Assessment")).length,
+      evaluations: kpi.length,
+    },
+  };
+}
+
 // ── patient statistics (สถิติผู้รับบริการ) ──────────────────────────────
 const THAI_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
@@ -1442,6 +1562,23 @@ export async function getPatientStats(): Promise<PatientStatsData> {
     buddhistYear: year + 543,
     repeatCourse: { repeatCount, totalWithCourse: perPatient.size },
   };
+}
+
+/**
+ * Raw (date, recipient) pairs from the schedule, so the patients-page chart can
+ * bucket "จำนวนผู้รับบริการ" by day / month / year on the client (distinct
+ * recipients served per period). Bounded for a small clinic.
+ */
+export async function getRecipientTimeSeries(): Promise<{ dateISO: string; patientId: string }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("schedule_sessions")
+    .select("scheduled_date, patient_id")
+    .order("scheduled_date", { ascending: true })
+    .limit(8000);
+  return rows<{ scheduled_date: string; patient_id: string | null }>(data)
+    .filter((r) => !!r.patient_id)
+    .map((r) => ({ dateISO: r.scheduled_date, patientId: r.patient_id as string }));
 }
 
 // ── settings ────────────────────────────────────────────────────────────

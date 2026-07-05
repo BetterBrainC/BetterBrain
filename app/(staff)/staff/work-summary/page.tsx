@@ -23,7 +23,9 @@ export default async function WorkSummaryPage({
   const period: WorkPeriod = PERIODS.some((p) => p.key === sp.period)
     ? (sp.period as WorkPeriod)
     : "all";
-  const rows = await getEmployeeWorkSummary(workPeriodRange(period));
+  const summary = await getEmployeeWorkSummary(workPeriodRange(period));
+  // รวม (การเข้างาน) = ตรงเวลา + มาสาย per employee.
+  const rows = summary.map((r) => ({ ...r, attendanceTotal: r.onTime + r.late }));
 
   const GROUPS: {
     label: string;
@@ -35,7 +37,6 @@ export default async function WorkSummaryPage({
         { key: "total", label: "เคสทั้งหมด" },
         { key: "assessment", label: "เคสรับใหม่" },
         { key: "treatment", label: "การรักษา" },
-        { key: "cancelled", label: "ยกเลิก", tone: "var(--status-nocheckin-fg)" },
       ],
     },
     {
@@ -43,6 +44,7 @@ export default async function WorkSummaryPage({
       cols: [
         { key: "onTime", label: "ตรงเวลา", tone: "var(--status-completed-fg)" },
         { key: "late", label: "มาสาย", tone: "var(--status-late-fg)" },
+        { key: "attendanceTotal", label: "รวม" },
       ],
     },
   ];
@@ -115,7 +117,7 @@ export default async function WorkSummaryPage({
             </table>
           </div>
         )}
-        <p className="text-xs text-faint">เคสรับใหม่ = เคสประเมินครั้งแรก · ตรงเวลา = เข้าฝึก/จบเคส (ไม่รวมสาย) · ยกเลิก = นัดที่ยกเลิก</p>
+        <p className="text-xs text-faint">เคสรับใหม่ = เคสประเมินครั้งแรก · ตรงเวลา = เข้าฝึก/จบเคส (ไม่รวมสาย) · รวม = ตรงเวลา + มาสาย</p>
       </Card>
     </div>
   );

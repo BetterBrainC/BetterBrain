@@ -13,6 +13,7 @@ const PROFESSION_LABEL: Record<string, string> = { ot: "นักกิจกร
 const EMPLOYMENT_LABEL: Record<string, string> = { monthly: "Full-time", part_time: "Part-time" };
 
 type EmploymentFilter = "all" | "monthly" | "part_time";
+type ProfessionFilter = "all" | "ot" | "pt" | "none";
 
 /** Gradient-initial avatar fallback when an employee has no photo. */
 function Avatar({ name, src }: { name: string; src: string | null }) {
@@ -31,20 +32,23 @@ function Avatar({ name, src }: { name: string; src: string | null }) {
 export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
   const router = useRouter();
   const [filter, setFilter] = React.useState<EmploymentFilter>("all");
+  const [profFilter, setProfFilter] = React.useState<ProfessionFilter>("all");
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
-  // Counts broken out by profession × employment type (client brief 28/6/2569).
-  const count = (prof: "ot" | "pt", emp: "monthly" | "part_time") =>
-    employees.filter((e) => e.profession === prof && e.employment_type === emp).length;
+  // Headline cards = real workforce totals (always populated).
   const groups = [
-    { label: "นักกิจกรรมบำบัด Full-time", n: count("ot", "monthly") },
-    { label: "นักกิจกรรมบำบัด Part-time", n: count("ot", "part_time") },
-    { label: "นักกายภาพบำบัด Full-time", n: count("pt", "monthly") },
-    { label: "นักกายภาพบำบัด Part-time", n: count("pt", "part_time") },
+    { label: "ทั้งหมด", n: employees.length },
+    { label: "Full-time", n: employees.filter((e) => e.employment_type === "monthly").length },
+    { label: "Part-time", n: employees.filter((e) => e.employment_type === "part_time").length },
+    { label: "กำลังใช้งาน", n: employees.filter((e) => e.is_enabled).length },
   ];
-  const unassigned = employees.filter((e) => e.profession !== "ot" && e.profession !== "pt").length;
 
-  const shown = employees.filter((e) => filter === "all" || e.employment_type === filter);
+  const shown = employees.filter(
+    (e) =>
+      (filter === "all" || e.employment_type === filter) &&
+      (profFilter === "all" ||
+        (profFilter === "none" ? e.profession !== "ot" && e.profession !== "pt" : e.profession === profFilter)),
+  );
 
   async function remove(e: EmployeeLite) {
     if (!window.confirm(`ปิดใช้งานพนักงาน "${e.full_name}"? (เก็บประวัติเคสไว้)`)) return;
@@ -60,6 +64,12 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
     { key: "monthly", label: "Full-time" },
     { key: "part_time", label: "Part-time" },
   ];
+  const PROF_FILTERS: { key: ProfessionFilter; label: string }[] = [
+    { key: "all", label: "ทุกตำแหน่ง" },
+    { key: "ot", label: "นักกิจกรรมบำบัด (OT)" },
+    { key: "pt", label: "นักกายภาพบำบัด (PT)" },
+    { key: "none", label: "ไม่ระบุ" },
+  ];
 
   return (
     <div className="space-y-4">
@@ -71,11 +81,7 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
           </div>
         ))}
       </div>
-      {unassigned > 0 && (
-        <p className="text-xs text-muted">ยังไม่ได้ระบุวิชาชีพ {unassigned} คน — แก้ไขในหน้าพนักงาน</p>
-      )}
-
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {FILTERS.map((ff) => (
           <button
             key={ff.key}
@@ -91,6 +97,18 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
             {ff.label}
           </button>
         ))}
+        <label className="ml-auto flex items-center gap-2 text-sm text-muted">
+          ตำแหน่ง
+          <select
+            value={profFilter}
+            onChange={(e) => setProfFilter(e.target.value as ProfessionFilter)}
+            className="h-9 rounded-md border border-border bg-surface px-2 text-sm text-ink outline-none focus:border-primary"
+          >
+            {PROF_FILTERS.map((pf) => (
+              <option key={pf.key} value={pf.key}>{pf.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <DataTable headers={["รหัสพนักงาน", "ชื่อ-สกุล", "ตำแหน่ง", "ใบอนุญาตเลขที่", "ประเภท", "สถานะ", ""]}>
