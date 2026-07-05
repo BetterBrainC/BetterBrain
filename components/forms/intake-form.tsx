@@ -15,6 +15,40 @@ import type { FormResult } from "@/actions/patients";
 type Action = (prev: FormResult, formData: FormData) => Promise<FormResult>;
 type EmpOpt = { id: string; name: string; code: string | null };
 
+const CUSTOM_PROGRAM = "__custom__";
+
+/** โปรแกรมการฝึก: pick from the managed list or type a custom value. */
+function ProgramField({ programs, defaultValue }: { programs: string[]; defaultValue?: string }) {
+  const dv = (defaultValue ?? "").trim();
+  const known = dv !== "" && programs.includes(dv);
+  const [custom, setCustom] = useState(dv !== "" && !known);
+  const [sel, setSel] = useState(known ? dv : "");
+  const [typed, setTyped] = useState(!known ? dv : "");
+  const value = custom ? typed : sel;
+
+  return (
+    <Field label="คอร์สการฟื้นฟู (โปรแกรมการฝึก)">
+      <input type="hidden" name="training_program" value={value} />
+      <Select
+        value={custom ? CUSTOM_PROGRAM : sel}
+        onChange={(e) => {
+          if (e.target.value === CUSTOM_PROGRAM) setCustom(true);
+          else { setCustom(false); setSel(e.target.value); }
+        }}
+      >
+        <option value="">— ไม่ระบุ —</option>
+        {programs.map((p) => (<option key={p} value={p}>{p}</option>))}
+        <option value={CUSTOM_PROGRAM}>อื่นๆ (พิมพ์เอง)…</option>
+      </Select>
+      {custom && (
+        <div className="mt-2">
+          <TextInput placeholder="พิมพ์ชื่อโปรแกรม" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        </div>
+      )}
+    </Field>
+  );
+}
+
 export type IntakeInitial = Partial<
   Record<
     | "full_name" | "age_years" | "dob" | "national_id" | "nationality" | "race"
@@ -43,6 +77,7 @@ export function IntakeForm({
   initial,
   backHref,
   employees = [],
+  programs = [],
 }: {
   action: Action;
   mode: "staff" | "relative" | "edit";
@@ -52,6 +87,7 @@ export function IntakeForm({
   initial?: IntakeInitial;
   backHref?: string;
   employees?: EmpOpt[];
+  programs?: string[];
 }) {
   const [state, formAction, pending] = useActionState<FormResult, FormData>(
     action,
@@ -128,7 +164,7 @@ export function IntakeForm({
               ))}
             </Select>
           </Field>
-          <Field label="คอร์สการฟื้นฟู (โปรแกรมการฝึก)"><TextInput name="training_program" placeholder="เช่น Swallowing Rehab" defaultValue={dv("training_program")} /></Field>
+          <ProgramField programs={programs} defaultValue={dv("training_program")} />
         </div>
       </Card>
 

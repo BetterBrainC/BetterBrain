@@ -1,6 +1,7 @@
 import { IntakeForm, type IntakeInitial } from "@/components/forms/intake-form";
 import { submitRegistration } from "@/actions/patients";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTrainingPrograms } from "@/lib/data/queries";
 import { APP } from "@/lib/i18n/th";
 
 export const metadata = { title: "ลงทะเบียนผู้รับบริการ" };
@@ -42,6 +43,7 @@ export default async function RegisterPage({
     .select("*")
     .eq("hn", hn)
     .maybeSingle();
+  const programs = await getTrainingPrograms();
   const p = existing as Record<string, string | number | null> | null;
   const initial: IntakeInitial | undefined = p
     ? {
@@ -77,7 +79,7 @@ export default async function RegisterPage({
         <h1 className="font-display text-2xl font-bold text-navy">ลงทะเบียนผู้รับบริการ</h1>
         <p className="text-sm text-muted">กรุณากรอกข้อมูลให้ครบถ้วน (HN {hn})</p>
       </header>
-      <IntakeForm action={submitRegistration} mode="relative" hn={hn} token={token} initial={initial} />
+      <IntakeForm action={submitRegistration} mode="relative" hn={hn} token={token} initial={initial} programs={programs} />
     </main>
   );
 }
