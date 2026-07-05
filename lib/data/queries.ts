@@ -1163,21 +1163,39 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
   return { programs, patients };
 }
 
-/** Managed list of โปรแกรมฝึก / คอร์สการฟื้นฟู (settings.extra.training_programs). */
+/**
+ * All known โปรแกรมฝึก / คอร์สการฟื้นฟู = the managed list
+ * (settings.extra.training_programs) unioned with programs already in use by
+ * recipients and any exercise-guide keys — so the CRUD page and the intake
+ * dropdown reflect reality, not just what was explicitly saved.
+ */
 export async function getTrainingPrograms(): Promise<string[]> {
   const admin = createAdminClient();
-  const { data } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
-  const extra = (one<{ extra: Record<string, unknown> }>(data)?.extra ?? {}) as Record<string, unknown>;
-  const list = Array.isArray(extra.training_programs) ? extra.training_programs : [];
+  const [{ data: setData }, { data: pData }] = await Promise.all([
+    admin.from("settings").select("extra").eq("id", 1).maybeSingle(),
+    admin.from("patients").select("training_program").eq("appointment_status", "booked"),
+  ]);
+  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
+  const managed = Array.isArray(extra.training_programs) ? extra.training_programs : [];
+  const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
+    ? (extra.exercise_guides as Record<string, unknown>)
+    : {};
+  const inUse = rows<{ training_program: string | null }>(pData).map((p) => p.training_program);
+
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const v of list) {
-    if (typeof v !== "string") continue;
-    const s = v.trim();
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
+  const addAll = (arr: unknown[]) => {
+    for (const v of arr) {
+      if (typeof v !== "string") continue;
+      const s = v.trim();
+      if (!s || seen.has(s)) continue;
+      seen.add(s);
+      out.push(s);
+    }
+  };
+  addAll(managed);
+  addAll(inUse);
+  addAll(Object.keys(byProgram));
   return out.sort((a, b) => a.localeCompare(b, "th"));
 }
 
