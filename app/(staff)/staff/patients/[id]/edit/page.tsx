@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { IntakeForm, type IntakeInitial } from "@/components/forms/intake-form";
 import { updatePatient } from "@/actions/patients";
-import { getPatientDetail } from "@/lib/data/queries";
+import { getPatientDetail, getTrainingPrograms } from "@/lib/data/queries";
 import { requireStaff } from "@/lib/auth";
 
 export const metadata = { title: "แก้ไขผู้รับบริการ" };
@@ -13,7 +13,7 @@ export default async function EditPatientPage({
 }) {
   await requireStaff();
   const { id } = await params;
-  const detail = await getPatientDetail(id);
+  const [detail, programs] = await Promise.all([getPatientDetail(id), getTrainingPrograms()]);
   if (!detail) notFound();
   const p = detail.patient;
 
@@ -56,6 +56,7 @@ export default async function EditPatientPage({
         hn={p.hn ?? undefined}
         initial={initial}
         backHref={`/staff/patients/${id}`}
+        programs={programs}
       />
     </div>
   );

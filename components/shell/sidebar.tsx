@@ -15,6 +15,7 @@ import {
   ScrollText,
   BarChart3,
   HeartHandshake,
+  ListChecks,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ export const STAFF_NAV: { href: string; label: string; icon: typeof LayoutDashbo
   { href: "/staff/approvals", label: "การอนุมัติ", icon: CheckCircle2, badge: "approvals" },
   { href: "/staff/patients", label: "ผู้รับบริการ", icon: Users },
   { href: "/staff/relatives", label: "จัดการหน้าญาติ", icon: HeartHandshake },
+  { href: "/staff/programs", label: "จัดการโปรแกรมฝึก", icon: ListChecks },
   { href: "/staff/employees", label: "รายชื่อพนักงาน", icon: UserCog },
   { href: "/staff/reports", label: "บันทึกรายงาน", icon: FileText },
   { href: "/staff/work-summary", label: "สรุปการทำงาน", icon: BarChart3 },

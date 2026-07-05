@@ -1137,7 +1137,9 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
     ? (extra.exercise_guides as Record<string, unknown>)
     : {};
 
+  const managed = Array.isArray(extra.training_programs) ? extra.training_programs : [];
   const progSet = new Set<string>();
+  for (const m of managed) if (typeof m === "string" && m.trim()) progSet.add(m.trim());
   for (const p of active) if (p.training_program?.trim()) progSet.add(p.training_program.trim());
   for (const k of Object.keys(byProgram)) if (k.trim()) progSet.add(k.trim());
   const programs = [...progSet]
@@ -1159,6 +1161,24 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
   });
 
   return { programs, patients };
+}
+
+/** Managed list of โปรแกรมฝึก / คอร์สการฟื้นฟู (settings.extra.training_programs). */
+export async function getTrainingPrograms(): Promise<string[]> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = (one<{ extra: Record<string, unknown> }>(data)?.extra ?? {}) as Record<string, unknown>;
+  const list = Array.isArray(extra.training_programs) ? extra.training_programs : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of list) {
+    if (typeof v !== "string") continue;
+    const s = v.trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out.sort((a, b) => a.localeCompare(b, "th"));
 }
 
 // ── KPI templates (year-versioned question bank) ────────────────────────
