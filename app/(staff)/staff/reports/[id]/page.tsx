@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
+import { BackButton } from "@/components/ui/back-button";
 import { ExportButton } from "@/components/staff/export-button";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { requireStaff } from "@/lib/auth";
@@ -38,9 +37,7 @@ export default async function ReportDetailPage({
 
   return (
     <div className="space-y-5">
-      <Link href="/staff/reports" className="inline-flex items-center gap-1 text-sm text-muted">
-        <ArrowLeft className="h-4 w-4" /> บันทึกรายงานทั้งหมด
-      </Link>
+      <BackButton fallbackHref="/staff/reports" />
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
