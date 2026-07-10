@@ -1489,6 +1489,10 @@ export interface ReportDetail {
   patientId: string | null;
   patientName: string;
   patientAge: number | null;
+  /** From the patient record (print templates: ลิ้งก์ข้อมูลมาจากข้อมูลผู้รับบริการ). */
+  patientDiagnosis: Diagnosis | null;
+  /** Date of this patient's earliest assessment report (วันที่ประเมินแรกรับ). */
+  firstAssessmentDate: string | null;
   authorName: string;
   date: string;
   status: string;
@@ -1519,16 +1523,30 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years), author:profiles!reports_author_id_fkey(full_name)")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, diagnosis_category), author:profiles!reports_author_id_fkey(full_name)")
     .eq("id", id)
     .maybeSingle();
   const r = one<{
     id: string; report_type: string; report_date: string; status: string;
     payload: unknown; patient_id: string | null;
-    patients: { full_name: string | null; age_years: number | null } | null;
+    patients: { full_name: string | null; age_years: number | null; diagnosis_category: Diagnosis | null } | null;
     author: { full_name: string | null } | null;
   }>(data);
   if (!r) return null;
+
+  let firstAssessmentDate: string | null = null;
+  if (r.patient_id) {
+    const { data: fa } = await supabase
+      .from("reports")
+      .select("report_date")
+      .eq("patient_id", r.patient_id)
+      .in("report_type", ["assessment_swallow", "assessment_hand"])
+      .order("report_date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    firstAssessmentDate = one<{ report_date: string }>(fa)?.report_date ?? null;
+  }
+
   return {
     id: r.id,
     reportType: r.report_type,
@@ -1536,6 +1554,8 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
     patientId: r.patient_id,
     patientName: r.patients?.full_name ?? "—",
     patientAge: r.patients?.age_years ?? null,
+    patientDiagnosis: r.patients?.diagnosis_category ?? null,
+    firstAssessmentDate,
     authorName: r.author?.full_name ?? "—",
     date: r.report_date,
     status: r.status,
