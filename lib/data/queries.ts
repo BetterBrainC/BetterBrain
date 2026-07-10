@@ -194,6 +194,8 @@ export interface PatientRow {
   status: PatientStatus;
   courseUsed: number;
   courseTotal: number;
+  /** ISO timestamp — powers the dashboard วัน/สัปดาห์/เดือน/ปี filter. */
+  createdAt: string | null;
 }
 
 export async function getPatients(): Promise<PatientRow[]> {
@@ -202,12 +204,15 @@ export async function getPatients(): Promise<PatientRow[]> {
   // รอทำนัด / ยกเลิกนัด live on the การทำนัด (bookings) page instead.
   const { data } = await supabase
     .from("patients")
-    .select("id, hn, full_name, age_years, training_program, diagnosis_category, status")
+    .select("id, hn, full_name, age_years, training_program, diagnosis_category, status, created_at")
     .eq("appointment_status", "booked")
-    .order("created_at", { ascending: true });
+    // Latest-registered first — client rule: every recipient list leads with
+    // the newest entries.
+    .order("created_at", { ascending: false });
   const patients = rows<{
     id: string; hn: string | null; full_name: string; age_years: number | null;
     training_program: string | null; diagnosis_category: Diagnosis | null; status: PatientStatus;
+    created_at: string | null;
   }>(data);
   if (patients.length === 0) return [];
 
@@ -242,6 +247,7 @@ export async function getPatients(): Promise<PatientRow[]> {
     status: p.status,
     courseUsed: byPatient.get(p.id)?.used ?? 0,
     courseTotal: byPatient.get(p.id)?.total ?? 0,
+    createdAt: p.created_at,
   }));
 }
 
