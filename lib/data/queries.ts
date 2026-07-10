@@ -1484,13 +1484,17 @@ export interface ReportField {
 }
 export interface ReportDetail {
   id: string;
+  reportType: string;
   typeLabel: string;
   patientId: string | null;
   patientName: string;
+  patientAge: number | null;
   authorName: string;
   date: string;
   status: string;
   fields: ReportField[];
+  /** Raw payload — powers the letterhead PDF/print template. */
+  payload: Record<string, unknown>;
 }
 
 /** Flatten a clinical report's jsonb payload into ordered key/value rows. */
@@ -1515,25 +1519,28 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name), author:profiles!reports_author_id_fkey(full_name)")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years), author:profiles!reports_author_id_fkey(full_name)")
     .eq("id", id)
     .maybeSingle();
   const r = one<{
     id: string; report_type: string; report_date: string; status: string;
     payload: unknown; patient_id: string | null;
-    patients: { full_name: string | null } | null;
+    patients: { full_name: string | null; age_years: number | null } | null;
     author: { full_name: string | null } | null;
   }>(data);
   if (!r) return null;
   return {
     id: r.id,
+    reportType: r.report_type,
     typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
     patientId: r.patient_id,
     patientName: r.patients?.full_name ?? "—",
+    patientAge: r.patients?.age_years ?? null,
     authorName: r.author?.full_name ?? "—",
     date: r.report_date,
     status: r.status,
     fields: flattenReportPayload(r.payload),
+    payload: (r.payload && typeof r.payload === "object" ? r.payload : {}) as Record<string, unknown>,
   };
 }
 

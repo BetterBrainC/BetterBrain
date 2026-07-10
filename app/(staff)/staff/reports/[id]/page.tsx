@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FileDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { BackButton } from "@/components/ui/back-button";
 import { ExportButton } from "@/components/staff/export-button";
@@ -48,12 +51,21 @@ export default async function ReportDetailPage({
         </div>
         <div className="flex items-center gap-3">
           <Badge tone={st.tone}>{st.label}</Badge>
-          <ExportButton
-            filename={`report-${r.patientName}-${r.date}`}
-            headers={["หัวข้อ", "ข้อมูล"]}
-            rows={exportRows}
-            label="Export"
-          />
+          {r.reportType === "followup" ? (
+            // รายงานประจำวัน exports as the clinic's letterhead PDF (print view).
+            <Link href={`/print/report/${r.id}`} target="_blank">
+              <Button size="sm" variant="secondary">
+                <FileDown className="h-4 w-4" /> Export
+              </Button>
+            </Link>
+          ) : (
+            <ExportButton
+              filename={`report-${r.patientName}-${r.date}`}
+              headers={["หัวข้อ", "ข้อมูล"]}
+              rows={exportRows}
+              label="Export"
+            />
+          )}
         </div>
       </header>
 
