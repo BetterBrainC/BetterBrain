@@ -75,7 +75,7 @@ export function ExerciseGuideManager({
   if (programs.length === 0) {
     return (
       <Card>
-        <CardTitle className="mb-1 text-base">วิธีออกกำลังกาย</CardTitle>
+        <CardTitle className="mb-1 text-base">โปรแกรมฝึกที่บ้าน</CardTitle>
         <p className="text-sm text-muted">ยังไม่มีคอร์สการฟื้นฟู — กำหนดโปรแกรมการฝึกให้ผู้รับบริการก่อน แล้วจะปรากฏที่นี่</p>
       </Card>
     );

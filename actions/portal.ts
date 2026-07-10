@@ -95,9 +95,44 @@ export async function setRelativeReportVisibility(input: {
 }
 
 /**
- * Staff: save the home-exercise guide (วิธีออกกำลังกาย) for one course/program.
+ * Staff: pin which โปรแกรมฝึกที่บ้าน the relatives portal shows for a recipient
+ * (e.g. ผู้รับบริการฝึกกลืน → ส่งเฉพาะโปรแกรมฝึกกลืน). Empty program clears the
+ * pin → the portal falls back to the recipient's own โปรแกรมการฝึก. Stored as a
+ * patientId→program map in settings.extra.portal_home_programs (no migration).
+ */
+export async function setRelativePortalProgram(input: {
+  patientId: string;
+  program: string;
+}): Promise<{ ok?: boolean; error?: string }> {
+  const u = await getCurrentUser();
+  const role = u?.profile?.role;
+  if (role !== "admin" && role !== "director") return { error: "ไม่มีสิทธิ์" };
+  if (u?.profile?.is_enabled === false) return { error: "บัญชีถูกปิดการใช้งาน" };
+  if (!input.patientId) return { error: "ไม่พบผู้รับบริการ" };
+
+  const admin = createAdminClient();
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = ((setData as { extra?: Record<string, unknown> } | null)?.extra ?? {}) as Record<string, unknown>;
+  const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
+    ? { ...(extra.portal_home_programs as Record<string, unknown>) }
+    : {};
+  const program = input.program.trim();
+  if (program) pinned[input.patientId] = program;
+  else delete pinned[input.patientId];
+
+  const { error } = await admin
+    .from("settings")
+    .upsert({ id: 1, extra: { ...extra, portal_home_programs: pinned } }, { onConflict: "id" });
+  if (error) return { error: error.message };
+  revalidatePath("/staff/relatives");
+  return { ok: true };
+}
+
+/**
+ * Staff: save the home-exercise guide (โปรแกรมฝึกที่บ้าน) for one course/program.
  * Stored as a program→items map in settings.extra.exercise_guides; the relatives
- * portal pulls the list matching that recipient's โปรแกรมการฝึก.
+ * portal pulls the list matching that recipient's โปรแกรมการฝึก (or the pinned
+ * portal program).
  */
 export async function setExerciseGuide(input: {
   program: string;

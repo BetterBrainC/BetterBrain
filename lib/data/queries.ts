@@ -1042,14 +1042,19 @@ export async function getRelativePortal(
     ? { name: emp.full_name ?? "—", role: emp.position_title ?? "พนักงาน/นักบำบัด", photoUrl: emp.photo_url ?? null }
     : null;
 
-  // Exercise guide: per-course (settings.extra.exercise_guides keyed by the
-  // recipient's โปรแกรมการฝึก) → legacy global list → hardcoded default.
+  // Home-training guide (โปรแกรมฝึกที่บ้าน): staff can pin a specific program
+  // per recipient (settings.extra.portal_home_programs) — otherwise it follows
+  // the recipient's โปรแกรมการฝึก → legacy global list → hardcoded default.
   const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
   const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
   const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
     ? (extra.exercise_guides as Record<string, unknown>)
     : {};
-  const program = (patient.training_program ?? "").trim();
+  const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
+    ? (extra.portal_home_programs as Record<string, unknown>)
+    : {};
+  const pinnedProgram = typeof pinned[patient.id] === "string" ? (pinned[patient.id] as string).trim() : "";
+  const program = pinnedProgram || (patient.training_program ?? "").trim();
   const perProgram = program ? parseExerciseItems(byProgram[program]) : [];
   const legacy = parseExerciseItems(extra.exercise_guide);
   const exercises = perProgram.length > 0 ? perProgram : legacy.length > 0 ? legacy : DEFAULT_EXERCISE_GUIDE;
@@ -1100,6 +1105,8 @@ export interface RelativeManagePatient {
   name: string;
   hn: string | null;
   program: string | null;
+  /** Pinned โปรแกรมฝึกที่บ้าน for the portal; null = follow `program`. */
+  portalProgram: string | null;
   hasLink: boolean;
   token: string | null;
   showFollowup: boolean;
@@ -1160,6 +1167,10 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
     .sort((a, b) => a.localeCompare(b, "th"))
     .map((program) => ({ program, items: parseExerciseItems(byProgram[program]) }));
 
+  const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
+    ? (extra.portal_home_programs as Record<string, unknown>)
+    : {};
+
   const patients: RelativeManagePatient[] = active.map((p) => {
     const ra = raMap.get(p.id);
     return {
@@ -1167,6 +1178,9 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
       name: p.full_name,
       hn: p.hn,
       program: p.training_program,
+      portalProgram: typeof pinned[p.id] === "string" && (pinned[p.id] as string).trim()
+        ? (pinned[p.id] as string).trim()
+        : null,
       hasLink: !!ra?.token,
       token: ra?.token ?? null,
       showFollowup: ra?.showFollowup ?? true,
