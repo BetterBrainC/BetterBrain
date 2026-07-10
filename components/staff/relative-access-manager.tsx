@@ -27,6 +27,7 @@ export function RelativeAccessManager({
   const [busy, setBusy] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
+  const [showAssessment, setShowAssessment] = React.useState(true);
   const [showFollowup, setShowFollowup] = React.useState(true);
   const [showSummary, setShowSummary] = React.useState(true);
   const [visBusy, setVisBusy] = React.useState(false);
@@ -45,6 +46,7 @@ export function RelativeAccessManager({
       setHasLink(false);
       return;
     }
+    setShowAssessment(selected.showAssessment);
     setShowFollowup(selected.showFollowup);
     setShowSummary(selected.showSummary);
     setPortalProgram(selected.portalProgram ?? "");
@@ -81,14 +83,16 @@ export function RelativeAccessManager({
     }
   }
 
-  async function saveVisibility(next: { followup: boolean; summary: boolean }) {
+  async function saveVisibility(next: { assessment: boolean; followup: boolean; summary: boolean }) {
     if (!selected) return;
+    setShowAssessment(next.assessment);
     setShowFollowup(next.followup);
     setShowSummary(next.summary);
     setVisBusy(true);
     setVisMsg(null);
     const res = await setRelativeReportVisibility({
       patientId: selected.id,
+      showAssessment: next.assessment,
       showFollowup: next.followup,
       showSummary: next.summary,
     });
@@ -141,11 +145,21 @@ export function RelativeAccessManager({
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-[var(--primary)]"
+                  checked={showAssessment}
+                  disabled={!hasLink || visBusy}
+                  onChange={(e) => saveVisibility({ assessment: e.target.checked, followup: showFollowup, summary: showSummary })}
+                />
+                รายงานประเมินแรกรับ (Assessment)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--primary)]"
                   checked={showFollowup}
                   disabled={!hasLink || visBusy}
-                  onChange={(e) => saveVisibility({ followup: e.target.checked, summary: showSummary })}
+                  onChange={(e) => saveVisibility({ assessment: showAssessment, followup: e.target.checked, summary: showSummary })}
                 />
-                บันทึกรายวัน (Follow up)
+                รายงานประจำวัน (Follow up)
               </label>
               <label className="flex items-center gap-2 text-sm text-ink">
                 <input
@@ -153,9 +167,9 @@ export function RelativeAccessManager({
                   className="h-4 w-4 accent-[var(--primary)]"
                   checked={showSummary}
                   disabled={!hasLink || visBusy}
-                  onChange={(e) => saveVisibility({ followup: showFollowup, summary: e.target.checked })}
+                  onChange={(e) => saveVisibility({ assessment: showAssessment, followup: showFollowup, summary: e.target.checked })}
                 />
-                ความก้าวหน้ารายเดือน (Summary)
+                รายงานความก้าวหน้ารายเดือน (Summary)
               </label>
             </div>
             {visMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{visMsg.error}</p>}

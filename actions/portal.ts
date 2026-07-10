@@ -71,9 +71,14 @@ export async function createRelativeShareLink(
   return { token };
 }
 
-/** Staff: set which report types the relatives portal exposes for a patient. */
+/**
+ * Staff: set which report types the relatives portal exposes for a patient.
+ * followup/summary live on relative_access; the รายงานประเมินแรกรับ (assessment)
+ * flag lives in settings.extra.portal_show_assessment (default ON, no migration).
+ */
 export async function setRelativeReportVisibility(input: {
   patientId: string;
+  showAssessment: boolean;
   showFollowup: boolean;
   showSummary: boolean;
 }): Promise<{ ok?: boolean; error?: string }> {
@@ -91,6 +96,18 @@ export async function setRelativeReportVisibility(input: {
     .select("id");
   if (error) return { error: error.message };
   if (!data || data.length === 0) return { error: "ยังไม่มีลิงก์ญาติ — สร้างลิงก์ก่อน" };
+
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = ((setData as { extra?: Record<string, unknown> } | null)?.extra ?? {}) as Record<string, unknown>;
+  const showAssess = extra.portal_show_assessment && typeof extra.portal_show_assessment === "object"
+    ? { ...(extra.portal_show_assessment as Record<string, unknown>) }
+    : {};
+  if (input.showAssessment) delete showAssess[input.patientId]; // default = ON
+  else showAssess[input.patientId] = false;
+  const { error: extraErr } = await admin
+    .from("settings")
+    .upsert({ id: 1, extra: { ...extra, portal_show_assessment: showAssess } }, { onConflict: "id" });
+  if (extraErr) return { error: extraErr.message };
   return { ok: true };
 }
 

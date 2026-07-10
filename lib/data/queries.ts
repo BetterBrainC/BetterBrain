@@ -894,7 +894,7 @@ export interface RelativePortalSession {
 }
 export interface RelativePortalReport {
   id: string;
-  type: "followup" | "summary";
+  type: "assessment_swallow" | "assessment_hand" | "followup" | "summary";
   dateISO: string;
   note: string | null;
 }
@@ -1010,8 +1010,20 @@ export async function getRelativePortal(
     status: s.status,
   }));
 
-  // Completed reports the clinic chose to expose (followup/summary toggles).
-  const allowed: ("followup" | "summary")[] = [
+  // Settings.extra powers both the assessment-visibility flag and (below) the
+  // home-training guide, so fetch it once up front.
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
+
+  // Completed reports the clinic chose to expose. followup/summary toggles live
+  // on relative_access; the newer รายงานประเมินแรกรับ (assessment) toggle lives in
+  // settings.extra.portal_show_assessment (patientId→bool, default ON).
+  const showAssessMap = extra.portal_show_assessment && typeof extra.portal_show_assessment === "object"
+    ? (extra.portal_show_assessment as Record<string, unknown>)
+    : {};
+  const showAssessment = showAssessMap[patient.id] !== false;
+  const allowed: RelativePortalReport["type"][] = [
+    ...(showAssessment ? (["assessment_swallow", "assessment_hand"] as const) : []),
     ...(access.show_followup ? (["followup"] as const) : []),
     ...(access.show_summary ? (["summary"] as const) : []),
   ];
@@ -1025,7 +1037,7 @@ export async function getRelativePortal(
       .in("report_type", allowed)
       .order("report_date", { ascending: false })
       .limit(12);
-    reports = rows<{ id: string; report_type: "followup" | "summary"; report_date: string; payload: unknown }>(rData)
+    reports = rows<{ id: string; report_type: RelativePortalReport["type"]; report_date: string; payload: unknown }>(rData)
       .map((r) => ({ id: r.id, type: r.report_type, dateISO: r.report_date, note: reportNote(r.payload) }));
   }
 
@@ -1045,8 +1057,6 @@ export async function getRelativePortal(
   // Home-training guide (โปรแกรมฝึกที่บ้าน): staff can pin a specific program
   // per recipient (settings.extra.portal_home_programs) — otherwise it follows
   // the recipient's โปรแกรมการฝึก → legacy global list → hardcoded default.
-  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
-  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
   const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
     ? (extra.exercise_guides as Record<string, unknown>)
     : {};
@@ -1109,6 +1119,7 @@ export interface RelativeManagePatient {
   portalProgram: string | null;
   hasLink: boolean;
   token: string | null;
+  showAssessment: boolean;
   showFollowup: boolean;
   showSummary: boolean;
 }
@@ -1170,6 +1181,9 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
   const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
     ? (extra.portal_home_programs as Record<string, unknown>)
     : {};
+  const showAssessMap = extra.portal_show_assessment && typeof extra.portal_show_assessment === "object"
+    ? (extra.portal_show_assessment as Record<string, unknown>)
+    : {};
 
   const patients: RelativeManagePatient[] = active.map((p) => {
     const ra = raMap.get(p.id);
@@ -1183,6 +1197,7 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
         : null,
       hasLink: !!ra?.token,
       token: ra?.token ?? null,
+      showAssessment: showAssessMap[p.id] !== false,
       showFollowup: ra?.showFollowup ?? true,
       showSummary: ra?.showSummary ?? true,
     };

@@ -10,7 +10,12 @@ import { formatThaiDate } from "@/lib/date/buddhist";
 import { ThaiDate } from "@/components/ui/thai-date";
 import type { RelativePortalData } from "@/lib/data/queries";
 
-const REPORT_LABEL = { followup: "บันทึกรายวัน", summary: "ความก้าวหน้ารายเดือน" } as const;
+const REPORT_LABEL = {
+  assessment_swallow: "รายงานประเมินแรกรับ · Swallowing",
+  assessment_hand: "รายงานประเมินแรกรับ · Hand Function",
+  followup: "รายงานประจำวัน",
+  summary: "รายงานความก้าวหน้ารายเดือน",
+} as const;
 
 /** Relative-facing session status (friendlier than the staff labels). */
 const SESSION_VIEW: Record<string, { label: string; tone: "completed" | "late" | "info" | "nocheckin" | "skipped" | "neutral" }> = {

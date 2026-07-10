@@ -239,7 +239,7 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
 export function SummaryReportForm({ patientName, backHref, sessionId }: FormProps) {
   return (
     <ReportFormShell
-      title="ความก้าวหน้ารายเดือน"
+      title="รายงานความก้าวหน้ารายเดือน"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}

@@ -88,9 +88,9 @@ export const FOIS_LABEL = {
 
 /** Report types — 3 (client 3.pdf p.7/p.11): Assessment · Follow up · Summary. */
 export const REPORT_LABEL = {
-  assessment: "ประเมินแรกรับ (Assessment)",
-  followup: "บันทึกรายวัน (Follow up)",
-  summary: "ความก้าวหน้ารายเดือน (Summary report)",
+  assessment: "รายงานประเมินแรกรับ (Assessment)",
+  followup: "รายงานประจำวัน (Follow up)",
+  summary: "รายงานความก้าวหน้ารายเดือน (Summary report)",
 } as const;
 
 export const APP = {
