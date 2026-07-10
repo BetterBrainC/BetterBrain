@@ -262,6 +262,10 @@ export async function submitRegistration(
 
   const row = patientFromForm(formData);
   if (!row.full_name) return { error: "กรอกชื่อ-สกุล" };
+  // การวินิจฉัย + โปรแกรมการฝึก are admin-recorded clinical fields; the relative
+  // link doesn't show them, so a (re)submission must never overwrite them.
+  delete (row as Partial<typeof row>).diagnosis_category;
+  delete (row as Partial<typeof row>).training_program;
   // A relative filling the link starts a รอชำระเงิน recipient, but re-opening the
   // link to correct data must not regress an already-advanced appointment status.
   const { data: existing } = await admin
