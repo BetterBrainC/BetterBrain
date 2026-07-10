@@ -13,7 +13,7 @@
   /* primary = brand GREEN (buttons/CTA); white text passes WCAG AA on --primary */
   --primary:#0E7C6B; --primary-600:#0B6557; --primary-700:#094E43; --primary-300:#7FD3C8;
   --sky:#4AA3E0; --sky-600:#3990D0;
-  --teal:#14B8A6; --teal-600:#0E9E8E;           /* ACTIVE NAV accent only */
+  --teal:#14B8A6; --teal-600:#0E9E8E;           /* success/positive accent (nav active follows role --primary) */
   --accent:#F5A623; --accent-600:#DB8E10; --accent-700:#B5740B;  /* orange — sparing */
   --silver:#9AA7B8;
 
