@@ -80,6 +80,32 @@
   :root{--dur-instant:0ms;--dur-fast:0ms;--dur-normal:0ms;--dur-slow:0ms;--dur-cele:0ms;}
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Role themes — each signed-in zone overrides the primary (CTA/button) family
+   so ปุ่มหลักแยกสีตาม role. Applied on the zone layout root:
+   พนักงาน = เขียว (ค่าเริ่มต้นของระบบ) · Admin = ฟ้า · Director = น้ำเงินกรม.
+   Public/booking + relatives portal stay on the :root default.
+   All fills keep white text ≥ 4.5:1 (WCAG AA).
+   ────────────────────────────────────────────────────────────────────────── */
+.theme-employee {
+  --primary:#0E7C6B; --primary-600:#0B6557; --primary-700:#094E43; --primary-300:#7FD3C8;
+  --border-focus:#0E7C6B;
+  --shadow-focus:0 0 0 3px rgba(14,124,107,.35);
+  --shadow-primary:0 6px 16px rgba(14,124,107,.28);
+}
+.theme-admin {
+  --primary:#1D6FE8; --primary-600:#1559C8; --primary-700:#10479E; --primary-300:#A7C9F9;
+  --border-focus:#1D6FE8;
+  --shadow-focus:0 0 0 3px rgba(29,111,232,.35);
+  --shadow-primary:0 6px 16px rgba(29,111,232,.28);
+}
+.theme-director {
+  --primary:#1B3A6B; --primary-600:#16315A; --primary-700:#0F2645; --primary-300:#8FA8CC;
+  --border-focus:#1B3A6B;
+  --shadow-focus:0 0 0 3px rgba(27,58,107,.35);
+  --shadow-primary:0 6px 16px rgba(27,58,107,.28);
+}
+
 @layer base {
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {

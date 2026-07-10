@@ -14,8 +14,10 @@ export default async function StaffLayout({
 }) {
   const user = await requireStaff();
   const [notes, settings, counts] = await Promise.all([getNotifications(), getSettings(), getNavCounts()]);
+  // Role-based button theme: Director = navy, Admin = blue (employee zone = green).
+  const roleTheme = user.profile?.role === "director" ? "theme-director" : "theme-admin";
   return (
-    <div className="flex min-h-dvh bg-bg">
+    <div className={`${roleTheme} flex min-h-dvh bg-bg`}>
       <Sidebar role={user.profile?.role} logoUrl={settings.logoUrl} companyName={settings.companyName} counts={counts} />
       <div className="flex flex-1 flex-col overflow-x-hidden">
         <header
