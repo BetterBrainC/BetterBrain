@@ -52,7 +52,7 @@ export default async function ReportDetailPage({
             filename={`report-${r.patientName}-${r.date}`}
             headers={["หัวข้อ", "ข้อมูล"]}
             rows={exportRows}
-            label="Export รายคน"
+            label="Export"
           />
         </div>
       </header>
