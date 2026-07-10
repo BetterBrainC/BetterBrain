@@ -36,13 +36,14 @@ export function BottomNav() {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex h-full flex-col items-center justify-center gap-1 text-2xs font-medium",
-                  active ? "text-teal" : "text-faint",
+                  // Active accent follows the zone's role theme (client request).
+                  active ? "text-primary" : "text-faint",
                 )}
               >
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute inset-x-5 top-0 h-[3px] rounded-full bg-teal"
+                    className="absolute inset-x-5 top-0 h-[3px] rounded-full bg-primary"
                   />
                 )}
                 <Icon className="h-5 w-5" aria-hidden />
