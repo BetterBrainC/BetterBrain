@@ -27,9 +27,9 @@ function FoisSelect({ label = "Functional Oral Intake Scale (FOIS)", name = "foi
  * (Tracheostomy : ____, Bed mobility : ____) has a blank to write in. Names are
  * slugged from the label so saved payloads stay stable.
  */
-function FillInList({ prefix, items }: { prefix: string; items: string[] }) {
+function FillInList({ prefix, items, cols = 2 }: { prefix: string; items: string[]; cols?: 2 | 3 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className={cols === 3 ? "grid gap-3 sm:grid-cols-3" : "grid gap-3 sm:grid-cols-2"}>
       {items.map((it) => {
         const slug = it.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
         return (
@@ -47,7 +47,7 @@ function Vitals({ withTemp = false, withSpO2 = true }: { withTemp?: boolean; wit
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Field label="BP (mmHg)"><TextInput name="bp" /></Field>
       <Field label="HR (bpm)"><TextInput name="hr" /></Field>
-      <Field label="RR (/min)"><TextInput name="rr" /></Field>
+      <Field label="RR (times/min)"><TextInput name="rr" /></Field>
       {withSpO2 && <Field label="SpO2 (%)"><TextInput name="spo2" /></Field>}
       {withTemp && <Field label="Temp (°C)"><TextInput name="temp" /></Field>}
     </div>
@@ -67,10 +67,13 @@ function PlanSection() {
 }
 
 const ADL = ["Bed mobility", "Locomotion", "Eating", "Bathing", "Transfer", "Toileting", "Dressing", "Hygiene/Grooming"];
-// Swallowing Evaluation — order + wording follow the paper sample. FOIS (a defined
-// scale) is rendered as its own select between the two halves.
-const SWALLOW_EVAL_A = ["Tracheostomy", "Lips control", "Cough reflex", "Feeding by", "Bite reflex", "Tongue movement", "Gag reflex"];
-const SWALLOW_EVAL_B = ["Jaw control", "Drooling", "Swallow reflex"];
+// Swallowing Evaluation — client review 2026-07: FOIS moves to the top, then
+// three rows of three (Bite reflex dropped from the client's new layout).
+const SWALLOW_EVAL = [
+  "Tracheostomy", "Feeding by", "Drooling",
+  "Lips control", "Tongue movement", "Jaw control",
+  "Cough reflex", "Gag reflex", "Swallow reflex",
+];
 
 // ── Swallowing Assessment ─────────────────────────────────────────────────
 export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) {
@@ -86,6 +89,9 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
       <ReportSection title="ข้อมูลทั่วไป">
         <Field label="Diagnosis"><TextInput name="diagnosis" /></Field>
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
+        {/* Vital signs sit above Underlying (client review 2026-07). */}
+        <span className="text-sm font-medium text-ink">Vital signs</span>
+        <Vitals />
         <span className="text-sm font-medium text-ink">Underlying</span>
         <CheckRow name="underlying" options={["DM", "Hypertension", "Heart disease", "Dyslipidemia", "CKD", "Rheumatoid", "Gout", "No"]} />
         <span className="text-sm font-medium text-ink">Mobility</span>
@@ -97,19 +103,16 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
       </ReportSection>
 
       <ReportSection title="Subjective & Objective">
-        <span className="text-sm font-medium text-ink">Vital signs</span>
-        <Vitals />
-        <Field label="Subjective & Objective"><Textarea name="subjective_objective" /></Field>
+        <Textarea name="subjective_objective" />
       </ReportSection>
 
       <ReportSection title="Physical examination">
-        <Field label="Physical examination"><Textarea name="physical_exam" /></Field>
+        <Textarea name="physical_exam" />
       </ReportSection>
 
       <ReportSection title="Swallowing Evaluation">
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_A} />
         <FoisSelect />
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_B} />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL} cols={3} />
       </ReportSection>
 
       <ReportSection title="Part 1 · Indirect Swallowing Test">
@@ -132,9 +135,6 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
         <span className="text-sm text-ink">2.3 Solid trial : Cracker</span>
         <CheckRow name="solid" options={["1st", "2nd", "3rd", "4th", "5th"]} />
         <CheckRow name="result" options={["Result : safe to swallow, minimal risk of aspiration"]} />
-        <Field label="Recommendations">
-          <Textarea name="recommendations" placeholder="Soft diet to regular diet, Regular liquids (First time under supervision of the OT)" />
-        </Field>
         <Field label="Remarks"><Textarea name="remarks" /></Field>
       </ReportSection>
 
@@ -217,9 +217,8 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       </ReportSection>
 
       <ReportSection title="Swallowing Evaluation">
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_A} />
         <FoisSelect />
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_B} />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL} cols={3} />
       </ReportSection>
 
       <ReportSection title="Activities Daily Living">
