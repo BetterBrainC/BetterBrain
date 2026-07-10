@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FileDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { BackButton } from "@/components/ui/back-button";
-import { ExportButton } from "@/components/staff/export-button";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { requireStaff } from "@/lib/auth";
 import { getReportDetail } from "@/lib/data/queries";
@@ -25,16 +27,6 @@ export default async function ReportDetailPage({
   if (!r) notFound();
   const st = STATUS[r.status] ?? { label: r.status, tone: "info" as const };
 
-  // Per-person export: metadata header rows + every captured field.
-  const exportRows: [string, string][] = [
-    ["ผู้รับบริการ", r.patientName],
-    ["ประเภท", r.typeLabel],
-    ["ผู้บันทึก", r.authorName],
-    ["วันที่", r.date],
-    ["สถานะ", st.label],
-    ...r.fields.map((f) => [f.key, f.value] as [string, string]),
-  ];
-
   return (
     <div className="space-y-5">
       <BackButton fallbackHref="/staff/reports" />
@@ -48,12 +40,12 @@ export default async function ReportDetailPage({
         </div>
         <div className="flex items-center gap-3">
           <Badge tone={st.tone}>{st.label}</Badge>
-          <ExportButton
-            filename={`report-${r.patientName}-${r.date}`}
-            headers={["หัวข้อ", "ข้อมูล"]}
-            rows={exportRows}
-            label="Export รายคน"
-          />
+          {/* Every report type exports as the clinic's letterhead PDF (print view). */}
+          <Link href={`/print/report/${r.id}`} target="_blank">
+            <Button size="sm" variant="secondary">
+              <FileDown className="h-4 w-4" /> Export
+            </Button>
+          </Link>
         </div>
       </header>
 

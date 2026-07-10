@@ -32,25 +32,34 @@ function Field({
 const inputCls =
   "h-11 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary";
 
-/** SpO2 % stepper (0–100) — mirrors the client's daily report sample. */
-function Spo2Stepper({ name, value, onChange }: { name: string; value: number; onChange: (n: number) => void }) {
+/**
+ * SpO2 % stepper (0–100). A controlled text input (numeric keyboard) instead of
+ * type="number": the field starts empty and leading zeros are stripped as you
+ * type — client bug: typing over the old default 0 saved/displayed "099".
+ */
+function Spo2Stepper({ name, value, onChange }: { name: string; value: string; onChange: (v: string) => void }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  const step = (d: number) => onChange(String(clamp((Number(value) || 0) + d)));
   return (
     <div className="flex items-center gap-1 rounded-md border border-border bg-surface pl-3 pr-1 focus-within:border-primary">
       <span className="text-sm text-muted">%</span>
       <input
-        type="number"
+        type="text"
+        inputMode="numeric"
         name={name}
-        min={0}
-        max={100}
         value={value}
-        onChange={(e) => onChange(clamp(Number(e.target.value)))}
+        required
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+          if (digits === "") return onChange("");
+          onChange(String(clamp(Number(digits))));
+        }}
         className="h-11 w-full border-0 bg-transparent text-base outline-none"
       />
-      <button type="button" aria-label="ลด" onClick={() => onChange(clamp(value - 1))} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-surface-tint">
+      <button type="button" aria-label="ลด" onClick={() => step(-1)} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-surface-tint">
         <Minus className="h-4 w-4" />
       </button>
-      <button type="button" aria-label="เพิ่ม" onClick={() => onChange(clamp(value + 1))} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-surface-tint">
+      <button type="button" aria-label="เพิ่ม" onClick={() => step(1)} className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-surface-tint">
         <Plus className="h-4 w-4" />
       </button>
     </div>
@@ -106,8 +115,8 @@ export function DailyReportSheet({
   const [error, setError] = React.useState<string | null>(null);
   const [date, setDate] = React.useState("");
   const [time, setTime] = React.useState("");
-  const [spo2Before, setSpo2Before] = React.useState(0);
-  const [spo2After, setSpo2After] = React.useState(0);
+  const [spo2Before, setSpo2Before] = React.useState("");
+  const [spo2After, setSpo2After] = React.useState("");
 
   // Default date/time to "now" (Bangkok) when the sheet opens — set client-side
   // to avoid an SSR hydration mismatch.

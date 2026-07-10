@@ -34,9 +34,9 @@ export default async function WorkSummaryPage({
     {
       label: "รวมชั่วโมงทำงาน",
       cols: [
-        { key: "total", label: "เคสทั้งหมด" },
         { key: "assessment", label: "เคสรับใหม่" },
         { key: "treatment", label: "การรักษา" },
+        { key: "total", label: "เคสทั้งหมด" },
       ],
     },
     {
@@ -44,7 +44,7 @@ export default async function WorkSummaryPage({
       cols: [
         { key: "onTime", label: "ตรงเวลา", tone: "var(--status-completed-fg)" },
         { key: "late", label: "มาสาย", tone: "var(--status-late-fg)" },
-        { key: "attendanceTotal", label: "รวม" },
+        { key: "attendanceTotal", label: "รวมทั้งหมด" },
       ],
     },
   ];
@@ -117,7 +117,7 @@ export default async function WorkSummaryPage({
             </table>
           </div>
         )}
-        <p className="text-xs text-faint">เคสรับใหม่ = เคสประเมินครั้งแรก · ตรงเวลา = เข้าฝึก/จบเคส (ไม่รวมสาย) · รวม = ตรงเวลา + มาสาย</p>
+        <p className="text-xs text-faint">เคสรับใหม่ = เคสประเมินครั้งแรก · ตรงเวลา = เข้าฝึก/จบเคส (ไม่รวมสาย) · รวมทั้งหมด = ตรงเวลา + มาสาย</p>
       </Card>
     </div>
   );

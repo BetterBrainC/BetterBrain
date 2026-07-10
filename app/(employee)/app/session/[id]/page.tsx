@@ -103,13 +103,13 @@ export default async function SessionPage({
         <div className="grid grid-cols-2 gap-2">
           {(session.kind === "assessment"
             ? [
-                { href: `/app/session/${session.id}/report/hand`, label: "Hand Function Assessment" },
+                { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
                 { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
               ]
             : [
                 { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
                 { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
-                { href: `/app/session/${session.id}/report/summary`, label: "ความก้าวหน้ารายเดือน" },
+                { href: `/app/session/${session.id}/report/summary`, label: "รายงานความก้าวหน้ารายเดือน" },
               ]
           ).map((r) => (
             <Link

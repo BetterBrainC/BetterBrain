@@ -1,0 +1,409 @@
+import { formatThaiDate } from "@/lib/date/buddhist";
+import { DIAGNOSIS_LABEL } from "@/lib/i18n/th";
+import type { ReportDetail } from "@/lib/data/queries";
+
+/**
+ * Letterhead print templates — layouts mirror the clinic's paper forms
+ * (client PDFs, 2026-07): รายงานประจำวัน · รายงานความก้าวหน้ารายเดือน ·
+ * รายงานประเมินแรกรับทางกิจกรรมบำบัด. Values the app captures are filled in;
+ * everything else prints as blank dotted lines / unchecked boxes exactly like
+ * the paper sheet. Server components; saved to PDF via the browser print dialog.
+ */
+
+const box = "border border-black";
+
+export function Letterhead({ logoUrl }: { logoUrl: string | null }) {
+  return (
+    <header className="flex items-start justify-between gap-4 border-b-2 border-black pb-2">
+      <div>
+        <p className="font-bold">BetterBrain ฝึกกลืน ฝึกพูด ฟื้นฟูโรคหลอดเลือดสมอง บริการที่บ้าน</p>
+        <p>
+          <span className="text-[#1857BE]">www.bbc-rehab.com</span>
+          <span className="ml-4">เบอร์โทรศัพท์ 082-5453944</span>
+        </p>
+      </div>
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="โลโก้" className="h-16 w-auto object-contain" />
+      ) : null}
+    </header>
+  );
+}
+
+export function DotLine({ value = "" }: { value?: string }) {
+  return (
+    <div className="min-h-6 whitespace-pre-wrap break-words border-b border-dotted border-black leading-6">
+      {value}
+    </div>
+  );
+}
+
+export function VitalLine({ bp, hr, rr, spo2 }: { bp: string; hr: string; rr: string; spo2: string }) {
+  return (
+    <p>
+      <span className="font-bold">BP :</span> {bp || "……………"} mmHg,{" "}
+      <span className="font-bold">HR :</span> {hr || "……………"} bpm,{" "}
+      <span className="font-bold">RR :</span> {rr || "……………"} times/min,{" "}
+      <span className="font-bold">SpO2 :</span> {spo2 || "………"} %
+    </p>
+  );
+}
+
+export function SignatureBlock({ name }: { name?: string }) {
+  return (
+    <div className="ml-auto mt-6 w-72 space-y-4 break-inside-avoid">
+      <p>ลงชื่อ<span className="inline-block w-52 border-b border-dotted border-black text-center">{name ?? ""}</span></p>
+      <p>ตำแหน่ง<span className="inline-block w-48 border-b border-dotted border-black" /></p>
+      <p>ใบอนุญาตเลขที่<span className="inline-block w-40 border-b border-dotted border-black" /></p>
+    </div>
+  );
+}
+
+function Check({ on = false, label }: { on?: boolean; label: string }) {
+  return (
+    <span className="mr-4 inline-block whitespace-nowrap">
+      {on ? "☑" : "☐"} {label}
+    </span>
+  );
+}
+
+const pv = (r: ReportDetail, k: string) => String(r.payload[k] ?? "").trim();
+
+/** payload value that may be a checkbox array. */
+function pvList(r: ReportDetail, k: string): string[] {
+  const v = r.payload[k];
+  if (Array.isArray(v)) return v.map((x) => String(x));
+  return v ? [String(v)] : [];
+}
+
+function patientHeaderRows(r: ReportDetail) {
+  return (
+    <>
+      <tr>
+        <td colSpan={2} className={`${box} px-2 py-1.5`}>
+          <span className="font-bold">วันที่ประเมินแรกรับ :</span>{" "}
+          {r.firstAssessmentDate ? formatThaiDate(r.firstAssessmentDate, { month: "long" }) : "…………………………………"}
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={2} className={`${box} px-2 py-1.5`}>
+          <span className="font-bold">ชื่อ-สกุล (ผู้รับบริการ) :</span> {r.patientName}
+          <span className="ml-6">อายุ {r.patientAge ?? "…………"} ปี</span>
+        </td>
+      </tr>
+      <tr>
+        <td className={`${box} w-56 px-2 py-1.5 font-bold`}>การวินิจฉัยโรค</td>
+        <td className={`${box} px-2 py-1.5`}>
+          {r.patientDiagnosis ? DIAGNOSIS_LABEL[r.patientDiagnosis] : pv(r, "diagnosis")}
+        </td>
+      </tr>
+      <tr>
+        <td className={`${box} px-2 py-1.5 font-bold`}>การวินิจฉัยทางกิจกรรมบำบัด</td>
+        <td className={`${box} px-2 py-1.5`}>{pv(r, "ot_diagnosis") || pv(r, "diagnosis")}</td>
+      </tr>
+    </>
+  );
+}
+
+// ── รายงานความก้าวหน้ารายเดือน (Summary) ────────────────────────────────────
+const ADL_ROWS = [
+  "การเคลื่อนย้ายตัวบนเตียง",
+  "ลุกนั่งจากที่นอน/เตียงไปยังเก้าอี้",
+  "การสวมใส่เสื้อผ้า",
+  "การรับประทานอาหาร",
+  "การเคลื่อนที่ภายในห้อง/บ้าน",
+  "การใช้ห้องน้ำ",
+  "การอาบน้ำ",
+  "ล้างหน้า/หวีผม/แปรงฟัน",
+];
+const STRENGTH_ROWS = ["กล้ามเนื้อปาก", "การขยับลิ้น", "การควบคุมขากรรไกร"];
+
+export function SummaryPrint({ r }: { r: ReportDetail }) {
+  const ratingCells = (opts: string[]) => (
+    <td className={`${box} px-2 py-1`}>{opts.map((o) => <Check key={o} label={o} />)}</td>
+  );
+  return (
+    <>
+      <h1 className="py-3 text-center text-base font-bold">รายงานความก้าวหน้ารายเดือน</h1>
+      <table className={`w-full border-collapse ${box}`}>
+        <tbody>
+          {patientHeaderRows(r)}
+          <tr>
+            <td className={`${box} px-2 py-1.5 font-bold`}>ช่วงเวลาการฟื้นฟู</td>
+            <td className={`${box} p-0`}>
+              <div className="flex">
+                <p className="flex-1 border-r border-black px-2 py-1.5"><span className="font-bold">From :</span> {pv(r, "period")}</p>
+                <p className="flex-1 px-2 py-1.5"><span className="font-bold">To :</span></p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>ความก้าวหน้าปัจจุบัน</td>
+            <td className={`${box} px-2 py-2 align-top`}>
+              <div className="space-y-2">
+                <DotLine value={pv(r, "progress")} />
+                <DotLine />
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>
+              ความสามารถด้าน<br />การทำกิจวัตรประจำวัน
+            </td>
+            <td className={`${box} p-0 align-top`}>
+              <table className="w-full border-collapse">
+                <tbody>
+                  {ADL_ROWS.map((row) => (
+                    <tr key={row}>
+                      <td className="w-64 border-b border-r border-black px-2 py-1">{row}</td>
+                      <td className="border-b border-black px-2 py-1">
+                        {["น้อย", "ปานกลาง", "ดี", "ปกติ"].map((o) => <Check key={o} label={o} />)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>
+              ความสามารถด้าน<br />การกลืน
+            </td>
+            <td className={`${box} p-0 align-top`}>
+              <table className="w-full border-collapse">
+                <tbody>
+                  <tr>
+                    <td className="w-64 border-b border-r border-black px-2 py-1">รับอาหารโดย</td>
+                    <td className="border-b border-black px-2 py-1">
+                      {["NG", "PEG", "IV", "Oral"].map((o) => <Check key={o} label={o} />)}
+                    </td>
+                  </tr>
+                  {STRENGTH_ROWS.map((row) => (
+                    <tr key={row}>
+                      <td className="border-b border-r border-black px-2 py-1">{row}</td>
+                      <td className="border-b border-black px-2 py-1">
+                        {["แรงน้อย", "แรงปานกลาง", "แรงดี", "แรงปกติ"].map((o) => <Check key={o} label={o} />)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td className="border-r border-black px-2 py-1">น้ำลายไหล</td>
+                    {ratingCells(["ไม่มี", "มี"])}
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>เป้าหมายปัจจุบัน</td>
+            <td className={`${box} px-2 py-2 align-top`}>
+              <div className="space-y-2">
+                <DotLine value={pv(r, "current_goal")} />
+                <DotLine />
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 font-bold`}>บรรลุเป้าหมาย</td>
+            <td className={`${box} px-2 py-1.5`}>
+              <Check label="ผ่าน" /> <Check label="ไม่ผ่าน" /> ;…………………………………………………………
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>โปรแกรมการฟื้นฟู/รักษา</td>
+            <td className={`${box} px-2 py-2 align-top`}>
+              <div className="space-y-2">
+                <DotLine />
+                <DotLine />
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colSpan={2} className={`${box} px-2 py-1.5`}>
+              <span className="font-bold">เป้าหมายเดือน (เลือกใส่เดือนได้) :</span> {pv(r, "next_goal")}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <SignatureBlock name={r.authorName} />
+    </>
+  );
+}
+
+// ── รายงานประเมินแรกรับทางกิจกรรมบำบัด (Assessment) ─────────────────────────
+const UNDERLYING_OPTS = [
+  "DM", "Hypertension", "Heart disease (on pacemaker)", "Dyslipidemia", "Obesity",
+  "Rheumatoid", "Gout", "CKD",
+];
+
+const ABILITY_SECTIONS: { no: number; title: string; subs?: string[] }[] = [
+  { no: 1, title: "การรับรู้และการตื่นตัว" },
+  { no: 2, title: "การควบคุมนั่งและการควบคุมศีรษะ" },
+  { no: 3, title: "โครงสร้างปาก", subs: ["กล้ามเนื้อใบหน้าและริมฝีปาก", "กล้ามเนื้อลิ้น", "ขากรรไกร"] },
+  { no: 4, title: "ปฏิกิริยาอัตโนมัติเกี่ยวข้องกับการกลืน" },
+  { no: 5, title: "ความสามารถด้านการกลืน", subs: ["ระยะช่องปาก (Oral Phase)", "ระยะคอหอย (Pharyngeal phase)", "ระยะหลอดอาหาร (Esophageal phase)"] },
+];
+
+// "พิมพ์ข้อมูลตามนี้ได้เลย" — static program / advice / notes text from the paper form.
+const SWALLOW_PROGRAM: { title: string; lines: string[] }[] = [
+  {
+    title: "ให้ความรู้ สอนการนวดและออกกำลังกล้ามเนื้อปาก ลิ้น ขากรรไกร , กล้ามเนื้อการกลืนแก่ผู้ดูแล (Family and caregivers education)",
+    lines: [
+      "1.1 ให้ความรู้ความเข้าใจเกี่ยวกับโรคและพยาธิสภาพที่เกิดขึ้นที่ส่งผลต่อการกลืนลำบาก",
+      "1.2 แนะนำการจัดท่าทางเพื่อป้องกันการสำลัก",
+      "1.3 สอนการนวดกระตุ้นและออกกำลังกล้ามเนื้อปาก ลิ้น ขากรรไกร , กล้ามเนื้อการกลืนเบื้องต้นแก่ผู้ดูแล",
+    ],
+  },
+  {
+    title: "ออกกำลังกล้ามเนื้อปาก ลิ้น ยืดขากรรไกรและกล้ามเนื้อการกลืน (Oral motor stimulation and exercise)",
+    lines: [
+      "2.1 นวดและยืดกล้ามเนื้อบริเวณคอ เพื่อลดการตึงตัวและเพิ่มความยืดหยุ่นของกล้ามเนื้อ",
+      "2.2 นวดกระตุ้นกล้ามเนื้อช่องปาก ลิ้น ยืดขากรรไกร เพื่อเพิ่มความแข็งแรงและความยืดหยุ่นของกล้ามเนื้อ",
+      "2.3 ออกกำลังกล้ามเนื้อช่องปาก เพื่อเพิ่มความแข็งแรงของกล้ามเนื้อบริเวณริมฝีปาก ลิ้น ขากรรไกร และแก้ม ซึ่งมีความสำคัญต่อการพูด การกลืน และการเคี้ยวอาหาร",
+      "2.4 ออกกำลังกล้ามเนื้อบริเวณคอหอยและเล่นเสียงด้วยเทคนิคการฝึกทางกิจกรรมบำบัด",
+    ],
+  },
+  {
+    title: "กระตุ้นระบบความรู้สึกและปฏิกิริยาอัตโนมัติในช่องปาก (Oral reflex stimulation)",
+    lines: ["นวดกระตุ้นภายในช่องปากเพื่อเพิ่มการรับรู้สัมผัสปาก-ลิ้นและการรับรู้ข้อต่อขากรรไกร"],
+  },
+  {
+    title: "ฝึกพูด (Pre Speech exercise)",
+    lines: ["ฝึกการเคลื่อนไหวปาก-ลิ้นให้เกิดการเรียนรู้จดจำ และฝึกให้นำการเคลื่อนไหวนั้นมาประสมเป็นคำพูดและเป็นประโยค"],
+  },
+  {
+    title: "ฝึกการหายใจ (Breathing exercise)",
+    lines: ["เพิ่มความแข็งแรงของเพดานอ่อนและเพิ่มความสัมพันธ์ของการกลืนกับการหายใจ"],
+  },
+  {
+    title: "กระตุ้นกลืน/ฝึกกลืน (Swallowing training)",
+    lines: [
+      "กระตุ้นกลืนน้ำลาย ฝึกกลืนอาหาร เพื่อกระตุ้นให้กล้ามเนื้อที่เกี่ยวข้องกับการกลืนได้เกิดการทำงานร่วมกับความตั้งใจกลืน และเพิ่มความแข็งแรงของกล้ามเนื้อให้สามารถทานอาหารได้มากขึ้น โปรแกรมการฝึกจะเริ่มจากความสามารถของแต่ละบุคคลที่ทราบจากการประเมินแรกรับ และพิจารณา condition ทางร่างกายอื่นๆ ร่วมด้วย",
+    ],
+  },
+];
+
+const SWALLOW_ADVICE = [
+  "แนะนำนวดกระตุ้นและยืดกล้ามเนื้อปาก-ลิ้น ร่วมกับกระตุ้นกลืนน้ำลาย เพื่อเพิ่มการรับความรู้สึกในช่องปากและกระตุ้น reflex การกลืนอัตโนมัติ อย่างน้อย วันละ 1 รอบ",
+  "แนะนำทำความสะอาดช่องปากอย่างสม่ำเสมอ ลดเชื้อโรคที่สะสมในปากส่งผลให้เป็นปอดติดเชื้อได้",
+  "ยังไม่แนะนำให้ป้อนอาหารทางปากเอง หรือสามารถทำภายใต้คำแนะนำของนักกิจกรรมบำบัดเท่านั้น",
+];
+
+const SWALLOW_NOTES = [
+  "ความก้าวหน้าของการฟื้นฟูขึ้นอยู่กับปัจจัยจากความรุนแรงพยาธิสภาพของโรคและภาวะแทรกซ้อนของแต่ละบุคคล",
+  "แนะนำให้ปฏิบัติตามคำแนะนำของนักกิจกรรมบำบัดและหมั่นกระตุ้นกล้ามเนื้อในช่องปาก เพื่อเตรียมความพร้อมกล้ามเนื้อและกระตุ้นระบบการกลืนอัตโนมัติอย่างต่อเนื่อง",
+  "ประเมินอาการร่วมกับนักกิจกรรมบำบัด ก่อนฝึก ระหว่างฝึก และหลังฝึก ส่งต่อข้อมูลซึ่งกันและกันอย่างต่อเนื่องหรือก่อนเริ่มฝึกทุกครั้ง เพื่อผลลัพธ์ที่ดีขึ้น",
+  "การฝึกกลืนเป็นโปรแกรมฝึกต่อเนื่อง จะมีการประเมินกลืนเป็นระยะ หากมีความก้าวหน้าดีขึ้นตามเป้าหมายจะมีการปรับโปรแกรมฝึกตามความสามารถไปอย่างต่อเนื่อง (เช่น ปรับระดับอาหารฝึกกลืน , ระดับการผสม thickener ในน้ำดื่ม , ปริมาณต่อคำ , ปริมาณการทานต่อครั้ง ฯลฯ)",
+];
+
+export function AssessmentPrint({ r }: { r: ReportDetail }) {
+  const underlying = pvList(r, "underlying");
+  const hasUnderlying = (opt: string) =>
+    underlying.some((u) => opt.startsWith(u) || u.startsWith(opt.split(" (")[0]!));
+  return (
+    <>
+      <h1 className="py-3 text-center text-base font-bold">รายงานประเมินแรกรับทางกิจกรรมบำบัด</h1>
+      <table className={`w-full border-collapse ${box}`}>
+        <tbody>
+          {patientHeaderRows(r)}
+          <tr>
+            <td className={`${box} px-2 py-1.5 font-bold`}>โรคประจำตัว</td>
+            <td className={`${box} px-2 py-1.5`}>
+              {UNDERLYING_OPTS.map((o) => <Check key={o} on={hasUnderlying(o)} label={o} />)}
+              <span className="whitespace-nowrap">☐ other ; <span className="inline-block w-40 border-b border-dotted border-black" /></span>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>ระดับความสามารถปัจจุบัน</td>
+            <td className={`${box} px-2 py-2 align-top`}>
+              <ol className="space-y-3">
+                {ABILITY_SECTIONS.map((s) => (
+                  <li key={s.no}>
+                    <p className="font-bold">{s.no}. {s.title}</p>
+                    {s.subs ? (
+                      s.subs.map((sub) => (
+                        <div key={sub} className="ml-6 mt-1 space-y-2">
+                          <p className="underline">• {sub}</p>
+                          <DotLine />
+                          <DotLine />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="mt-1 space-y-2">
+                        <DotLine />
+                        <DotLine />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 align-top font-bold`}>
+              เป้าหมายของฟื้นฟู<span className="underline">ระยะยาว</span><br />ทางกิจกรรมบำบัด
+            </td>
+            <td className={`${box} px-2 py-2 align-top`}>
+              <div className="space-y-2">
+                <DotLine value={pv(r, "long_term_goal")} />
+                <DotLine />
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${box} px-2 py-1.5 font-bold`}>ระยะเวลาในการฟื้นฟูสูงสุด:</td>
+            <td className={`${box} px-2 py-1.5`}><DotLine /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p className="my-3 bg-[#7EC4E8] py-4 text-center text-base font-bold print:bg-[#7EC4E8]">
+        จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน ……… ครั้ง/สัปดาห์
+      </p>
+
+      <table className={`w-full border-collapse ${box}`}>
+        <tbody>
+          <tr>
+            <td className={`${box} w-56 px-2 py-1.5 align-top font-bold`}>
+              เป้าหมายของฟื้นฟู<span className="underline">ระยะสั้น</span><br />ทางกิจกรรมบำบัด
+            </td>
+            <td className={`${box} px-2 py-2 align-top`}>
+              <div className="space-y-2">
+                <DotLine value={pv(r, "short_term_goal")} />
+                <DotLine />
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <section className="mt-6 break-before-page space-y-4">
+        <h2 className="font-bold">โปรแกรมฟื้นฟูการกลืน :</h2>
+        <ol className="ml-5 list-decimal space-y-3">
+          {SWALLOW_PROGRAM.map((p) => (
+            <li key={p.title}>
+              <p className="font-bold">{p.title}</p>
+              {p.lines.map((l) => <p key={l} className="mt-1">{l}</p>)}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="mt-6 space-y-2 break-inside-avoid">
+        <h2 className="font-bold">คำแนะนำ :</h2>
+        <ol className="ml-5 list-decimal space-y-1">
+          {SWALLOW_ADVICE.map((l) => <li key={l}>{l}</li>)}
+        </ol>
+      </section>
+
+      <section className="mt-4 space-y-2 break-inside-avoid">
+        <h2 className="font-bold">หมายเหตุ :</h2>
+        <ol className="ml-5 list-decimal space-y-1">
+          {SWALLOW_NOTES.map((l) => <li key={l}>{l}</li>)}
+        </ol>
+      </section>
+
+      <SignatureBlock name={r.authorName} />
+    </>
+  );
+}

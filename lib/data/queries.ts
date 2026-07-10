@@ -194,6 +194,8 @@ export interface PatientRow {
   status: PatientStatus;
   courseUsed: number;
   courseTotal: number;
+  /** ISO timestamp — powers the dashboard วัน/สัปดาห์/เดือน/ปี filter. */
+  createdAt: string | null;
 }
 
 export async function getPatients(): Promise<PatientRow[]> {
@@ -202,12 +204,15 @@ export async function getPatients(): Promise<PatientRow[]> {
   // รอทำนัด / ยกเลิกนัด live on the การทำนัด (bookings) page instead.
   const { data } = await supabase
     .from("patients")
-    .select("id, hn, full_name, age_years, training_program, diagnosis_category, status")
+    .select("id, hn, full_name, age_years, training_program, diagnosis_category, status, created_at")
     .eq("appointment_status", "booked")
-    .order("created_at", { ascending: true });
+    // Latest-registered first — client rule: every recipient list leads with
+    // the newest entries.
+    .order("created_at", { ascending: false });
   const patients = rows<{
     id: string; hn: string | null; full_name: string; age_years: number | null;
     training_program: string | null; diagnosis_category: Diagnosis | null; status: PatientStatus;
+    created_at: string | null;
   }>(data);
   if (patients.length === 0) return [];
 
@@ -242,6 +247,7 @@ export async function getPatients(): Promise<PatientRow[]> {
     status: p.status,
     courseUsed: byPatient.get(p.id)?.used ?? 0,
     courseTotal: byPatient.get(p.id)?.total ?? 0,
+    createdAt: p.created_at,
   }));
 }
 
@@ -669,6 +675,10 @@ export interface DashboardData {
   totalToday: number;
   checkedIn: number;
   inProgress: number;
+  /** เคสประเมินแรกรับวันนี้ (session kind = assessment). */
+  newRecipients: number;
+  /** เคสแจ้งงดวันนี้ (status = skipped). */
+  cancelledToday: number;
   pendingApprovals: number;
   monitor: { name: string; patient: string; time: string; status: SessionStatus; early: boolean }[];
   employeeCount: number;
@@ -701,11 +711,11 @@ export async function getDashboard(): Promise<DashboardData> {
 
   const { data: tData } = await supabase
     .from("schedule_sessions")
-    .select("status, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
+    .select("status, kind, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
     .eq("scheduled_date", today)
     .order("scheduled_start");
   const sessions = rows<{
-    status: SessionStatus; scheduled_start: string | null;
+    status: SessionStatus; kind: "assessment" | "treatment" | null; scheduled_start: string | null;
     patients: { full_name: string | null } | null;
     employee: { full_name: string | null } | null;
     check_ins: { kind: string; is_early: boolean }[] | null;
@@ -714,6 +724,8 @@ export async function getDashboard(): Promise<DashboardData> {
     ["in_progress", "attended", "late", "completed"].includes(s.status),
   ).length;
   const inProgress = sessions.filter((s) => s.status === "in_progress").length;
+  const newRecipients = sessions.filter((s) => s.kind === "assessment").length;
+  const cancelledToday = sessions.filter((s) => s.status === "skipped").length;
 
   // 14-day session trend (Bangkok-local dates).
   const start = new Date();
@@ -758,6 +770,8 @@ export async function getDashboard(): Promise<DashboardData> {
     totalToday: sessions.length,
     checkedIn,
     inProgress,
+    newRecipients,
+    cancelledToday,
     pendingApprovals: pendingApprovals ?? 0,
     monitor: sessions.map((s) => ({
       name: s.employee?.full_name ?? "—",
@@ -880,7 +894,7 @@ export interface RelativePortalSession {
 }
 export interface RelativePortalReport {
   id: string;
-  type: "followup" | "summary";
+  type: "assessment_swallow" | "assessment_hand" | "followup" | "summary";
   dateISO: string;
   note: string | null;
 }
@@ -996,8 +1010,20 @@ export async function getRelativePortal(
     status: s.status,
   }));
 
-  // Completed reports the clinic chose to expose (followup/summary toggles).
-  const allowed: ("followup" | "summary")[] = [
+  // Settings.extra powers both the assessment-visibility flag and (below) the
+  // home-training guide, so fetch it once up front.
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
+
+  // Completed reports the clinic chose to expose. followup/summary toggles live
+  // on relative_access; the newer รายงานประเมินแรกรับ (assessment) toggle lives in
+  // settings.extra.portal_show_assessment (patientId→bool, default ON).
+  const showAssessMap = extra.portal_show_assessment && typeof extra.portal_show_assessment === "object"
+    ? (extra.portal_show_assessment as Record<string, unknown>)
+    : {};
+  const showAssessment = showAssessMap[patient.id] !== false;
+  const allowed: RelativePortalReport["type"][] = [
+    ...(showAssessment ? (["assessment_swallow", "assessment_hand"] as const) : []),
     ...(access.show_followup ? (["followup"] as const) : []),
     ...(access.show_summary ? (["summary"] as const) : []),
   ];
@@ -1011,7 +1037,7 @@ export async function getRelativePortal(
       .in("report_type", allowed)
       .order("report_date", { ascending: false })
       .limit(12);
-    reports = rows<{ id: string; report_type: "followup" | "summary"; report_date: string; payload: unknown }>(rData)
+    reports = rows<{ id: string; report_type: RelativePortalReport["type"]; report_date: string; payload: unknown }>(rData)
       .map((r) => ({ id: r.id, type: r.report_type, dateISO: r.report_date, note: reportNote(r.payload) }));
   }
 
@@ -1028,14 +1054,17 @@ export async function getRelativePortal(
     ? { name: emp.full_name ?? "—", role: emp.position_title ?? "พนักงาน/นักบำบัด", photoUrl: emp.photo_url ?? null }
     : null;
 
-  // Exercise guide: per-course (settings.extra.exercise_guides keyed by the
-  // recipient's โปรแกรมการฝึก) → legacy global list → hardcoded default.
-  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
-  const extra = (one<{ extra: Record<string, unknown> }>(setData)?.extra ?? {}) as Record<string, unknown>;
+  // Home-training guide (โปรแกรมฝึกที่บ้าน): staff can pin a specific program
+  // per recipient (settings.extra.portal_home_programs) — otherwise it follows
+  // the recipient's โปรแกรมการฝึก → legacy global list → hardcoded default.
   const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
     ? (extra.exercise_guides as Record<string, unknown>)
     : {};
-  const program = (patient.training_program ?? "").trim();
+  const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
+    ? (extra.portal_home_programs as Record<string, unknown>)
+    : {};
+  const pinnedProgram = typeof pinned[patient.id] === "string" ? (pinned[patient.id] as string).trim() : "";
+  const program = pinnedProgram || (patient.training_program ?? "").trim();
   const perProgram = program ? parseExerciseItems(byProgram[program]) : [];
   const legacy = parseExerciseItems(extra.exercise_guide);
   const exercises = perProgram.length > 0 ? perProgram : legacy.length > 0 ? legacy : DEFAULT_EXERCISE_GUIDE;
@@ -1086,8 +1115,11 @@ export interface RelativeManagePatient {
   name: string;
   hn: string | null;
   program: string | null;
+  /** Pinned โปรแกรมฝึกที่บ้าน for the portal; null = follow `program`. */
+  portalProgram: string | null;
   hasLink: boolean;
   token: string | null;
+  showAssessment: boolean;
   showFollowup: boolean;
   showSummary: boolean;
 }
@@ -1146,6 +1178,13 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
     .sort((a, b) => a.localeCompare(b, "th"))
     .map((program) => ({ program, items: parseExerciseItems(byProgram[program]) }));
 
+  const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
+    ? (extra.portal_home_programs as Record<string, unknown>)
+    : {};
+  const showAssessMap = extra.portal_show_assessment && typeof extra.portal_show_assessment === "object"
+    ? (extra.portal_show_assessment as Record<string, unknown>)
+    : {};
+
   const patients: RelativeManagePatient[] = active.map((p) => {
     const ra = raMap.get(p.id);
     return {
@@ -1153,8 +1192,12 @@ export async function getRelativeManage(): Promise<RelativeManageData> {
       name: p.full_name,
       hn: p.hn,
       program: p.training_program,
+      portalProgram: typeof pinned[p.id] === "string" && (pinned[p.id] as string).trim()
+        ? (pinned[p.id] as string).trim()
+        : null,
       hasLink: !!ra?.token,
       token: ra?.token ?? null,
+      showAssessment: showAssessMap[p.id] !== false,
       showFollowup: ra?.showFollowup ?? true,
       showSummary: ra?.showSummary ?? true,
     };
@@ -1441,13 +1484,21 @@ export interface ReportField {
 }
 export interface ReportDetail {
   id: string;
+  reportType: string;
   typeLabel: string;
   patientId: string | null;
   patientName: string;
+  patientAge: number | null;
+  /** From the patient record (print templates: ลิ้งก์ข้อมูลมาจากข้อมูลผู้รับบริการ). */
+  patientDiagnosis: Diagnosis | null;
+  /** Date of this patient's earliest assessment report (วันที่ประเมินแรกรับ). */
+  firstAssessmentDate: string | null;
   authorName: string;
   date: string;
   status: string;
   fields: ReportField[];
+  /** Raw payload — powers the letterhead PDF/print template. */
+  payload: Record<string, unknown>;
 }
 
 /** Flatten a clinical report's jsonb payload into ordered key/value rows. */
@@ -1472,25 +1523,44 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name), author:profiles!reports_author_id_fkey(full_name)")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, diagnosis_category), author:profiles!reports_author_id_fkey(full_name)")
     .eq("id", id)
     .maybeSingle();
   const r = one<{
     id: string; report_type: string; report_date: string; status: string;
     payload: unknown; patient_id: string | null;
-    patients: { full_name: string | null } | null;
+    patients: { full_name: string | null; age_years: number | null; diagnosis_category: Diagnosis | null } | null;
     author: { full_name: string | null } | null;
   }>(data);
   if (!r) return null;
+
+  let firstAssessmentDate: string | null = null;
+  if (r.patient_id) {
+    const { data: fa } = await supabase
+      .from("reports")
+      .select("report_date")
+      .eq("patient_id", r.patient_id)
+      .in("report_type", ["assessment_swallow", "assessment_hand"])
+      .order("report_date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    firstAssessmentDate = one<{ report_date: string }>(fa)?.report_date ?? null;
+  }
+
   return {
     id: r.id,
+    reportType: r.report_type,
     typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
     patientId: r.patient_id,
     patientName: r.patients?.full_name ?? "—",
+    patientAge: r.patients?.age_years ?? null,
+    patientDiagnosis: r.patients?.diagnosis_category ?? null,
+    firstAssessmentDate,
     authorName: r.author?.full_name ?? "—",
     date: r.report_date,
     status: r.status,
     fields: flattenReportPayload(r.payload),
+    payload: (r.payload && typeof r.payload === "object" ? r.payload : {}) as Record<string, unknown>,
   };
 }
 

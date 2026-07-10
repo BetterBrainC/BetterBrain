@@ -5,14 +5,20 @@ import { Share2, Copy, Check } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Select } from "@/components/ui/field";
-import { createRelativeShareLink, setRelativeReportVisibility } from "@/actions/portal";
+import { createRelativeShareLink, setRelativeReportVisibility, setRelativePortalProgram } from "@/actions/portal";
 import type { RelativeManagePatient } from "@/lib/data/queries";
 
 /**
  * Pick a recipient → copy their relatives-portal link + choose which reports the
- * relatives portal shows (moved here from the patient detail page).
+ * relatives portal shows + pin which โปรแกรมฝึกที่บ้าน the portal sends.
  */
-export function RelativeAccessManager({ patients }: { patients: RelativeManagePatient[] }) {
+export function RelativeAccessManager({
+  patients,
+  programs = [],
+}: {
+  patients: RelativeManagePatient[];
+  programs?: string[];
+}) {
   const [id, setId] = React.useState("");
   const selected = patients.find((p) => p.id === id) ?? null;
 
@@ -21,22 +27,29 @@ export function RelativeAccessManager({ patients }: { patients: RelativeManagePa
   const [busy, setBusy] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
+  const [showAssessment, setShowAssessment] = React.useState(true);
   const [showFollowup, setShowFollowup] = React.useState(true);
   const [showSummary, setShowSummary] = React.useState(true);
   const [visBusy, setVisBusy] = React.useState(false);
   const [visMsg, setVisMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
+  const [portalProgram, setPortalProgram] = React.useState("");
+  const [progBusy, setProgBusy] = React.useState(false);
+  const [progMsg, setProgMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
 
   React.useEffect(() => {
     setErr(null);
     setCopied(false);
     setVisMsg(null);
+    setProgMsg(null);
     if (!selected) {
       setLink(null);
       setHasLink(false);
       return;
     }
+    setShowAssessment(selected.showAssessment);
     setShowFollowup(selected.showFollowup);
     setShowSummary(selected.showSummary);
+    setPortalProgram(selected.portalProgram ?? "");
     setHasLink(selected.hasLink);
     const base = typeof window !== "undefined" ? window.location.origin : "";
     setLink(selected.token ? `${base}/r/${selected.token}` : null);
@@ -70,19 +83,31 @@ export function RelativeAccessManager({ patients }: { patients: RelativeManagePa
     }
   }
 
-  async function saveVisibility(next: { followup: boolean; summary: boolean }) {
+  async function saveVisibility(next: { assessment: boolean; followup: boolean; summary: boolean }) {
     if (!selected) return;
+    setShowAssessment(next.assessment);
     setShowFollowup(next.followup);
     setShowSummary(next.summary);
     setVisBusy(true);
     setVisMsg(null);
     const res = await setRelativeReportVisibility({
       patientId: selected.id,
+      showAssessment: next.assessment,
       showFollowup: next.followup,
       showSummary: next.summary,
     });
     setVisBusy(false);
     setVisMsg(res);
+  }
+
+  async function savePortalProgram(program: string) {
+    if (!selected) return;
+    setPortalProgram(program);
+    setProgBusy(true);
+    setProgMsg(null);
+    const res = await setRelativePortalProgram({ patientId: selected.id, program });
+    setProgBusy(false);
+    setProgMsg(res);
   }
 
   return (
@@ -120,11 +145,21 @@ export function RelativeAccessManager({ patients }: { patients: RelativeManagePa
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-[var(--primary)]"
+                  checked={showAssessment}
+                  disabled={!hasLink || visBusy}
+                  onChange={(e) => saveVisibility({ assessment: e.target.checked, followup: showFollowup, summary: showSummary })}
+                />
+                รายงานประเมินแรกรับ (Assessment)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--primary)]"
                   checked={showFollowup}
                   disabled={!hasLink || visBusy}
-                  onChange={(e) => saveVisibility({ followup: e.target.checked, summary: showSummary })}
+                  onChange={(e) => saveVisibility({ assessment: showAssessment, followup: e.target.checked, summary: showSummary })}
                 />
-                บันทึกรายวัน (Follow up)
+                รายงานประจำวัน (Follow up)
               </label>
               <label className="flex items-center gap-2 text-sm text-ink">
                 <input
@@ -132,13 +167,35 @@ export function RelativeAccessManager({ patients }: { patients: RelativeManagePa
                   className="h-4 w-4 accent-[var(--primary)]"
                   checked={showSummary}
                   disabled={!hasLink || visBusy}
-                  onChange={(e) => saveVisibility({ followup: showFollowup, summary: e.target.checked })}
+                  onChange={(e) => saveVisibility({ assessment: showAssessment, followup: showFollowup, summary: e.target.checked })}
                 />
-                ความก้าวหน้ารายเดือน (Summary)
+                รายงานความก้าวหน้ารายเดือน (Summary)
               </label>
             </div>
             {visMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{visMsg.error}</p>}
             {visMsg?.ok && <p className="text-sm text-teal">บันทึกการมองเห็นแล้ว</p>}
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <p className="text-sm font-medium text-ink">โปรแกรมฝึกที่บ้านที่ส่งให้ญาติ</p>
+            <p className="text-xs text-muted">
+              เลือกส่งเฉพาะโปรแกรมใดโปรแกรมหนึ่ง เช่น ผู้รับบริการฝึกกลืน ส่งเฉพาะโปรแกรมฝึกกลืนที่บ้าน
+            </p>
+            <Select
+              value={portalProgram}
+              disabled={progBusy}
+              onChange={(e) => savePortalProgram(e.target.value)}
+              aria-label="โปรแกรมฝึกที่บ้านที่ส่งให้ญาติ"
+            >
+              <option value="">
+                ตามโปรแกรมของผู้รับบริการ{selected.program ? ` (${selected.program})` : " (ยังไม่กำหนด)"}
+              </option>
+              {programs.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </Select>
+            {progMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{progMsg.error}</p>}
+            {progMsg?.ok && <p className="text-sm text-teal">บันทึกโปรแกรมที่ส่งแล้ว</p>}
           </div>
         </>
       )}

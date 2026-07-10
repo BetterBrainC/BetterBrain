@@ -71,9 +71,14 @@ export async function createRelativeShareLink(
   return { token };
 }
 
-/** Staff: set which report types the relatives portal exposes for a patient. */
+/**
+ * Staff: set which report types the relatives portal exposes for a patient.
+ * followup/summary live on relative_access; the รายงานประเมินแรกรับ (assessment)
+ * flag lives in settings.extra.portal_show_assessment (default ON, no migration).
+ */
 export async function setRelativeReportVisibility(input: {
   patientId: string;
+  showAssessment: boolean;
   showFollowup: boolean;
   showSummary: boolean;
 }): Promise<{ ok?: boolean; error?: string }> {
@@ -91,13 +96,60 @@ export async function setRelativeReportVisibility(input: {
     .select("id");
   if (error) return { error: error.message };
   if (!data || data.length === 0) return { error: "ยังไม่มีลิงก์ญาติ — สร้างลิงก์ก่อน" };
+
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = ((setData as { extra?: Record<string, unknown> } | null)?.extra ?? {}) as Record<string, unknown>;
+  const showAssess = extra.portal_show_assessment && typeof extra.portal_show_assessment === "object"
+    ? { ...(extra.portal_show_assessment as Record<string, unknown>) }
+    : {};
+  if (input.showAssessment) delete showAssess[input.patientId]; // default = ON
+  else showAssess[input.patientId] = false;
+  const { error: extraErr } = await admin
+    .from("settings")
+    .upsert({ id: 1, extra: { ...extra, portal_show_assessment: showAssess } }, { onConflict: "id" });
+  if (extraErr) return { error: extraErr.message };
   return { ok: true };
 }
 
 /**
- * Staff: save the home-exercise guide (วิธีออกกำลังกาย) for one course/program.
+ * Staff: pin which โปรแกรมฝึกที่บ้าน the relatives portal shows for a recipient
+ * (e.g. ผู้รับบริการฝึกกลืน → ส่งเฉพาะโปรแกรมฝึกกลืน). Empty program clears the
+ * pin → the portal falls back to the recipient's own โปรแกรมการฝึก. Stored as a
+ * patientId→program map in settings.extra.portal_home_programs (no migration).
+ */
+export async function setRelativePortalProgram(input: {
+  patientId: string;
+  program: string;
+}): Promise<{ ok?: boolean; error?: string }> {
+  const u = await getCurrentUser();
+  const role = u?.profile?.role;
+  if (role !== "admin" && role !== "director") return { error: "ไม่มีสิทธิ์" };
+  if (u?.profile?.is_enabled === false) return { error: "บัญชีถูกปิดการใช้งาน" };
+  if (!input.patientId) return { error: "ไม่พบผู้รับบริการ" };
+
+  const admin = createAdminClient();
+  const { data: setData } = await admin.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = ((setData as { extra?: Record<string, unknown> } | null)?.extra ?? {}) as Record<string, unknown>;
+  const pinned = extra.portal_home_programs && typeof extra.portal_home_programs === "object"
+    ? { ...(extra.portal_home_programs as Record<string, unknown>) }
+    : {};
+  const program = input.program.trim();
+  if (program) pinned[input.patientId] = program;
+  else delete pinned[input.patientId];
+
+  const { error } = await admin
+    .from("settings")
+    .upsert({ id: 1, extra: { ...extra, portal_home_programs: pinned } }, { onConflict: "id" });
+  if (error) return { error: error.message };
+  revalidatePath("/staff/relatives");
+  return { ok: true };
+}
+
+/**
+ * Staff: save the home-exercise guide (โปรแกรมฝึกที่บ้าน) for one course/program.
  * Stored as a program→items map in settings.extra.exercise_guides; the relatives
- * portal pulls the list matching that recipient's โปรแกรมการฝึก.
+ * portal pulls the list matching that recipient's โปรแกรมการฝึก (or the pinned
+ * portal program).
  */
 export async function setExerciseGuide(input: {
   program: string;

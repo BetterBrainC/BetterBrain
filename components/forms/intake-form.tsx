@@ -155,17 +155,21 @@ export function IntakeForm({
           initialLng={initial?.home_lng != null ? Number(initial.home_lng) : null}
           initialMapUrl={initial?.map_url != null ? String(initial.map_url) : null}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="การวินิจฉัย">
-            <Select name="diagnosis_category" defaultValue={dv("diagnosis_category") ?? ""}>
-              <option value="">— ไม่ระบุ —</option>
-              {(Object.keys(DIAGNOSIS_LABEL) as (keyof typeof DIAGNOSIS_LABEL)[]).map((k) => (
-                <option key={k} value={k}>{DIAGNOSIS_LABEL[k]}</option>
-              ))}
-            </Select>
-          </Field>
-          <ProgramField programs={programs} defaultValue={dv("training_program")} />
-        </div>
+        {/* การวินิจฉัย + โปรแกรมการฝึก are clinical fields Admin records
+            themselves — never shown on the relative registration link. */}
+        {mode !== "relative" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="การวินิจฉัย">
+              <Select name="diagnosis_category" defaultValue={dv("diagnosis_category") ?? ""}>
+                <option value="">— ไม่ระบุ —</option>
+                {(Object.keys(DIAGNOSIS_LABEL) as (keyof typeof DIAGNOSIS_LABEL)[]).map((k) => (
+                  <option key={k} value={k}>{DIAGNOSIS_LABEL[k]}</option>
+                ))}
+              </Select>
+            </Field>
+            <ProgramField programs={programs} defaultValue={dv("training_program")} />
+          </div>
+        )}
       </Card>
 
       <Card className="space-y-4">

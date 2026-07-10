@@ -27,9 +27,9 @@ function FoisSelect({ label = "Functional Oral Intake Scale (FOIS)", name = "foi
  * (Tracheostomy : ____, Bed mobility : ____) has a blank to write in. Names are
  * slugged from the label so saved payloads stay stable.
  */
-function FillInList({ prefix, items }: { prefix: string; items: string[] }) {
+function FillInList({ prefix, items, cols = 2 }: { prefix: string; items: string[]; cols?: 2 | 3 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className={cols === 3 ? "grid gap-3 sm:grid-cols-3" : "grid gap-3 sm:grid-cols-2"}>
       {items.map((it) => {
         const slug = it.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
         return (
@@ -42,12 +42,31 @@ function FillInList({ prefix, items }: { prefix: string; items: string[] }) {
   );
 }
 
+/** Rows scored ขวา/ซ้าย — the paper sheet's "R | L" table (e.g. Sensation). */
+function RtLtGrid({ prefix, rows }: { prefix: string; rows: string[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 text-sm">
+      <span className="text-muted">ประเภท</span><span className="text-muted">R</span><span className="text-muted">L</span>
+      {rows.map((row) => {
+        const slug = row.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+        return (
+          <Fragment key={row}>
+            <span className="self-center text-ink">{row}</span>
+            <TextInput name={`${prefix}_${slug}_r`} />
+            <TextInput name={`${prefix}_${slug}_l`} />
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 function Vitals({ withTemp = false, withSpO2 = true }: { withTemp?: boolean; withSpO2?: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Field label="BP (mmHg)"><TextInput name="bp" /></Field>
       <Field label="HR (bpm)"><TextInput name="hr" /></Field>
-      <Field label="RR (/min)"><TextInput name="rr" /></Field>
+      <Field label="RR (times/min)"><TextInput name="rr" /></Field>
       {withSpO2 && <Field label="SpO2 (%)"><TextInput name="spo2" /></Field>}
       {withTemp && <Field label="Temp (°C)"><TextInput name="temp" /></Field>}
     </div>
@@ -67,10 +86,13 @@ function PlanSection() {
 }
 
 const ADL = ["Bed mobility", "Locomotion", "Eating", "Bathing", "Transfer", "Toileting", "Dressing", "Hygiene/Grooming"];
-// Swallowing Evaluation — order + wording follow the paper sample. FOIS (a defined
-// scale) is rendered as its own select between the two halves.
-const SWALLOW_EVAL_A = ["Tracheostomy", "Lips control", "Cough reflex", "Feeding by", "Bite reflex", "Tongue movement", "Gag reflex"];
-const SWALLOW_EVAL_B = ["Jaw control", "Drooling", "Swallow reflex"];
+// Swallowing Evaluation — client review 2026-07: FOIS moves to the top, then
+// three rows of three (Bite reflex dropped from the client's new layout).
+const SWALLOW_EVAL = [
+  "Tracheostomy", "Feeding by", "Drooling",
+  "Lips control", "Tongue movement", "Jaw control",
+  "Cough reflex", "Gag reflex", "Swallow reflex",
+];
 
 // ── Swallowing Assessment ─────────────────────────────────────────────────
 export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) {
@@ -86,6 +108,9 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
       <ReportSection title="ข้อมูลทั่วไป">
         <Field label="Diagnosis"><TextInput name="diagnosis" /></Field>
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
+        {/* Vital signs sit above Underlying (client review 2026-07). */}
+        <span className="text-sm font-medium text-ink">Vital signs</span>
+        <Vitals />
         <span className="text-sm font-medium text-ink">Underlying</span>
         <CheckRow name="underlying" options={["DM", "Hypertension", "Heart disease", "Dyslipidemia", "CKD", "Rheumatoid", "Gout", "No"]} />
         <span className="text-sm font-medium text-ink">Mobility</span>
@@ -97,19 +122,16 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
       </ReportSection>
 
       <ReportSection title="Subjective & Objective">
-        <span className="text-sm font-medium text-ink">Vital signs</span>
-        <Vitals />
-        <Field label="Subjective & Objective"><Textarea name="subjective_objective" /></Field>
+        <Textarea name="subjective_objective" />
       </ReportSection>
 
       <ReportSection title="Physical examination">
-        <Field label="Physical examination"><Textarea name="physical_exam" /></Field>
+        <Textarea name="physical_exam" />
       </ReportSection>
 
       <ReportSection title="Swallowing Evaluation">
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_A} />
         <FoisSelect />
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_B} />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL} cols={3} />
       </ReportSection>
 
       <ReportSection title="Part 1 · Indirect Swallowing Test">
@@ -132,9 +154,6 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
         <span className="text-sm text-ink">2.3 Solid trial : Cracker</span>
         <CheckRow name="solid" options={["1st", "2nd", "3rd", "4th", "5th"]} />
         <CheckRow name="result" options={["Result : safe to swallow, minimal risk of aspiration"]} />
-        <Field label="Recommendations">
-          <Textarea name="recommendations" placeholder="Soft diet to regular diet, Regular liquids (First time under supervision of the OT)" />
-        </Field>
         <Field label="Remarks"><Textarea name="remarks" /></Field>
       </ReportSection>
 
@@ -165,8 +184,12 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       <ReportSection title="ข้อมูลทั่วไป">
         <Field label="Diagnosis"><TextInput name="diagnosis" /></Field>
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
-        <span className="text-sm font-medium text-ink">Precaution</span>
-        <CheckRow name="precaution" options={["DM", "Hypertension", "Heart disease", "N/A", "Others"]} />
+        {/* Client review 2026-07: vitals move above Underlying; Precaution is
+            replaced by the same Underlying set as the Swallowing form. */}
+        <span className="text-sm font-medium text-ink">Vital signs</span>
+        <Vitals withTemp withSpO2={false} />
+        <span className="text-sm font-medium text-ink">Underlying</span>
+        <CheckRow name="underlying" options={["DM", "Hypertension", "Heart disease", "Dyslipidemia", "CKD", "Rheumatoid", "Gout", "No"]} />
         <span className="text-sm font-medium text-ink">Mobility</span>
         <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Stretcher/Cane"]} />
         <span className="text-sm font-medium text-ink">Fall risk</span>
@@ -174,11 +197,10 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
         <span className="text-sm font-medium text-ink">Fracture risk</span>
         <CheckRow name="fracture_risk" options={["Yes", "No"]} />
         <Field label="Operation / Lab / X-ray result"><Textarea name="operation_result" /></Field>
-        <Field label="Subjective"><Textarea name="subjective" /></Field>
       </ReportSection>
 
-      <ReportSection title="Objective · Vital signs">
-        <Vitals withTemp withSpO2={false} />
+      <ReportSection title="Subjective & Objective">
+        <Textarea name="subjective" />
       </ReportSection>
 
       <ReportSection title="Physical Examination">
@@ -195,7 +217,7 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       <ReportSection title="Pinch & Grip Strength (kg)">
         <div className="grid grid-cols-3 gap-2 text-sm">
           <span className="text-muted">ประเภท</span><span className="text-muted">Rt</span><span className="text-muted">Lt</span>
-          {["Grip strength", "Lateral pinch", "3-Point pinch", "Tip pinch"].map((row) => {
+          {["Grip strength", "Lateral pinch", "3-Point pinch", "Tip pinch", "Pad to Pad pinch"].map((row) => {
             const slug = row.toLowerCase().replace(/[^a-z0-9]+/g, "_");
             return (
               <Fragment key={row}>
@@ -209,17 +231,31 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       </ReportSection>
 
       <ReportSection title="Sensory & Cognitive">
-        <Field label="Sensory (Stereognosis / Proprioception / Light touch / Temperature)"><Textarea name="sensory" /></Field>
-        <span className="text-sm font-medium text-ink">Orientation</span>
+        {/* Mirrors the paper sheet (client review 2026-07): Sensation +
+            Perception scored R/L with the I/Imp/A/NT key, then Cognitive Function. */}
+        <p className="text-xs text-muted">Key : I=Intact, Imp=Impaired, A=Absent, NT=Not Tested</p>
+        <span className="text-sm font-medium text-ink">Sensation</span>
+        <RtLtGrid prefix="sensation" rows={["Stereognosis", "Proprioception", "Sharp/Dull", "Light Touch", "Temperature"]} />
+        <span className="text-sm font-medium text-ink">Perception</span>
+        <RtLtGrid prefix="perception" rows={["Visual Field", "Figure-Ground", "Body Scheme", "R/L Discrimination", "R/L Neglect"]} />
+        <span className="text-sm font-medium text-ink">Cognitive Function</span>
+        <span className="text-sm text-ink">Orientation</span>
         <CheckRow name="orientation" options={["Person", "Place", "Time"]} />
-        <span className="text-sm font-medium text-ink">Follows commands</span>
+        <span className="text-sm text-ink">Follows Commands</span>
         <CheckRow name="follows_commands" options={["One-Step", "Multi-Step", "Unable"]} />
+        <span className="text-sm text-ink">Communications</span>
+        <CheckRow name="communications" options={["Verbal", "Non-verbal", "None"]} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Attention Span"><TextInput name="attention_span" /></Field>
+          <Field label="Calculation"><TextInput name="calculation" /></Field>
+          <Field label="Memory (Short)"><TextInput name="memory_short" /></Field>
+          <Field label="Memory (Long)"><TextInput name="memory_long" /></Field>
+        </div>
       </ReportSection>
 
       <ReportSection title="Swallowing Evaluation">
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_A} />
         <FoisSelect />
-        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL_B} />
+        <FillInList prefix="swallow_eval" items={SWALLOW_EVAL} cols={3} />
       </ReportSection>
 
       <ReportSection title="Activities Daily Living">
@@ -239,7 +275,7 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
 export function SummaryReportForm({ patientName, backHref, sessionId }: FormProps) {
   return (
     <ReportFormShell
-      title="ความก้าวหน้ารายเดือน"
+      title="รายงานความก้าวหน้ารายเดือน"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}
