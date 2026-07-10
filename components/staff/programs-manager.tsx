@@ -5,27 +5,47 @@ import { Plus, Trash2 } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
-import { setTrainingPrograms } from "@/actions/programs";
+import { applyTrainingPrograms } from "@/actions/programs";
 
-/** CRUD the master list of โปรแกรมฝึก / คอร์สการฟื้นฟู. */
+type Row = { original: string | null; name: string };
+
+/**
+ * CRUD the master list of โปรแกรมฝึก / คอร์สการฟื้นฟู. Each row remembers the
+ * name it loaded with so a rename really renames (propagating to recipients,
+ * guides and portal pins) instead of reading as delete+add — and deletions are
+ * tracked explicitly so they actually stick after save.
+ */
 export function ProgramsManager({ initial }: { initial: string[] }) {
-  const [items, setItems] = React.useState<string[]>(initial);
+  const [rows, setRows] = React.useState<Row[]>(initial.map((name) => ({ original: name, name })));
+  const [removed, setRemoved] = React.useState<string[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
 
-  const add = () => setItems((prev) => [...prev, ""]);
-  const update = (i: number, v: string) => setItems((prev) => prev.map((x, idx) => (idx === i ? v : x)));
-  const remove = (i: number) => setItems((prev) => prev.filter((_, idx) => idx !== i));
+  const add = () => setRows((prev) => [...prev, { original: null, name: "" }]);
+  const update = (i: number, v: string) =>
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, name: v } : r)));
+  const remove = (i: number) =>
+    setRows((prev) => {
+      const target = prev[i];
+      if (target?.original) setRemoved((rm) => [...rm, target.original!]);
+      return prev.filter((_, idx) => idx !== i);
+    });
 
   async function save() {
     setBusy(true);
     setMsg(null);
-    const res = await setTrainingPrograms(items);
+    const res = await applyTrainingPrograms({ items: rows, removed });
     setBusy(false);
     setMsg(res);
     if (res.ok) {
       const seen = new Set<string>();
-      setItems(items.map((s) => s.trim()).filter((s) => s && !seen.has(s) && seen.add(s)));
+      setRows(
+        rows
+          .map((r) => r.name.trim())
+          .filter((s) => s && !seen.has(s) && seen.add(s))
+          .map((name) => ({ original: name, name })),
+      );
+      setRemoved([]);
     }
   }
 
@@ -33,13 +53,14 @@ export function ProgramsManager({ initial }: { initial: string[] }) {
     <Card className="space-y-3">
       <CardTitle className="text-base">โปรแกรมฝึก (คอร์สการฟื้นฟู)</CardTitle>
       <p className="text-sm text-muted">
-        ใช้เป็นตัวเลือกในฟอร์มผู้รับบริการ และผูกกับ “วิธีออกกำลังกาย” ในหน้าจัดการญาติ
+        ใช้เป็นตัวเลือกในฟอร์มผู้รับบริการ และผูกกับ “โปรแกรมฝึกที่บ้าน” ในหน้าจัดการญาติ —
+        แก้ชื่อที่นี่แล้วชื่อจะเปลี่ยนตามให้ทุกจุด
       </p>
       <div className="space-y-2">
-        {items.length === 0 && <p className="text-sm text-muted">ยังไม่มีโปรแกรม — กด “เพิ่มโปรแกรม”</p>}
-        {items.map((it, i) => (
+        {rows.length === 0 && <p className="text-sm text-muted">ยังไม่มีโปรแกรม — กด “เพิ่มโปรแกรม”</p>}
+        {rows.map((r, i) => (
           <div key={i} className="flex items-center gap-2">
-            <TextInput value={it} onChange={(e) => update(i, e.target.value)} placeholder="เช่น Swallowing Rehab" />
+            <TextInput value={r.name} onChange={(e) => update(i, e.target.value)} placeholder="เช่น Swallowing Rehab" />
             <button
               type="button"
               onClick={() => remove(i)}
