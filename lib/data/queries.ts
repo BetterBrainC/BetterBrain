@@ -669,6 +669,10 @@ export interface DashboardData {
   totalToday: number;
   checkedIn: number;
   inProgress: number;
+  /** เคสประเมินแรกรับวันนี้ (session kind = assessment). */
+  newRecipients: number;
+  /** เคสแจ้งงดวันนี้ (status = skipped). */
+  cancelledToday: number;
   pendingApprovals: number;
   monitor: { name: string; patient: string; time: string; status: SessionStatus; early: boolean }[];
   employeeCount: number;
@@ -701,11 +705,11 @@ export async function getDashboard(): Promise<DashboardData> {
 
   const { data: tData } = await supabase
     .from("schedule_sessions")
-    .select("status, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
+    .select("status, kind, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
     .eq("scheduled_date", today)
     .order("scheduled_start");
   const sessions = rows<{
-    status: SessionStatus; scheduled_start: string | null;
+    status: SessionStatus; kind: "assessment" | "treatment" | null; scheduled_start: string | null;
     patients: { full_name: string | null } | null;
     employee: { full_name: string | null } | null;
     check_ins: { kind: string; is_early: boolean }[] | null;
@@ -714,6 +718,8 @@ export async function getDashboard(): Promise<DashboardData> {
     ["in_progress", "attended", "late", "completed"].includes(s.status),
   ).length;
   const inProgress = sessions.filter((s) => s.status === "in_progress").length;
+  const newRecipients = sessions.filter((s) => s.kind === "assessment").length;
+  const cancelledToday = sessions.filter((s) => s.status === "skipped").length;
 
   // 14-day session trend (Bangkok-local dates).
   const start = new Date();
@@ -758,6 +764,8 @@ export async function getDashboard(): Promise<DashboardData> {
     totalToday: sessions.length,
     checkedIn,
     inProgress,
+    newRecipients,
+    cancelledToday,
     pendingApprovals: pendingApprovals ?? 0,
     monitor: sessions.map((s) => ({
       name: s.employee?.full_name ?? "—",

@@ -16,6 +16,8 @@ export default async function StaffDashboard() {
     { label: "เคสทั้งหมดวันนี้", value: String(d.totalToday), hint: "ทุกพนักงาน" },
     { label: "เช็คอินแล้ว", value: String(d.checkedIn), hint: `${checkedPct}% ของวันนี้` },
     { label: "กำลังทำ", value: String(d.inProgress), hint: "กำลังฝึก" },
+    { label: "ผู้รับบริการใหม่", value: String(d.newRecipients), hint: "เคสประเมินแรกรับ" },
+    { label: "ยกเลิก", value: String(d.cancelledToday), hint: "เคสแจ้งงด" },
     { label: "รออนุมัติ", value: String(d.pendingApprovals), hint: "แก้เช็คอิน" },
   ];
 
@@ -28,7 +30,7 @@ export default async function StaffDashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {tiles.map((t) => (
           <Card key={t.label}>
             <p className="text-sm text-muted">{t.label}</p>
