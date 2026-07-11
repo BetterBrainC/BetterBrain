@@ -612,6 +612,7 @@ export interface CorrectionItem {
   dateLabel: string;
   reason: string;
   status: RequestStatus;
+  createdAt: string;
   changes: CorrectionField[];
 }
 
@@ -671,7 +672,7 @@ export async function getCorrections(): Promise<CorrectionItem[]> {
     .select("id, reason, status, created_at, requested_changes, before_snapshot, employee:profiles!correction_requests_employee_id_fkey(full_name), session:schedule_sessions(scheduled_date, patients(full_name))")
     .order("created_at", { ascending: false });
   return rows<{
-    id: string; reason: string; status: RequestStatus;
+    id: string; reason: string; status: RequestStatus; created_at: string;
     requested_changes: Record<string, unknown> | null;
     before_snapshot: Record<string, unknown> | null;
     employee: { full_name: string | null } | null;
@@ -683,6 +684,7 @@ export async function getCorrections(): Promise<CorrectionItem[]> {
     dateLabel: c.session?.scheduled_date ? formatThaiDate(c.session.scheduled_date) : "",
     reason: c.reason,
     status: c.status,
+    createdAt: c.created_at,
     changes: diffChanges(c.before_snapshot, c.requested_changes),
   }));
 }
