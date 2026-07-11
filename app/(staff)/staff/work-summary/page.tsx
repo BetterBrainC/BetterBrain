@@ -38,34 +38,8 @@ export default async function WorkSummaryPage({
   // รวม (การเข้างาน) = ตรงเวลา + มาสาย per employee.
   const rows: Row[] = summary.map((r) => ({ ...r, attendanceTotal: r.onTime + r.late }));
 
+  // For the รวมทุกคน footer row of the table.
   const sum = (key: keyof Row) => rows.reduce((n, r) => n + Number(r[key]), 0);
-  const totals = {
-    total: sum("total"),
-    assessment: sum("assessment"),
-    treatment: sum("treatment"),
-    onTime: sum("onTime"),
-    late: sum("late"),
-    absent: sum("absent"),
-    skipped: sum("skipped"),
-    earlyLeave: sum("earlyLeave"),
-    attendanceTotal: sum("attendanceTotal"),
-    workHours: sum("workHours"),
-    specialCount: sum("specialCount"),
-    specialAmount: sum("specialAmount"),
-    substituted: sum("substituted"),
-  };
-  const onTimePct = totals.attendanceTotal
-    ? Math.round((totals.onTime / totals.attendanceTotal) * 100)
-    : 0;
-
-  const tiles = [
-    { label: "เคสทั้งหมด", value: num(totals.total), hint: `รับใหม่ ${num(totals.assessment)} · การรักษา ${num(totals.treatment)}` },
-    { label: "ชั่วโมงทำงานรวม", value: hours(totals.workHours), hint: "จากเช็คอิน–เช็คเอาท์จริง (ชม.)" },
-    { label: "ตรงเวลา", value: num(totals.onTime), hint: `${onTimePct}% ของเคสที่เข้า`, tone: "var(--status-completed-fg)" },
-    { label: "มาสาย", value: num(totals.late), hint: `ไม่ได้เช็คอิน ${num(totals.absent)} · งด ${num(totals.skipped)}`, tone: totals.late > 0 ? "var(--status-late-fg)" : undefined },
-    { label: "เคสพิเศษ", value: num(totals.specialCount), hint: `ค่าตอบแทนรวม ${baht(totals.specialAmount)}`, tone: totals.specialCount > 0 ? "var(--accent-700)" : undefined },
-    { label: "รับเวรแทน", value: num(totals.substituted), hint: "จัดเวรแทน/สลับเวร" },
-  ];
 
   // Column groups for the desktop table (mobile uses per-employee cards below).
   const GROUPS: {
@@ -134,21 +108,6 @@ export default async function WorkSummaryPage({
           ))}
         </div>
       </header>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
-        {tiles.map((t) => (
-          <Card key={t.label}>
-            <p className="text-sm text-muted">{t.label}</p>
-            <p
-              className="mt-1 font-display text-stat font-bold tabular-nums text-navy"
-              style={t.tone && t.value !== "0" ? { color: t.tone } : undefined}
-            >
-              {t.value}
-            </p>
-            <p className="mt-1 text-xs text-faint">{t.hint}</p>
-          </Card>
-        ))}
-      </div>
 
       <Card className="space-y-3">
         <CardTitle className="text-base">พนักงาน ({rows.length})</CardTitle>
