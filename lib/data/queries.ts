@@ -403,9 +403,16 @@ export interface EmployeeWorkSummary {
   upcoming: number;
   absent: number; // ไม่ได้เช็คอิน (ขาด)
   late: number;
+  skipped: number;      // งด (ผู้รับบริการยกเลิกกะทันหัน)
   rescheduled: number;
   cancelled: number; // ยกเลิก
   onTime: number;    // ตรงเวลา = completed/attended (ไม่รวมสาย)
+  earlyLeave: number;   // ออกก่อนเวลา (check-out ก่อนเวลานัด)
+  patientCount: number; // ผู้รับบริการที่ดูแล (ไม่นับซ้ำ)
+  specialCount: number; // เคสพิเศษ (is_special_case)
+  specialAmount: number; // Σ special_amount (บาท)
+  substituted: number;  // รับเวรแทน (substituted_from != null)
+  workHours: number;    // Σ(check_out − check_in) เป็นชั่วโมง (ทศนิยม 1 ตำแหน่ง)
 }
 
 export type WorkPeriod = "day" | "month" | "year" | "all";
@@ -438,22 +445,41 @@ export async function getEmployeeWorkSummary(
   const supabase = await createClient();
   let q = supabase
     .from("schedule_sessions")
-    .select("status, kind, employee:profiles!schedule_sessions_employee_id_fkey(id, full_name)")
+    .select("status, kind, patient_id, is_special_case, special_amount, substituted_from, employee:profiles!schedule_sessions_employee_id_fkey(id, full_name)")
     .limit(5000);
   if (range?.from) q = q.gte("scheduled_date", range.from);
   if (range?.to) q = q.lte("scheduled_date", range.to);
-  const { data } = await q;
+
+  // check-in/out events in the same Bangkok-local window → real work hours +
+  // early-leave counts per employee (sessions don't store the timestamps).
+  let cq = supabase
+    .from("check_ins")
+    .select("employee_id, session_id, kind, is_early, client_event_at")
+    .limit(10000);
+  if (range?.from) cq = cq.gte("client_event_at", `${range.from}T00:00:00+07:00`);
+  if (range?.to) cq = cq.lte("client_event_at", `${range.to}T23:59:59.999+07:00`);
+
+  const [{ data }, { data: cData }] = await Promise.all([q, cq]);
   const evs = rows<{
     status: SessionStatus; kind: "assessment" | "treatment";
+    patient_id: string | null; is_special_case: boolean | null;
+    special_amount: number | null; substituted_from: string | null;
     employee: { id: string; full_name: string | null } | null;
   }>(data);
   const map = new Map<string, EmployeeWorkSummary>();
+  const patientsOf = new Map<string, Set<string>>();
+  const blank = (id: string, name: string): EmployeeWorkSummary => ({
+    employeeId: id, name, total: 0, treatment: 0, assessment: 0, passed: 0,
+    upcoming: 0, absent: 0, late: 0, skipped: 0, rescheduled: 0, cancelled: 0,
+    onTime: 0, earlyLeave: 0, patientCount: 0, specialCount: 0,
+    specialAmount: 0, substituted: 0, workHours: 0,
+  });
   for (const r of evs) {
     if (!r.employee) continue;
     const id = r.employee.id;
     let e = map.get(id);
     if (!e) {
-      e = { employeeId: id, name: r.employee.full_name ?? "—", total: 0, treatment: 0, assessment: 0, passed: 0, upcoming: 0, absent: 0, late: 0, rescheduled: 0, cancelled: 0, onTime: 0 };
+      e = blank(id, r.employee.full_name ?? "—");
       map.set(id, e);
     }
     e.total += 1;
@@ -463,8 +489,50 @@ export async function getEmployeeWorkSummary(
     if (["scheduled", "rescheduled", "in_progress"].includes(r.status)) e.upcoming += 1;
     if (r.status === "no_checkin") e.absent += 1;
     if (r.status === "late") e.late += 1;
+    if (r.status === "skipped") e.skipped += 1;
     if (r.status === "rescheduled") e.rescheduled += 1;
     if (r.status === "cancelled") e.cancelled += 1;
+    if (r.is_special_case) {
+      e.specialCount += 1;
+      e.specialAmount += r.special_amount ?? 0;
+    }
+    if (r.substituted_from) e.substituted += 1;
+    if (r.patient_id) {
+      const set = patientsOf.get(id) ?? new Set<string>();
+      set.add(r.patient_id);
+      patientsOf.set(id, set);
+    }
+  }
+
+  // Pair check_in/check_out per session → hours; count early check-outs.
+  const cEvs = rows<{
+    employee_id: string; session_id: string; kind: string;
+    is_early: boolean | null; client_event_at: string;
+  }>(cData);
+  const pair = new Map<string, { emp: string; in?: string; out?: string }>();
+  for (const c of cEvs) {
+    const p = pair.get(c.session_id) ?? { emp: c.employee_id };
+    if (c.kind === "check_in") p.in = c.client_event_at;
+    else if (c.kind === "check_out") {
+      p.out = c.client_event_at;
+      if (c.is_early) {
+        const e = map.get(c.employee_id) ?? blank(c.employee_id, "—");
+        map.set(c.employee_id, e);
+        e.earlyLeave += 1;
+      }
+    }
+    pair.set(c.session_id, p);
+  }
+  const msOf = new Map<string, number>();
+  for (const p of pair.values()) {
+    if (p.in && p.out) {
+      const ms = new Date(p.out).getTime() - new Date(p.in).getTime();
+      if (ms > 0) msOf.set(p.emp, (msOf.get(p.emp) ?? 0) + ms);
+    }
+  }
+  for (const [id, e] of map) {
+    e.patientCount = patientsOf.get(id)?.size ?? 0;
+    e.workHours = Math.round((msOf.get(id) ?? 0) / 360_000) / 10;
   }
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
