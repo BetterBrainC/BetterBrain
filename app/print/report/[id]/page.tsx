@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth";
-import { getReportDetail, getSettings } from "@/lib/data/queries";
+import { getReportDetail } from "@/lib/data/queries";
 import { formatThaiDate } from "@/lib/date/buddhist";
 import { PrintToolbar } from "@/components/staff/print-toolbar";
 import {
@@ -152,7 +152,7 @@ export default async function ReportPrintPage({
 }) {
   await requireStaff();
   const { id } = await params;
-  const [r, settings] = await Promise.all([getReportDetail(id), getSettings()]);
+  const r = await getReportDetail(id);
   if (!r) notFound();
 
   // Each report type prints as its own paper form (client 2026-07-17): the two
@@ -170,7 +170,7 @@ export default async function ReportPrintPage({
     <div className="min-h-dvh bg-white text-[13px] leading-relaxed text-black [color-scheme:light]">
       <PrintToolbar />
       <div className="mx-auto max-w-[210mm] px-6 pb-10 print:px-0 print:pb-0">
-        <Letterhead logoUrl={settings.logoUrl} />
+        <Letterhead />
         {body}
       </div>
     </div>

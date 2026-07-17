@@ -12,7 +12,14 @@ import type { ReportDetail } from "@/lib/data/queries";
 
 const box = "border border-black";
 
-export function Letterhead({ logoUrl }: { logoUrl: string | null }) {
+/**
+ * Letterhead masthead. The logo is the clinic's full horizontal lockup (head +
+ * BETTER BRAIN / SWALLOW REHAB), fixed to the brand asset rather than read from
+ * Settings — client 10/7/2569: "Logo ให้ใช้แบบที่ส่งให้". The Settings logo stays
+ * the compact square mark used by the sidebar and employee nav, which would be
+ * unreadable here. A second brand (Synnis) would swap this via brand config.
+ */
+export function Letterhead() {
   return (
     <header className="flex items-start justify-between gap-4 border-b-2 border-black pb-2">
       <div>
@@ -22,10 +29,14 @@ export function Letterhead({ logoUrl }: { logoUrl: string | null }) {
           <span className="ml-4">เบอร์โทรศัพท์ 082-5453944</span>
         </p>
       </div>
-      {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="โลโก้" className="h-16 w-auto object-contain" />
-      ) : null}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/brand/betterbrain-logo-print.png"
+        alt="BetterBrain Swallow Rehab"
+        width={519}
+        height={400}
+        className="h-16 w-auto object-contain"
+      />
     </header>
   );
 }
