@@ -8,6 +8,9 @@ import { PortalContent } from "@/components/relatives/portal-content";
 import { verifyRelativePortal } from "@/actions/portal";
 import type { RelativePortalData } from "@/lib/data/queries";
 
+/** Where the passed gate code is remembered so the report tab needn't re-ask. */
+export const portalCodeKey = (token: string) => `tpm:portal-code:${token}`;
+
 /**
  * Security gate: verify the last 4 digits of the recipient's phone SERVER-SIDE
  * (the expected value never reaches the browser). On success the server returns
@@ -27,6 +30,13 @@ export function PortalGate({ token }: { token: string }) {
     const res = await verifyRelativePortal(token, val);
     setBusy(false);
     if (res.error || !res.data) return setErr(res.error ?? "รหัสไม่ถูกต้อง");
+    // Remember the code for this tab session so opening a report in a new tab
+    // doesn't re-prompt. The server re-verifies it on every request regardless.
+    try {
+      sessionStorage.setItem(portalCodeKey(token), val);
+    } catch {
+      // storage unavailable (private mode) — the report tab just asks again
+    }
     setData(res.data);
   }
 

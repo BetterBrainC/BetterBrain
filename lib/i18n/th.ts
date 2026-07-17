@@ -93,6 +93,16 @@ export const REPORT_LABEL = {
   summary: "รายงานความก้าวหน้ารายเดือน (Summary report)",
 } as const;
 
+/**
+ * Relatives-portal gate errors. Shared so the report view can tell "retype the
+ * code" apart from "you cannot open this report" without matching a loose string.
+ */
+export const PORTAL_ERR = {
+  badCode: "รหัสไม่ถูกต้อง",
+  badLink: "ลิงก์ไม่ถูกต้องหรือหมดอายุ",
+  noReport: "ไม่พบรายงานนี้",
+} as const;
+
 export const APP = {
   name: "TPM",
   org: "Better Brain Rehab at Home",

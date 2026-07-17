@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, UserRound, CalendarClock } from "lucide-react";
+import { ChevronLeft, ChevronRight, UserRound, CalendarClock, FileText } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RelativePushToggle } from "@/components/relatives/relative-push-toggle";
@@ -11,8 +11,9 @@ import { ThaiDate } from "@/components/ui/thai-date";
 import type { RelativePortalData } from "@/lib/data/queries";
 
 const REPORT_LABEL = {
-  assessment_swallow: "รายงานประเมินแรกรับ · Swallowing",
-  assessment_hand: "รายงานประเมินแรกรับ · Hand Function",
+  assessment_swallow: "ประเมินแรกรับ · Swallowing",
+  assessment_hand: "ประเมินแรกรับ · Hand Function",
+  assessment_report: "รายงานประเมินแรกรับ",
   followup: "รายงานประจำวัน",
   summary: "รายงานความก้าวหน้ารายเดือน",
 } as const;
@@ -240,17 +241,31 @@ export function PortalContent({ data, token }: { data: RelativePortalData; token
         {data.reports.length === 0 ? (
           <p className="text-sm text-muted">ยังไม่มีรายงานที่เปิดให้ดู</p>
         ) : (
-          <ul className="space-y-2">
-            {data.reports.map((r) => (
-              <li key={r.id} className="border-b border-border pb-2 last:border-0 last:pb-0">
-                <div className="flex items-center justify-between">
-                  <Badge tone={r.type === "summary" ? "info" : "completed"}>{REPORT_LABEL[r.type]}</Badge>
-                  <span className="text-xs text-muted"><ThaiDate value={r.dateISO} /></span>
-                </div>
-                {r.note && <p className="mt-1 text-sm text-ink">{r.note}</p>}
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="text-xs text-faint">แตะรายงานเพื่อเปิดอ่าน / บันทึกเป็น PDF</p>
+            <ul className="space-y-1">
+              {data.reports.map((r) => (
+                <li key={r.id} className="border-b border-border last:border-0">
+                  <a
+                    href={`/r/${token}/report/${r.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    aria-label={`เปิดรายงาน ${REPORT_LABEL[r.type]} วันที่ ${formatThaiDate(r.dateISO)}`}
+                    className="-mx-2 block rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-tint focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <Badge tone={r.type === "summary" ? "info" : "completed"}>{REPORT_LABEL[r.type]}</Badge>
+                      <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
+                        <ThaiDate value={r.dateISO} />
+                        <FileText className="h-4 w-4 text-faint" aria-hidden />
+                      </span>
+                    </span>
+                    {r.note && <span className="mt-1 block text-sm text-ink">{r.note}</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </Card>
 

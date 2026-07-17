@@ -2,9 +2,15 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { getRelativePortal, type RelativePortalData } from "@/lib/data/queries";
+import {
+  getRelativePortal,
+  getRelativeReportDetail,
+  type RelativePortalData,
+  type ReportDetail,
+} from "@/lib/data/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
+import { PORTAL_ERR } from "@/lib/i18n/th";
 
 const PORTAL_LINK_TTL_DAYS = 90;
 
@@ -250,5 +256,25 @@ export async function verifyRelativePortal(
   }
   const { phoneLast4: _omit, ...data } = full;
   void _omit;
+  return { data };
+}
+
+/**
+ * Relatives: fetch one report to view/print as PDF. Gated by the same two
+ * factors as the portal itself — the opaque share token plus the recipient's
+ * phone last-4 — and getRelativeReportDetail additionally checks the report
+ * belongs to that recipient and is a type the clinic exposes.
+ */
+export async function getRelativeReport(
+  token: string,
+  last4: string,
+  reportId: string,
+): Promise<{ data?: ReportDetail; error?: string }> {
+  const full = await getRelativePortal(token);
+  if (!full) return { error: PORTAL_ERR.badLink };
+  if (!/^\d{4}$/.test(last4) || last4 !== full.phoneLast4) return { error: PORTAL_ERR.badCode };
+
+  const data = await getRelativeReportDetail(token, reportId);
+  if (!data) return { error: PORTAL_ERR.noReport };
   return { data };
 }

@@ -967,7 +967,7 @@ export interface RelativePortalSession {
 }
 export interface RelativePortalReport {
   id: string;
-  type: "assessment_swallow" | "assessment_hand" | "followup" | "summary";
+  type: "assessment_swallow" | "assessment_hand" | "assessment_report" | "followup" | "summary";
   dateISO: string;
   note: string | null;
 }
@@ -1096,7 +1096,9 @@ export async function getRelativePortal(
     : {};
   const showAssessment = showAssessMap[patient.id] !== false;
   const allowed: RelativePortalReport["type"][] = [
-    ...(showAssessment ? (["assessment_swallow", "assessment_hand"] as const) : []),
+    // assessment_report = the Thai letterhead รายงานประเมินแรกรับ written for the
+    // family, so it rides the same toggle as the assessments it summarises.
+    ...(showAssessment ? (["assessment_swallow", "assessment_hand", "assessment_report"] as const) : []),
     ...(access.show_followup ? (["followup"] as const) : []),
     ...(access.show_summary ? (["summary"] as const) : []),
   ];
@@ -1630,6 +1632,65 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
     patientAge: r.patients?.age_years ?? null,
     patientDiagnosis: r.patients?.diagnosis_category ?? null,
     firstAssessmentDate,
+    authorName: r.author?.full_name ?? "—",
+    date: r.report_date,
+    status: r.status,
+    fields: flattenReportPayload(r.payload),
+    payload: (r.payload && typeof r.payload === "object" ? r.payload : {}) as Record<string, unknown>,
+  };
+}
+
+/**
+ * Full detail of one report for the RELATIVES portal, scoped by share token.
+ *
+ * Relatives are not auth users, so this runs on the service-role key and must do
+ * its own authorization: the report has to belong to the token's recipient, be
+ * completed, and be of a type the clinic exposes for that recipient. Without the
+ * type check a relative could read a report the visibility toggles hide; without
+ * the patient check they could read another recipient's report by guessing an id.
+ * The caller (a Server Action) verifies the phone last-4 before calling this.
+ */
+export async function getRelativeReportDetail(
+  token: string,
+  reportId: string,
+): Promise<ReportDetail | null> {
+  const portal = await getRelativePortal(token);
+  if (!portal) return null;
+  const allowed = portal.reports.find((r) => r.id === reportId);
+  if (!allowed) return null;
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("reports")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, diagnosis_category), author:profiles!reports_author_id_fkey(full_name)")
+    .eq("id", reportId)
+    .maybeSingle();
+  const r = one<{
+    id: string; report_type: string; report_date: string; status: string;
+    payload: unknown; patient_id: string | null;
+    patients: { full_name: string | null; age_years: number | null; diagnosis_category: Diagnosis | null } | null;
+    author: { full_name: string | null } | null;
+  }>(data);
+  if (!r) return null;
+
+  const { data: fa } = await admin
+    .from("reports")
+    .select("report_date")
+    .eq("patient_id", r.patient_id!)
+    .in("report_type", ["assessment_swallow", "assessment_hand"])
+    .order("report_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    id: r.id,
+    reportType: r.report_type,
+    typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
+    patientId: r.patient_id,
+    patientName: r.patients?.full_name ?? "—",
+    patientAge: r.patients?.age_years ?? null,
+    patientDiagnosis: r.patients?.diagnosis_category ?? null,
+    firstAssessmentDate: one<{ report_date: string }>(fa)?.report_date ?? null,
     authorName: r.author?.full_name ?? "—",
     date: r.report_date,
     status: r.status,
