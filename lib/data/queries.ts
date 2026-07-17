@@ -1516,6 +1516,7 @@ export async function getUpcomingSessions(): Promise<{ id: string; label: string
 const REPORT_TYPE_LABEL: Record<string, string> = {
   assessment_swallow: "Assessment · Swallowing",
   assessment_hand: "Assessment · Hand Function",
+  assessment_report: "รายงานประเมินแรกรับ",
   followup: "Follow up (รายวัน)",
   summary: "Summary (รายเดือน)",
 };

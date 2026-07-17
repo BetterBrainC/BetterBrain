@@ -4,11 +4,13 @@ import {
   SwallowingForm,
   HandForm,
   SummaryReportForm,
+  AssessmentReportForm,
 } from "@/components/reports/clinical-forms";
 
-// 3 report types (client 3.pdf): Assessment (swallowing/hand) + Summary report
-// (monthly progress). Follow up (daily) is captured via the check-out sheet.
-const TYPES = ["swallowing", "hand", "summary"] as const;
+// Assessment (swallowing/hand) · รายงานประเมินแรกรับ (the Thai letterhead report
+// for the family) · Summary report (monthly progress). Follow up (daily) is
+// captured via the check-out sheet.
+const TYPES = ["swallowing", "hand", "assessment-report", "summary"] as const;
 type ReportType = (typeof TYPES)[number];
 
 export default async function ReportPage({
@@ -31,6 +33,8 @@ export default async function ReportPage({
       return <SwallowingForm {...props} />;
     case "hand":
       return <HandForm {...props} />;
+    case "assessment-report":
+      return <AssessmentReportForm {...props} />;
     case "summary":
       return <SummaryReportForm {...props} />;
   }

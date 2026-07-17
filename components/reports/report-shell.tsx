@@ -10,7 +10,7 @@ import { ThaiDate } from "@/components/ui/thai-date";
 import { saveReport } from "@/actions/reports";
 import { enqueueReport } from "@/lib/sync/checkin-sync";
 
-type ReportType = "assessment_swallow" | "assessment_hand" | "summary";
+type ReportType = "assessment_swallow" | "assessment_hand" | "summary" | "assessment_report";
 
 /** Serialize a form into a plain object; repeated names (checkbox groups) → arrays. */
 function serializeForm(form: HTMLFormElement): Record<string, unknown> {

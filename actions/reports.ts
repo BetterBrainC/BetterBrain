@@ -11,7 +11,14 @@ export interface ActionResult {
   error?: string;
 }
 
-type ReportType = "assessment_swallow" | "assessment_hand" | "summary";
+type ReportType = "assessment_swallow" | "assessment_hand" | "summary" | "assessment_report";
+
+/**
+ * Report types written up away from the patient's home, so no check-in is
+ * required (mirrors the DB's `chk_report_requires_checkin`, which gates only
+ * assessment_swallow / assessment_hand / followup).
+ */
+const UNGATED_TYPES: ReadonlySet<ReportType> = new Set(["summary", "assessment_report"]);
 
 /**
  * Upload a report photo to the PRIVATE `attachments` bucket (clinical photos are
@@ -52,9 +59,10 @@ export async function uploadReportPhoto(
 }
 
 /**
- * Persist an Assessment (swallowing/hand) or Summary report as completed.
- * Assessment requires a check-in (DB CHECK + this guard); Summary is anytime.
- * Saved as status='completed' → vanishes from the employee's view (RLS).
+ * Persist an Assessment (swallowing/hand), รายงานประเมินแรกรับ or Summary report as
+ * completed. Assessments require a check-in (DB CHECK + this guard); the two
+ * written-up reports are anytime. Saved as status='completed' → vanishes from
+ * the employee's view (RLS).
  */
 export async function saveReport(input: {
   sessionId: string;
@@ -80,7 +88,7 @@ export async function saveReport(input: {
   if (s.employee_id !== user.id) return { error: "ไม่มีสิทธิ์ในเวรนี้" };
 
   let checkInId: string | null = null;
-  if (input.reportType !== "summary") {
+  if (!UNGATED_TYPES.has(input.reportType)) {
     const { data: ci } = await supabase
       .from("check_ins")
       .select("id")

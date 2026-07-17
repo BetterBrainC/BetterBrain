@@ -11,6 +11,10 @@ import {
   SummaryPrint,
   AssessmentPrint,
 } from "@/components/print/report-print-templates";
+import {
+  SwallowingAssessmentPrint,
+  HandAssessmentPrint,
+} from "@/components/print/assessment-print-templates";
 import type { ReportDetail } from "@/lib/data/queries";
 
 export const metadata = { title: "พิมพ์รายงาน (PDF)" };
@@ -151,10 +155,15 @@ export default async function ReportPrintPage({
   const [r, settings] = await Promise.all([getReportDetail(id), getSettings()]);
   if (!r) notFound();
 
+  // Each report type prints as its own paper form (client 2026-07-17): the two
+  // assessments as the English clinical sheets, assessment_report as the Thai
+  // letterhead handed to the family.
   const body =
     r.reportType === "followup" ? <FollowupPrint r={r} />
     : r.reportType === "summary" ? <SummaryPrint r={r} />
-    : r.reportType.startsWith("assessment") ? <AssessmentPrint r={r} />
+    : r.reportType === "assessment_report" ? <AssessmentPrint r={r} />
+    : r.reportType === "assessment_swallow" ? <SwallowingAssessmentPrint r={r} />
+    : r.reportType === "assessment_hand" ? <HandAssessmentPrint r={r} />
     : <GenericPrint r={r} />;
 
   return (

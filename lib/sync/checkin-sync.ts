@@ -2,7 +2,7 @@ import { getOfflineDb, type QueuedCheckin, type QueuedReport } from "@/lib/db/of
 import { recordCheckEvent, uploadCheckinSelfie, saveFollowup } from "@/actions/checkin";
 import { saveReport } from "@/actions/reports";
 
-type AssessmentType = "assessment_swallow" | "assessment_hand" | "summary";
+type AssessmentType = "assessment_swallow" | "assessment_hand" | "summary" | "assessment_report";
 
 /**
  * Offline check-in sync. Check-in/out events are queued in IndexedDB (device

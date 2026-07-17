@@ -105,10 +105,12 @@ export default async function SessionPage({
             ? [
                 { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
                 { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
+                { href: `/app/session/${session.id}/report/assessment-report`, label: "รายงานประเมินแรกรับ" },
               ]
             : [
                 { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
                 { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
+                { href: `/app/session/${session.id}/report/assessment-report`, label: "รายงานประเมินแรกรับ" },
                 { href: `/app/session/${session.id}/report/summary`, label: "รายงานความก้าวหน้ารายเดือน" },
               ]
           ).map((r) => (

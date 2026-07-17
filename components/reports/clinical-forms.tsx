@@ -73,23 +73,11 @@ function Vitals({ withTemp = false, withSpO2 = true }: { withTemp?: boolean; wit
   );
 }
 
-/**
- * Plan of treatment. `withSwallowPlan` adds the two blanks the paper
- * รายงานประเมินแรกรับ carries between the long- and short-term goals.
- */
-function PlanSection({ withSwallowPlan = false }: { withSwallowPlan?: boolean }) {
+function PlanSection() {
   return (
     <ReportSection title="Plan of Treatment">
-      <Field label="เป้าหมายของฟื้นฟูระยะยาว (Long term goal)"><Textarea name="long_term_goal" /></Field>
-      {withSwallowPlan && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="ระยะเวลาในการฟื้นฟูสูงสุด"><TextInput name="max_rehab_duration" /></Field>
-          <Field label="จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน (ครั้ง/สัปดาห์)">
-            <TextInput name="sessions_per_week" inputMode="numeric" />
-          </Field>
-        </div>
-      )}
-      <Field label="เป้าหมายของฟื้นฟูระยะสั้น (Short term goal)"><Textarea name="short_term_goal" /></Field>
+      <Field label="Long term goal"><Textarea name="long_term_goal" /></Field>
+      <Field label="Short term goal"><Textarea name="short_term_goal" /></Field>
       <Field label="Re-assessment date"><ThaiDateInput name="reassessment_date" /></Field>
       <Field label="Treatment"><Textarea name="treatment" /></Field>
       <Field label="Post treatment"><Textarea name="post_treatment" /></Field>
@@ -99,39 +87,8 @@ function PlanSection({ withSwallowPlan = false }: { withSwallowPlan?: boolean })
 
 const ADL = ["Bed mobility", "Locomotion", "Eating", "Bathing", "Transfer", "Toileting", "Dressing", "Hygiene/Grooming"];
 
-// Underlying set from the paper forms (client PDFs, 10/7/2569) — Obesity added,
-// plus a free-text "other ;" blank that the paper sheet has.
-const UNDERLYING = [
-  "DM", "Hypertension", "Heart disease", "Dyslipidemia", "Obesity",
-  "Rheumatoid", "Gout", "CKD", "No",
-];
-
-/**
- * "ระดับความสามารถปัจจุบัน" — the five narrative sections of the paper
- * รายงานประเมินแรกรับ. Field names are shared with the print template so what the
- * OT types here lands in the matching box on the letterhead instead of printing blank.
- */
-const ABILITY_FIELDS: { name: string; label: string }[] = [
-  { name: "ability_awareness", label: "1. การรับรู้และการตื่นตัว" },
-  { name: "ability_sitting", label: "2. การควบคุมนั่งและการควบคุมศีรษะ" },
-  { name: "ability_oral_face", label: "3. โครงสร้างปาก · กล้ามเนื้อใบหน้าและริมฝีปาก" },
-  { name: "ability_oral_tongue", label: "3. โครงสร้างปาก · กล้ามเนื้อลิ้น" },
-  { name: "ability_oral_jaw", label: "3. โครงสร้างปาก · ขากรรไกร" },
-  { name: "ability_reflex", label: "4. ปฏิกิริยาอัตโนมัติเกี่ยวข้องกับการกลืน" },
-  { name: "ability_swallow_oral", label: "5. ความสามารถด้านการกลืน · ระยะช่องปาก (Oral Phase)" },
-  { name: "ability_swallow_pharyngeal", label: "5. ความสามารถด้านการกลืน · ระยะคอหอย (Pharyngeal phase)" },
-  { name: "ability_swallow_esophageal", label: "5. ความสามารถด้านการกลืน · ระยะหลอดอาหาร (Esophageal phase)" },
-];
-
-function UnderlyingFields() {
-  return (
-    <>
-      <SubLabel>Underlying</SubLabel>
-      <CheckRow name="underlying" options={UNDERLYING} />
-      <Field label="other ; (ระบุเพิ่มเติม)"><TextInput name="underlying_other" /></Field>
-    </>
-  );
-}
+// Underlying set — matches the Swallowing/Hand Function Assessment source docs.
+const UNDERLYING = ["DM", "Hypertension", "Heart disease", "Dyslipidemia", "CKD", "Rheumatoid", "Gout", "No"];
 // Swallowing Evaluation — client review 2026-07: FOIS moves to the top, then
 // three rows of three (Bite reflex dropped from the client's new layout).
 const SWALLOW_EVAL = [
@@ -152,26 +109,19 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
       requiresCheckin
     >
       <ReportSection title="ข้อมูลทั่วไป">
-        <Field label="Diagnosis / การวินิจฉัยโรค"><TextInput name="diagnosis" /></Field>
-        <Field label="การวินิจฉัยทางกิจกรรมบำบัด"><TextInput name="ot_diagnosis" /></Field>
+        <Field label="Diagnosis"><TextInput name="diagnosis" /></Field>
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
         {/* Vital signs sit above Underlying (client review 2026-07). */}
         <SubLabel>Vital signs</SubLabel>
         <Vitals />
-        <UnderlyingFields />
+        <SubLabel>Underlying</SubLabel>
+        <CheckRow name="underlying" options={UNDERLYING} />
         <SubLabel>Mobility</SubLabel>
         <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Stretcher/Cane"]} />
         <SubLabel>Fall risk</SubLabel>
         <CheckRow name="fall_risk" options={["Yes", "No"]} />
         <SubLabel>Fracture risk</SubLabel>
         <CheckRow name="fracture_risk" options={["Yes", "No"]} />
-      </ReportSection>
-
-      {/* ระดับความสามารถปัจจุบัน — paper รายงานประเมินแรกรับ (client 10/7/2569). */}
-      <ReportSection title="ระดับความสามารถปัจจุบัน">
-        {ABILITY_FIELDS.map((f) => (
-          <Field key={f.name} label={f.label}><Textarea name={f.name} /></Field>
-        ))}
       </ReportSection>
 
       <ReportSection title="Subjective & Objective">
@@ -218,7 +168,7 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
         <ReportPhotoUpload sessionId={sessionId} />
       </ReportSection>
 
-      <PlanSection withSwallowPlan />
+      <PlanSection />
     </ReportFormShell>
   );
 }
@@ -241,7 +191,8 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
             replaced by the same Underlying set as the Swallowing form. */}
         <SubLabel>Vital signs</SubLabel>
         <Vitals withTemp withSpO2={false} />
-        <UnderlyingFields />
+        <SubLabel>Underlying</SubLabel>
+        <CheckRow name="underlying" options={UNDERLYING} />
         <SubLabel>Mobility</SubLabel>
         <CheckRow name="mobility" options={["Walk", "Wheel chair", "Walker/Stretcher/Cane"]} />
         <SubLabel>Fall risk</SubLabel>
@@ -267,9 +218,10 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       </ReportSection>
 
       <ReportSection title="Pinch & Grip Strength (kg)">
+        <Field label="Date"><ThaiDateInput name="pinch_test_date" /></Field>
         <div className="grid grid-cols-3 gap-2 text-sm">
           <span className="text-muted">ประเภท</span><span className="text-muted">Rt</span><span className="text-muted">Lt</span>
-          {["Grip strength", "Lateral pinch", "3-Point pinch", "Tip pinch", "Pad to Pad pinch"].map((row) => {
+          {["Grip strength", "Lateral pinch", "3-Point pinch", "Tip pinch"].map((row) => {
             const slug = row.toLowerCase().replace(/[^a-z0-9]+/g, "_");
             return (
               <Fragment key={row}>
@@ -280,6 +232,21 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
             );
           })}
         </div>
+        {/* Pad to Pad Pinch is scored per finger on the paper form (thumb against
+            the 2nd–5th finger, both hands) — not one Rt/Lt pair. */}
+        <SubLabel>Pad to Pad Pinch</SubLabel>
+        {(["rt", "lt"] as const).map((side) => (
+          <div key={side} className="space-y-1">
+            <p className="text-sm text-ink">{side === "rt" ? "Rt" : "Lt"} thumb with</p>
+            <div className="grid grid-cols-4 gap-2">
+              {["2nd", "3rd", "4th", "5th"].map((f) => (
+                <Field key={f} label={`${f} finger`}>
+                  <TextInput name={`pad_to_pad_${side}_${f}`} />
+                </Field>
+              ))}
+            </div>
+          </div>
+        ))}
       </ReportSection>
 
       <ReportSection title="Sensory & Cognitive">
@@ -321,6 +288,76 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
       </ReportSection>
 
       <PlanSection />
+    </ReportFormShell>
+  );
+}
+
+// ── รายงานประเมินแรกรับทางกิจกรรมบำบัด ──────────────────────────────────────
+// The Thai letterhead report handed to the family, from the client's paper form
+// (รายงานประเมินแรกรับ.pdf, 10/7/2569). Separate from the English Swallowing /
+// Hand Function assessments the OT keeps for the clinic — client decision
+// 2026-07-17. Field names are shared with the print template.
+
+/** โรคประจำตัว on the letterhead — wider than the assessments' Underlying set. */
+const UNDERLYING_TH = [
+  "DM", "Hypertension", "Heart disease (on pacemaker)", "Dyslipidemia",
+  "Obesity", "Rheumatoid", "Gout", "CKD",
+];
+
+const ABILITY_FIELDS: { name: string; label: string }[] = [
+  { name: "ability_awareness", label: "1. การรับรู้และการตื่นตัว" },
+  { name: "ability_sitting", label: "2. การควบคุมนั่งและการควบคุมศีรษะ" },
+  { name: "ability_oral_face", label: "3. โครงสร้างปาก · กล้ามเนื้อใบหน้าและริมฝีปาก" },
+  { name: "ability_oral_tongue", label: "3. โครงสร้างปาก · กล้ามเนื้อลิ้น" },
+  { name: "ability_oral_jaw", label: "3. โครงสร้างปาก · ขากรรไกร" },
+  { name: "ability_reflex", label: "4. ปฏิกิริยาอัตโนมัติเกี่ยวข้องกับการกลืน" },
+  { name: "ability_swallow_oral", label: "5. ความสามารถด้านการกลืน · ระยะช่องปาก (Oral Phase)" },
+  { name: "ability_swallow_pharyngeal", label: "5. ความสามารถด้านการกลืน · ระยะคอหอย (Pharyngeal phase)" },
+  { name: "ability_swallow_esophageal", label: "5. ความสามารถด้านการกลืน · ระยะหลอดอาหาร (Esophageal phase)" },
+];
+
+export function AssessmentReportForm({ patientName, backHref, sessionId }: FormProps) {
+  return (
+    <ReportFormShell
+      title="รายงานประเมินแรกรับ"
+      patientName={patientName}
+      backHref={backHref}
+      sessionId={sessionId}
+      reportType="assessment_report"
+      submitLabel="บันทึก"
+    >
+      <ReportSection title="ข้อมูลทั่วไป">
+        <p className="text-xs text-muted">
+          วันที่ประเมินแรกรับ · ชื่อ-สกุล · อายุ · การวินิจฉัยโรค ดึงจากข้อมูลผู้รับบริการอัตโนมัติตอนพิมพ์
+        </p>
+        <Field label="การวินิจฉัยทางกิจกรรมบำบัด"><TextInput name="ot_diagnosis" /></Field>
+        <SubLabel>โรคประจำตัว</SubLabel>
+        <CheckRow name="underlying" options={UNDERLYING_TH} />
+        <Field label="other ; (ระบุเพิ่มเติม)"><TextInput name="underlying_other" /></Field>
+      </ReportSection>
+
+      <ReportSection title="ระดับความสามารถปัจจุบัน">
+        {ABILITY_FIELDS.map((f) => (
+          <Field key={f.name} label={f.label}><Textarea name={f.name} /></Field>
+        ))}
+      </ReportSection>
+
+      <ReportSection title="เป้าหมายทางกิจกรรมบำบัด">
+        <Field label="เป้าหมายของฟื้นฟูระยะยาว"><Textarea name="long_term_goal" /></Field>
+        <Field label="ระยะเวลาในการฟื้นฟูสูงสุด"><TextInput name="max_rehab_duration" /></Field>
+        <Field label="จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน (ครั้ง/สัปดาห์)">
+          <TextInput name="sessions_per_week" inputMode="numeric" />
+        </Field>
+        <Field label="เป้าหมายของฟื้นฟูระยะสั้น"><Textarea name="short_term_goal" /></Field>
+      </ReportSection>
+
+      <ReportSection title="รูปภาพ">
+        <ReportPhotoUpload sessionId={sessionId} />
+      </ReportSection>
+
+      <p className="px-1 text-xs text-muted">
+        โปรแกรมฟื้นฟูการกลืน · คำแนะนำ · หมายเหตุ เป็นข้อความมาตรฐาน พิมพ์ออกให้อัตโนมัติ ไม่ต้องกรอก
+      </p>
     </ReportFormShell>
   );
 }

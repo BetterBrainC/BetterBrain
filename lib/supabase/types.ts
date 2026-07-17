@@ -1358,6 +1358,7 @@ export type Database = {
         | "assessment_hand"
         | "followup"
         | "summary"
+        | "assessment_report"
       request_status:
         | "pending"
         | "approved"
@@ -1557,6 +1558,7 @@ export const Constants = {
         "assessment_hand",
         "followup",
         "summary",
+        "assessment_report",
       ],
       request_status: [
         "pending",
