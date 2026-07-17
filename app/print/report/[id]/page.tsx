@@ -18,9 +18,18 @@ export const metadata = { title: "พิมพ์รายงาน (PDF)" };
 const box = "border border-black";
 const pv = (r: ReportDetail, k: string) => String(r.payload[k] ?? "").trim();
 
+/** payload value that may be a checkbox array (e.g. mobility). */
+function pvList(r: ReportDetail, k: string): string[] {
+  const val = r.payload[k];
+  if (Array.isArray(val)) return val.map((x) => String(x));
+  return val ? [String(val)] : [];
+}
+
 /** รายงานประจำวัน — the daily follow-up letterhead form. */
 function FollowupPrint({ r }: { r: ReportDetail }) {
   const v = (k: string) => pv(r, k);
+  const mobility = pvList(r, "mobility");
+  const tick = (o: string) => (mobility.includes(o) ? "☑" : "☐");
   return (
     <>
       <h1 className="py-3 text-center text-base font-bold">รายงานประจำวัน</h1>
@@ -48,9 +57,11 @@ function FollowupPrint({ r }: { r: ReportDetail }) {
               </div>
               <div className="flex border-b border-black">
                 <p className="flex-1 border-r border-black px-2 py-1.5">
-                  <span className="font-bold">Mobility :</span> ☐ Walk&ensp;☐ Wheel chair&ensp;☐ Walker/Stretcher/Cane
+                  <span className="font-bold">Mobility :</span> {tick("Walk")} Walk&ensp;
+                  {tick("Wheel chair")} Wheel chair&ensp;
+                  {tick("Walker/Stretcher/Cane")} Walker/Stretcher/Cane
                 </p>
-                <p className="w-40 px-2 py-1.5 font-bold">☐ Fall Risk</p>
+                <p className="w-40 px-2 py-1.5 font-bold">{tick("Fall Risk")} Fall Risk</p>
               </div>
               <div className="space-y-2 px-2 py-2">
                 <DotLine value={[v("subject"), v("diagnosis") && `Diagnosis : ${v("diagnosis")}`].filter(Boolean).join("\n")} />

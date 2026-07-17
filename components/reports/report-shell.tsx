@@ -189,6 +189,9 @@ export function ReportSection({
   );
 }
 
+const pillCls =
+  "inline-block rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-ink transition-colors peer-checked:border-primary peer-checked:bg-surface-tint peer-checked:font-medium peer-checked:text-primary-700 peer-focus-visible:ring-2 peer-focus-visible:ring-primary";
+
 /** Checkbox group as pill toggles. Real checkboxes (FormData), styled via peer. */
 export function CheckRow({ options, name }: { options: string[]; name?: string }) {
   return (
@@ -196,11 +199,31 @@ export function CheckRow({ options, name }: { options: string[]; name?: string }
       {options.map((o) => (
         <label key={o} className="cursor-pointer">
           <input type="checkbox" name={name} value={o} className="peer sr-only" />
-          <span className="inline-block rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-ink transition-colors peer-checked:border-primary peer-checked:bg-surface-tint peer-checked:font-medium peer-checked:text-primary-700 peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
-            {o}
-          </span>
+          <span className={pillCls}>{o}</span>
         </label>
       ))}
     </div>
   );
+}
+
+/**
+ * Single-choice pill group — the paper forms' ☐ น้อย ☐ ปานกลาง ☐ ดี ☐ ปกติ rows,
+ * where exactly one box is ticked. Radios, so FormData yields one value per name.
+ */
+export function RadioRow({ options, name }: { options: string[]; name: string }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <label key={o} className="cursor-pointer">
+          <input type="radio" name={name} value={o} className="peer sr-only" />
+          <span className={pillCls}>{o}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** Block sub-heading inside a report section (paper form's inline label rows). */
+export function SubLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm font-medium text-ink">{children}</p>;
 }

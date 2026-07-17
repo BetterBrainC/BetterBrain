@@ -32,6 +32,23 @@ function Field({
 const inputCls =
   "h-11 w-full rounded-md border border-border bg-surface px-3 text-base outline-none focus:border-primary";
 
+const pillCls =
+  "inline-block rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-ink transition-colors peer-checked:border-primary peer-checked:bg-surface-tint peer-checked:font-medium peer-checked:text-primary-700 peer-focus-visible:ring-2 peer-focus-visible:ring-primary";
+
+/** Pill checkbox group — mirrors the paper form's ☐ Walk ☐ Wheel chair row. */
+function CheckPills({ name, options }: { name: string; options: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <label key={o} className="cursor-pointer">
+          <input type="checkbox" name={name} value={o} className="peer sr-only" />
+          <span className={pillCls}>{o}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 /**
  * SpO2 % stepper (0–100). A controlled text input (numeric keyboard) instead of
  * type="number": the field starts empty and leading zeros are stripped as you
@@ -171,17 +188,25 @@ export function DailyReportSheet({
         <div className="rounded-md bg-surface-tint p-3">
           <p className="mb-2 text-xs font-semibold text-muted">สัญญาณชีพ — ก่อน</p>
           <div className="space-y-3">
-            <Field label="BP Before" required><input name="bp_before" required className={inputCls} /></Field>
-            <Field label="HR Before" required><input name="hr_before" required className={inputCls} /></Field>
+            <Field label="BP Before (mmHg)" required><input name="bp_before" required className={inputCls} /></Field>
+            <Field label="HR Before (bpm)" required><input name="hr_before" required className={inputCls} /></Field>
+            <Field label="RR Before (times/min)"><input name="rr_before" inputMode="numeric" className={inputCls} /></Field>
             <Field label="SpO2 Before" required><Spo2Stepper name="spo2_before" value={spo2Before} onChange={setSpo2Before} /></Field>
           </div>
+        </div>
+
+        {/* Mobility / Fall Risk — the paper form's checkbox row under Subjective & Objective. */}
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-ink">Mobility</p>
+          <CheckPills name="mobility" options={["Walk", "Wheel chair", "Walker/Stretcher/Cane", "Fall Risk"]} />
         </div>
 
         <div className="rounded-md bg-surface-tint p-3">
           <p className="mb-2 text-xs font-semibold text-muted">สัญญาณชีพ — หลัง</p>
           <div className="space-y-3">
-            <Field label="BP After" required><input name="bp_after" required className={inputCls} /></Field>
-            <Field label="HR After" required><input name="hr_after" required className={inputCls} /></Field>
+            <Field label="BP After (mmHg)" required><input name="bp_after" required className={inputCls} /></Field>
+            <Field label="HR After (bpm)" required><input name="hr_after" required className={inputCls} /></Field>
+            <Field label="RR After (times/min)"><input name="rr_after" inputMode="numeric" className={inputCls} /></Field>
             <Field label="SpO2 After" required><Spo2Stepper name="spo2_after" value={spo2After} onChange={setSpo2After} /></Field>
           </div>
         </div>

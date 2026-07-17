@@ -69,6 +69,14 @@ function Check({ on = false, label }: { on?: boolean; label: string }) {
 
 const pv = (r: ReportDetail, k: string) => String(r.payload[k] ?? "").trim();
 
+/**
+ * Print an ISO date (what ThaiDateInput saves) as a Thai พ.ศ. date; anything else
+ * — e.g. the legacy free-text `period` "มิ.ย. 2569" — prints as typed.
+ */
+function thaiOrRaw(v: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatThaiDate(v, { month: "long" }) : v;
+}
+
 /** payload value that may be a checkbox array. */
 function pvList(r: ReportDetail, k: string): string[] {
   const v = r.payload[k];
@@ -106,21 +114,34 @@ function patientHeaderRows(r: ReportDetail) {
 }
 
 // ── รายงานความก้าวหน้ารายเดือน (Summary) ────────────────────────────────────
+// Row `key`s match the Summary form's radio names — the print ticks what was picked.
 const ADL_ROWS = [
-  "การเคลื่อนย้ายตัวบนเตียง",
-  "ลุกนั่งจากที่นอน/เตียงไปยังเก้าอี้",
-  "การสวมใส่เสื้อผ้า",
-  "การรับประทานอาหาร",
-  "การเคลื่อนที่ภายในห้อง/บ้าน",
-  "การใช้ห้องน้ำ",
-  "การอาบน้ำ",
-  "ล้างหน้า/หวีผม/แปรงฟัน",
+  { key: "adl_bed_mobility", label: "การเคลื่อนย้ายตัวบนเตียง" },
+  { key: "adl_transfer", label: "ลุกนั่งจากที่นอน/เตียงไปยังเก้าอี้" },
+  { key: "adl_dressing", label: "การสวมใส่เสื้อผ้า" },
+  { key: "adl_eating", label: "การรับประทานอาหาร" },
+  { key: "adl_locomotion", label: "การเคลื่อนที่ภายในห้อง/บ้าน" },
+  { key: "adl_toileting", label: "การใช้ห้องน้ำ" },
+  { key: "adl_bathing", label: "การอาบน้ำ" },
+  { key: "adl_grooming", label: "ล้างหน้า/หวีผม/แปรงฟัน" },
 ];
-const STRENGTH_ROWS = ["กล้ามเนื้อปาก", "การขยับลิ้น", "การควบคุมขากรรไกร"];
+const STRENGTH_ROWS = [
+  { key: "strength_lips", label: "กล้ามเนื้อปาก" },
+  { key: "strength_tongue", label: "การขยับลิ้น" },
+  { key: "strength_jaw", label: "การควบคุมขากรรไกร" },
+];
+const ADL_LEVELS = ["น้อย", "ปานกลาง", "ดี", "ปกติ"];
+const STRENGTH_LEVELS = ["แรงน้อย", "แรงปานกลาง", "แรงดี", "แรงปกติ"];
 
 export function SummaryPrint({ r }: { r: ReportDetail }) {
-  const ratingCells = (opts: string[]) => (
-    <td className={`${box} px-2 py-1`}>{opts.map((o) => <Check key={o} label={o} />)}</td>
+  /** One rating row: label + the levels, ticking the saved one. */
+  const ratingRow = (row: { key: string; label: string }, levels: string[], firstCol: string) => (
+    <tr key={row.key}>
+      <td className={`${firstCol} border-b border-r border-black px-2 py-1`}>{row.label}</td>
+      <td className="border-b border-black px-2 py-1">
+        {levels.map((o) => <Check key={o} on={pv(r, row.key) === o} label={o} />)}
+      </td>
+    </tr>
   );
   return (
     <>
@@ -132,8 +153,12 @@ export function SummaryPrint({ r }: { r: ReportDetail }) {
             <td className={`${box} px-2 py-1.5 font-bold`}>ช่วงเวลาการฟื้นฟู</td>
             <td className={`${box} p-0`}>
               <div className="flex">
-                <p className="flex-1 border-r border-black px-2 py-1.5"><span className="font-bold">From :</span> {pv(r, "period")}</p>
-                <p className="flex-1 px-2 py-1.5"><span className="font-bold">To :</span></p>
+                <p className="flex-1 border-r border-black px-2 py-1.5">
+                  <span className="font-bold">From :</span> {thaiOrRaw(pv(r, "period_from") || pv(r, "period"))}
+                </p>
+                <p className="flex-1 px-2 py-1.5">
+                  <span className="font-bold">To :</span> {thaiOrRaw(pv(r, "period_to"))}
+                </p>
               </div>
             </td>
           </tr>
@@ -153,14 +178,7 @@ export function SummaryPrint({ r }: { r: ReportDetail }) {
             <td className={`${box} p-0 align-top`}>
               <table className="w-full border-collapse">
                 <tbody>
-                  {ADL_ROWS.map((row) => (
-                    <tr key={row}>
-                      <td className="w-64 border-b border-r border-black px-2 py-1">{row}</td>
-                      <td className="border-b border-black px-2 py-1">
-                        {["น้อย", "ปานกลาง", "ดี", "ปกติ"].map((o) => <Check key={o} label={o} />)}
-                      </td>
-                    </tr>
-                  ))}
+                  {ADL_ROWS.map((row) => ratingRow(row, ADL_LEVELS, "w-64"))}
                 </tbody>
               </table>
             </td>
@@ -172,23 +190,13 @@ export function SummaryPrint({ r }: { r: ReportDetail }) {
             <td className={`${box} p-0 align-top`}>
               <table className="w-full border-collapse">
                 <tbody>
-                  <tr>
-                    <td className="w-64 border-b border-r border-black px-2 py-1">รับอาหารโดย</td>
-                    <td className="border-b border-black px-2 py-1">
-                      {["NG", "PEG", "IV", "Oral"].map((o) => <Check key={o} label={o} />)}
-                    </td>
-                  </tr>
-                  {STRENGTH_ROWS.map((row) => (
-                    <tr key={row}>
-                      <td className="border-b border-r border-black px-2 py-1">{row}</td>
-                      <td className="border-b border-black px-2 py-1">
-                        {["แรงน้อย", "แรงปานกลาง", "แรงดี", "แรงปกติ"].map((o) => <Check key={o} label={o} />)}
-                      </td>
-                    </tr>
-                  ))}
+                  {ratingRow({ key: "feeding_by", label: "รับอาหารโดย" }, ["NG", "PEG", "IV", "Oral"], "w-64")}
+                  {STRENGTH_ROWS.map((row) => ratingRow(row, STRENGTH_LEVELS, ""))}
                   <tr>
                     <td className="border-r border-black px-2 py-1">น้ำลายไหล</td>
-                    {ratingCells(["ไม่มี", "มี"])}
+                    <td className={`${box} px-2 py-1`}>
+                      {["ไม่มี", "มี"].map((o) => <Check key={o} on={pv(r, "drooling") === o} label={o} />)}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -206,14 +214,16 @@ export function SummaryPrint({ r }: { r: ReportDetail }) {
           <tr>
             <td className={`${box} px-2 py-1.5 font-bold`}>บรรลุเป้าหมาย</td>
             <td className={`${box} px-2 py-1.5`}>
-              <Check label="ผ่าน" /> <Check label="ไม่ผ่าน" /> ;…………………………………………………………
+              <Check on={pv(r, "goal_achieved") === "ผ่าน"} label="ผ่าน" />
+              <Check on={pv(r, "goal_achieved") === "ไม่ผ่าน"} label="ไม่ผ่าน" />
+              ; <span className="inline-block min-w-72 border-b border-dotted border-black">{pv(r, "goal_achieved_note")}</span>
             </td>
           </tr>
           <tr>
             <td className={`${box} px-2 py-1.5 align-top font-bold`}>โปรแกรมการฟื้นฟู/รักษา</td>
             <td className={`${box} px-2 py-2 align-top`}>
               <div className="space-y-2">
-                <DotLine />
+                <DotLine value={pv(r, "rehab_program")} />
                 <DotLine />
               </div>
             </td>
@@ -236,12 +246,32 @@ const UNDERLYING_OPTS = [
   "Rheumatoid", "Gout", "CKD",
 ];
 
-const ABILITY_SECTIONS: { no: number; title: string; subs?: string[] }[] = [
-  { no: 1, title: "การรับรู้และการตื่นตัว" },
-  { no: 2, title: "การควบคุมนั่งและการควบคุมศีรษะ" },
-  { no: 3, title: "โครงสร้างปาก", subs: ["กล้ามเนื้อใบหน้าและริมฝีปาก", "กล้ามเนื้อลิ้น", "ขากรรไกร"] },
-  { no: 4, title: "ปฏิกิริยาอัตโนมัติเกี่ยวข้องกับการกลืน" },
-  { no: 5, title: "ความสามารถด้านการกลืน", subs: ["ระยะช่องปาก (Oral Phase)", "ระยะคอหอย (Pharyngeal phase)", "ระยะหลอดอาหาร (Esophageal phase)"] },
+/**
+ * ระดับความสามารถปัจจุบัน — `key` (and each sub's key) matches the field names in
+ * the Swallowing assessment form, so what the OT typed prints in its box.
+ */
+const ABILITY_SECTIONS: { no: number; title: string; key?: string; subs?: { label: string; key: string }[] }[] = [
+  { no: 1, title: "การรับรู้และการตื่นตัว", key: "ability_awareness" },
+  { no: 2, title: "การควบคุมนั่งและการควบคุมศีรษะ", key: "ability_sitting" },
+  {
+    no: 3,
+    title: "โครงสร้างปาก",
+    subs: [
+      { label: "กล้ามเนื้อใบหน้าและริมฝีปาก", key: "ability_oral_face" },
+      { label: "กล้ามเนื้อลิ้น", key: "ability_oral_tongue" },
+      { label: "ขากรรไกร", key: "ability_oral_jaw" },
+    ],
+  },
+  { no: 4, title: "ปฏิกิริยาอัตโนมัติเกี่ยวข้องกับการกลืน", key: "ability_reflex" },
+  {
+    no: 5,
+    title: "ความสามารถด้านการกลืน",
+    subs: [
+      { label: "ระยะช่องปาก (Oral Phase)", key: "ability_swallow_oral" },
+      { label: "ระยะคอหอย (Pharyngeal phase)", key: "ability_swallow_pharyngeal" },
+      { label: "ระยะหลอดอาหาร (Esophageal phase)", key: "ability_swallow_esophageal" },
+    ],
+  },
 ];
 
 // "พิมพ์ข้อมูลตามนี้ได้เลย" — static program / advice / notes text from the paper form.
@@ -310,7 +340,10 @@ export function AssessmentPrint({ r }: { r: ReportDetail }) {
             <td className={`${box} px-2 py-1.5 font-bold`}>โรคประจำตัว</td>
             <td className={`${box} px-2 py-1.5`}>
               {UNDERLYING_OPTS.map((o) => <Check key={o} on={hasUnderlying(o)} label={o} />)}
-              <span className="whitespace-nowrap">☐ other ; <span className="inline-block w-40 border-b border-dotted border-black" /></span>
+              <span className="whitespace-nowrap">
+                <Check on={!!pv(r, "underlying_other")} label="other ;" />
+                <span className="inline-block min-w-40 border-b border-dotted border-black">{pv(r, "underlying_other")}</span>
+              </span>
             </td>
           </tr>
           <tr>
@@ -322,15 +355,15 @@ export function AssessmentPrint({ r }: { r: ReportDetail }) {
                     <p className="font-bold">{s.no}. {s.title}</p>
                     {s.subs ? (
                       s.subs.map((sub) => (
-                        <div key={sub} className="ml-6 mt-1 space-y-2">
-                          <p className="underline">• {sub}</p>
-                          <DotLine />
+                        <div key={sub.key} className="ml-6 mt-1 space-y-2">
+                          <p className="underline">• {sub.label}</p>
+                          <DotLine value={pv(r, sub.key)} />
                           <DotLine />
                         </div>
                       ))
                     ) : (
                       <div className="mt-1 space-y-2">
-                        <DotLine />
+                        <DotLine value={s.key ? pv(r, s.key) : ""} />
                         <DotLine />
                       </div>
                     )}
@@ -352,13 +385,13 @@ export function AssessmentPrint({ r }: { r: ReportDetail }) {
           </tr>
           <tr>
             <td className={`${box} px-2 py-1.5 font-bold`}>ระยะเวลาในการฟื้นฟูสูงสุด:</td>
-            <td className={`${box} px-2 py-1.5`}><DotLine /></td>
+            <td className={`${box} px-2 py-1.5`}><DotLine value={pv(r, "max_rehab_duration")} /></td>
           </tr>
         </tbody>
       </table>
 
       <p className="my-3 bg-[#7EC4E8] py-4 text-center text-base font-bold print:bg-[#7EC4E8]">
-        จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน ……… ครั้ง/สัปดาห์
+        จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน {pv(r, "sessions_per_week") || "………"} ครั้ง/สัปดาห์
       </p>
 
       <table className={`w-full border-collapse ${box}`}>
