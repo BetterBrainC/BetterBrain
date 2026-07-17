@@ -750,7 +750,7 @@ export interface DashboardData {
   /** เคสแจ้งงดวันนี้ (status = skipped). */
   cancelledToday: number;
   pendingApprovals: number;
-  monitor: { name: string; patient: string; time: string; status: SessionStatus; early: boolean }[];
+  monitor: { patientId: string | null; name: string; patient: string; time: string; status: SessionStatus; early: boolean }[];
   employeeCount: number;
   patients: PatientRow[];
   dailySeries: { label: string; total: number; done: number }[];
@@ -781,10 +781,11 @@ export async function getDashboard(): Promise<DashboardData> {
 
   const { data: tData } = await supabase
     .from("schedule_sessions")
-    .select("status, kind, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
+    .select("patient_id, status, kind, scheduled_start, patients(full_name), employee:profiles!schedule_sessions_employee_id_fkey(full_name), check_ins(kind, is_early)")
     .eq("scheduled_date", today)
     .order("scheduled_start");
   const sessions = rows<{
+    patient_id: string | null;
     status: SessionStatus; kind: "assessment" | "treatment" | null; scheduled_start: string | null;
     patients: { full_name: string | null } | null;
     employee: { full_name: string | null } | null;
@@ -823,7 +824,8 @@ export async function getDashboard(): Promise<DashboardData> {
       timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit",
     }).format(d);
     const e = byDate.get(iso) ?? { total: 0, done: 0 };
-    return { label: iso.slice(5), total: e.total, done: e.done }; // MM-DD
+    const [, mm, dd] = iso.split("-");
+    return { label: `${Number(dd)}/${Number(mm)}`, total: e.total, done: e.done }; // D/M
   });
 
   const { count: pendingApprovals } = await supabase
@@ -844,6 +846,7 @@ export async function getDashboard(): Promise<DashboardData> {
     cancelledToday,
     pendingApprovals: pendingApprovals ?? 0,
     monitor: sessions.map((s) => ({
+      patientId: s.patient_id,
       name: s.employee?.full_name ?? "—",
       patient: s.patients?.full_name ?? "—",
       time: s.scheduled_start ? formatThaiTime(s.scheduled_start) : "",
