@@ -8,8 +8,8 @@ import type { ReportDetail } from "@/lib/data/queries";
  * docs, 2026-07-17). Distinct from the Thai letterhead รายงานประเมินแรกรับ that
  * goes to the family, which lives in report-print-templates.tsx.
  *
- * Blanks the app doesn't capture (DOB, Bite reflex — dropped in client review
- * 2026-07) print as empty rules, exactly like the paper sheet.
+ * Client 22 ก.ค. 2569: DOB is pulled from the patient record and no dotted
+ * filler rules print on any export — values render as plain text.
  */
 
 const pv = (r: ReportDetail, k: string) => String(r.payload[k] ?? "").trim();
@@ -21,12 +21,12 @@ function pvList(r: ReportDetail, k: string): string[] {
   return v ? [String(v)] : [];
 }
 
-/** `Label : ____value____` — a value sitting on the paper form's rule. */
+/** `Label : value` — plain text, no dotted rule (client 22 ก.ค. 2569). */
 function Line({ label, value, width = "flex-1" }: { label: string; value?: string; width?: string }) {
   return (
     <p className="flex items-baseline gap-1">
       <span className="shrink-0 font-bold">{label} :</span>
-      <span className={`${width} min-h-5 whitespace-pre-wrap break-words border-b border-dotted border-black`}>
+      <span className={`${width} min-h-5 whitespace-pre-wrap break-words`}>
         {value}
       </span>
     </p>
@@ -60,11 +60,12 @@ function NameHeader({ r }: { r: ReportDetail }) {
     <div className="space-y-1">
       <p className="flex items-baseline gap-1">
         <span className="shrink-0 font-bold">Name :</span>
-        <span className="flex-1 border-b border-dotted border-black">{r.patientName}</span>
+        <span className="flex-1">{r.patientName}</span>
         <span className="shrink-0 font-bold">Age :</span>
-        <span className="w-16 border-b border-dotted border-black text-center">{r.patientAge ?? ""}</span>
+        <span className="w-16 text-center">{r.patientAge ?? ""}</span>
         <span className="shrink-0 font-bold">DOB :</span>
-        <span className="w-32 border-b border-dotted border-black" />
+        {/* วันเดือนปีเกิด from the patient record (client 22 ก.ค. 2569). */}
+        <span className="w-32 text-center">{r.patientDob ? formatThaiDate(r.patientDob, { month: "short" }) : ""}</span>
       </p>
       <Line label="Diagnosis" value={pv(r, "diagnosis")} />
       <Line label="Chief Complaint" value={pv(r, "chief_complaint")} />
@@ -187,18 +188,18 @@ export function SwallowingAssessmentPrint({ r }: { r: ReportDetail }) {
       <Section title="Subjective &amp; Objective">
         <p>
           <span className="font-bold">Vital signs</span>{" "}
-          <span className="font-bold">BP :</span> {pv(r, "bp") || "………"} mmHg{" "}
-          <span className="font-bold">HR :</span> {pv(r, "hr") || "………"} bpm{" "}
-          <span className="font-bold">RR :</span> {pv(r, "rr") || "………"} times/min{" "}
-          <span className="font-bold">SpO2 :</span> {pv(r, "spo2") || "………"} %
+          <span className="font-bold">BP :</span> {pv(r, "bp") || "-"} mmHg{" "}
+          <span className="font-bold">HR :</span> {pv(r, "hr") || "-"} bpm{" "}
+          <span className="font-bold">RR :</span> {pv(r, "rr") || "-"} times/min{" "}
+          <span className="font-bold">SpO2 :</span> {pv(r, "spo2") || "-"} %
         </p>
-        <p className="min-h-5 whitespace-pre-wrap break-words border-b border-dotted border-black">
+        <p className="min-h-5 whitespace-pre-wrap break-words">
           {pv(r, "subjective_objective")}
         </p>
       </Section>
 
       <Section title="Physical examination">
-        <p className="min-h-5 whitespace-pre-wrap break-words border-b border-dotted border-black">
+        <p className="min-h-5 whitespace-pre-wrap break-words">
           {pv(r, "physical_exam")}
         </p>
       </Section>
@@ -302,10 +303,10 @@ export function HandAssessmentPrint({ r }: { r: ReportDetail }) {
         <Line label="Subjective" value={pv(r, "subjective")} />
         <p>
           <span className="font-bold">Objective : Vital Signs</span>{" "}
-          <span className="font-bold">BP :</span> {pv(r, "bp") || "………"} mmHg{" "}
-          <span className="font-bold">HR :</span> {pv(r, "hr") || "………"} bpm{" "}
-          <span className="font-bold">RR :</span> {pv(r, "rr") || "………"} times/min{" "}
-          <span className="font-bold">Temp :</span> {pv(r, "temp") || "………"} °C
+          <span className="font-bold">BP :</span> {pv(r, "bp") || "-"} mmHg{" "}
+          <span className="font-bold">HR :</span> {pv(r, "hr") || "-"} bpm{" "}
+          <span className="font-bold">RR :</span> {pv(r, "rr") || "-"} times/min{" "}
+          <span className="font-bold">SpO2 :</span> {pv(r, "spo2") || "-"} %
         </p>
       </div>
 
@@ -331,9 +332,9 @@ export function HandAssessmentPrint({ r }: { r: ReportDetail }) {
           <p key={row.key} className="flex items-baseline gap-1">
             <span className="w-40 shrink-0 font-bold">{row.label} :</span>
             <span className="shrink-0">Rt</span>
-            <span className="w-24 border-b border-dotted border-black text-center">{pv(r, `${row.key}_rt`)}</span>
+            <span className="w-24 text-center">{pv(r, `${row.key}_rt`)}</span>
             <span className="shrink-0">Lt</span>
-            <span className="w-24 border-b border-dotted border-black text-center">{pv(r, `${row.key}_lt`)}</span>
+            <span className="w-24 text-center">{pv(r, `${row.key}_lt`)}</span>
           </p>
         ))}
         <p className="mt-1 font-bold">Pad to Pad Pinch</p>
@@ -343,7 +344,7 @@ export function HandAssessmentPrint({ r }: { r: ReportDetail }) {
             {FINGERS.map((f) => (
               <span key={f} className="flex items-baseline gap-1">
                 <span className="shrink-0">{f} finger</span>
-                <span className="w-16 border-b border-dotted border-black text-center">
+                <span className="w-16 text-center">
                   {pv(r, `pad_to_pad_${side}_${f}`)}
                 </span>
               </span>

@@ -51,7 +51,7 @@ Full layout + route map in **docs/ARCHITECTURE.md**.
 
 - **employee (พนักงาน / OT):** sees own profile + **only assigned service recipients (ผู้รับบริการ)** (incl. their **name, address, and training program** — address is NOT masked; the employee drives to the home). Check-in/out; writes reports; records ผู้รับบริการ KPI; completes own stress + knowledge assessments; requests check-in corrections. Profiles exist only for case-handling employees.
 - **admin (Admin):** full CRUD on master data; assigns cases via the **monthly calendar**; manages courses + slots; creates bookings/appointments; arranges **จัดเวรแทน/สลับเวร**; sees ALL reports; exports. **Cannot edit check-in data until the director approves the correction**, then admin applies + confirms it.
-- **director (Director; superadmin; EXACTLY 2 accounts, hard-capped):** approves corrections; full control; shared dashboard; settings; audit log; the **only role that views การวัดผล/KPI**; sees everything.
+- **director (Director; superadmin; EXACTLY 2 accounts, hard-capped):** approves corrections; full control; shared dashboard; settings; audit log; the **only role that views the การวัดผล hub and EMPLOYEE KPI** (per-recipient patient-scale stats — FOIS/Barthel/FIM on the report drill-in — are visible to admin too, client 22 ก.ค. 2569); sees everything.
 
 > **Only these 3 roles exist** (`director` / `admin` / `employee`) — no owner / CEO / Supervisor / HR labels. UI labels: **Director / Admin / พนักงาน**.
 

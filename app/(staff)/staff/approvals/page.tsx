@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card";
 import { ApprovalsClient } from "@/components/staff/approvals-client";
 import { getCorrections } from "@/lib/data/queries";
 import { requireStaff } from "@/lib/auth";
@@ -19,14 +18,6 @@ export default async function ApprovalsPage() {
         canApprove={role === "director"}
         canApply={role === "admin" || role === "director"}
       />
-
-      <Card tinted>
-        <p className="text-sm text-muted">
-          ระบบลาถูกตัดออกชั่วคราว (ทำรวมในโมดูล HR ภายหลัง) · การ
-          <strong className="text-navy"> จัดเวรแทน/สลับเวร </strong>
-          ย้ายไปที่หน้า “มอบหมายงาน”
-        </p>
-      </Card>
     </div>
   );
 }

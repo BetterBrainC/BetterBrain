@@ -1096,9 +1096,10 @@ export async function getRelativePortal(
     : {};
   const showAssessment = showAssessMap[patient.id] !== false;
   const allowed: RelativePortalReport["type"][] = [
-    // assessment_report = the Thai letterhead รายงานประเมินแรกรับ written for the
-    // family, so it rides the same toggle as the assessments it summarises.
-    ...(showAssessment ? (["assessment_swallow", "assessment_hand", "assessment_report"] as const) : []),
+    // Ticking "รายงานประเมินแรกรับ" shares ONLY the Thai letterhead written for
+    // the family (assessment_report) — previously it also exposed the two raw
+    // clinical sheets, so relatives saw 3 files for 1 tick (client 22 ก.ค. 2569).
+    ...(showAssessment ? (["assessment_report"] as const) : []),
     ...(access.show_followup ? (["followup"] as const) : []),
     ...(access.show_summary ? (["summary"] as const) : []),
   ];
@@ -1565,11 +1566,16 @@ export interface ReportDetail {
   patientId: string | null;
   patientName: string;
   patientAge: number | null;
+  /** ISO date of birth from the patient record (exports: DOB ดึงจากข้อมูลผู้รับบริการ). */
+  patientDob: string | null;
   /** From the patient record (print templates: ลิ้งก์ข้อมูลมาจากข้อมูลผู้รับบริการ). */
   patientDiagnosis: Diagnosis | null;
   /** Date of this patient's earliest assessment report (วันที่ประเมินแรกรับ). */
   firstAssessmentDate: string | null;
   authorName: string;
+  /** Author's ตำแหน่ง + ใบอนุญาตเลขที่ — fill the export signature block from รายชื่อพนักงาน. */
+  authorPosition: string | null;
+  authorLicense: string | null;
   date: string;
   status: string;
   fields: ReportField[];
@@ -1599,14 +1605,14 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, diagnosis_category), author:profiles!reports_author_id_fkey(full_name)")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, dob, diagnosis_category), author:profiles!reports_author_id_fkey(full_name, position_title, license_no)")
     .eq("id", id)
     .maybeSingle();
   const r = one<{
     id: string; report_type: string; report_date: string; status: string;
     payload: unknown; patient_id: string | null;
-    patients: { full_name: string | null; age_years: number | null; diagnosis_category: Diagnosis | null } | null;
-    author: { full_name: string | null } | null;
+    patients: { full_name: string | null; age_years: number | null; dob: string | null; diagnosis_category: Diagnosis | null } | null;
+    author: { full_name: string | null; position_title: string | null; license_no: string | null } | null;
   }>(data);
   if (!r) return null;
 
@@ -1630,9 +1636,12 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
     patientId: r.patient_id,
     patientName: r.patients?.full_name ?? "—",
     patientAge: r.patients?.age_years ?? null,
+    patientDob: r.patients?.dob ?? null,
     patientDiagnosis: r.patients?.diagnosis_category ?? null,
     firstAssessmentDate,
     authorName: r.author?.full_name ?? "—",
+    authorPosition: r.author?.position_title ?? null,
+    authorLicense: r.author?.license_no ?? null,
     date: r.report_date,
     status: r.status,
     fields: flattenReportPayload(r.payload),
@@ -1662,14 +1671,14 @@ export async function getRelativeReportDetail(
   const admin = createAdminClient();
   const { data } = await admin
     .from("reports")
-    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, diagnosis_category), author:profiles!reports_author_id_fkey(full_name)")
+    .select("id, report_type, report_date, status, payload, patient_id, patients(full_name, age_years, dob, diagnosis_category), author:profiles!reports_author_id_fkey(full_name, position_title, license_no)")
     .eq("id", reportId)
     .maybeSingle();
   const r = one<{
     id: string; report_type: string; report_date: string; status: string;
     payload: unknown; patient_id: string | null;
-    patients: { full_name: string | null; age_years: number | null; diagnosis_category: Diagnosis | null } | null;
-    author: { full_name: string | null } | null;
+    patients: { full_name: string | null; age_years: number | null; dob: string | null; diagnosis_category: Diagnosis | null } | null;
+    author: { full_name: string | null; position_title: string | null; license_no: string | null } | null;
   }>(data);
   if (!r) return null;
 
@@ -1689,9 +1698,12 @@ export async function getRelativeReportDetail(
     patientId: r.patient_id,
     patientName: r.patients?.full_name ?? "—",
     patientAge: r.patients?.age_years ?? null,
+    patientDob: r.patients?.dob ?? null,
     patientDiagnosis: r.patients?.diagnosis_category ?? null,
     firstAssessmentDate: one<{ report_date: string }>(fa)?.report_date ?? null,
     authorName: r.author?.full_name ?? "—",
+    authorPosition: r.author?.position_title ?? null,
+    authorLicense: r.author?.license_no ?? null,
     date: r.report_date,
     status: r.status,
     fields: flattenReportPayload(r.payload),
@@ -1769,16 +1781,29 @@ export async function getPatientAssessmentHistory(patientId: string): Promise<Pa
 
   const { data: rData } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status")
+    .select("id, report_type, report_date, status, payload")
     .eq("patient_id", patientId)
     .order("report_date", { ascending: false })
     .limit(300);
-  const reports = rows<{ id: string; report_type: string; report_date: string; status: string }>(rData).map((r) => ({
+  const rawReports = rows<{ id: string; report_type: string; report_date: string; status: string; payload: unknown }>(rData);
+  const reports = rawReports.map((r) => ({
     id: r.id,
     typeLabel: REPORT_TYPE_LABEL[r.report_type] ?? r.report_type,
     date: r.report_date,
     status: r.status,
   }));
+
+  // FOIS lives in report payloads too (assessments + monthly summaries save
+  // "fois": "L1".."L7"). Fold those into the trend so the stats tiles render
+  // even before any การวัดผล (kpi_evaluations) entry exists — client 22 ก.ค. 2569:
+  // the stats block must show data for both admin and Director.
+  const reportFois = rawReports
+    .map((r) => {
+      const raw = r.payload && typeof r.payload === "object" ? (r.payload as Record<string, unknown>).fois : null;
+      const n = raw ? Number(String(raw).replace(/\D/g, "")) || null : null;
+      return n ? { dateISO: r.report_date, fois: n, barthel: null, fim: null, functionItems: [] as string[] } : null;
+    })
+    .filter((x): x is { dateISO: string; fois: number; barthel: null; fim: null; functionItems: string[] } => x !== null);
 
   const { data: kData } = await supabase
     .from("kpi_evaluations")
@@ -1803,18 +1828,22 @@ export async function getPatientAssessmentHistory(patientId: string): Promise<Pa
     };
   });
 
-  const last = kpi[kpi.length - 1];
+  // Merge การวัดผล entries with report-payload FOIS points, oldest → newest.
+  const series = [...kpi, ...reportFois].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  const lastOf = <K extends "fois" | "barthel" | "fim">(k: K) =>
+    [...series].reverse().find((s) => s[k] != null)?.[k] ?? null;
+
   return {
     patientId,
     patientName: p.full_name ?? "—",
     patientHn: p.hn,
     reports,
-    kpi,
-    latest: { fois: last?.fois ?? null, barthel: last?.barthel ?? null, fim: last?.fim ?? null },
+    kpi: series,
+    latest: { fois: lastOf("fois"), barthel: lastOf("barthel"), fim: lastOf("fim") },
     totals: {
       reports: reports.length,
       assessments: reports.filter((r) => r.typeLabel.startsWith("Assessment")).length,
-      evaluations: kpi.length,
+      evaluations: series.length,
     },
   };
 }

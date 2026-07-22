@@ -36,9 +36,11 @@ export function PatientsTable({ patients }: { patients: PatientRow[] }) {
         />
       </div>
 
-      <DataTable headers={["ชื่อ-สกุล", "Patient ID", "การวินิจฉัย", "คอร์ส", "สถานะ"]}>
+      {/* Column order mirrors the Dashboard table (Patient ID first) — client 22 ก.ค. 2569. */}
+      <DataTable headers={["Patient ID", "ชื่อ-สกุล", "การวินิจฉัย", "คอร์ส", "สถานะ"]}>
         {rows.map((p) => (
           <tr key={p.id} className="hover:bg-surface-tint">
+            <Td className="tabular-nums text-muted">{p.hn ?? "—"}</Td>
             <Td>
               <Link href={`/staff/patients/${p.id}`} className="font-medium text-navy">
                 {p.name}
@@ -47,7 +49,6 @@ export function PatientsTable({ patients }: { patients: PatientRow[] }) {
                 {p.ageYears ? `${p.ageYears} ปี · ` : ""}{p.program ?? ""}
               </div>
             </Td>
-            <Td className="tabular-nums text-muted">{p.hn ?? "—"}</Td>
             <Td>{p.diagnosis ? DIAGNOSIS_LABEL[p.diagnosis] : "—"}</Td>
             <Td className="tabular-nums">{p.courseUsed}/{p.courseTotal}</Td>
             <Td><Badge tone={STATUS_TONE[p.status]}>{PATIENT_STATUS_LABEL[p.status]}</Badge></Td>

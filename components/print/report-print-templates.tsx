@@ -41,31 +41,37 @@ export function Letterhead() {
   );
 }
 
+/**
+ * Free-text value area. Client 22 ก.ค. 2569: exports must not show the paper
+ * form's dotted filler lines — values print as plain text; an empty value
+ * prints as blank space (no dotted rule).
+ */
 export function DotLine({ value = "" }: { value?: string }) {
-  return (
-    <div className="min-h-6 whitespace-pre-wrap break-words border-b border-dotted border-black leading-6">
-      {value}
-    </div>
-  );
+  if (!value) return null;
+  return <div className="min-h-6 whitespace-pre-wrap break-words leading-6">{value}</div>;
 }
 
 export function VitalLine({ bp, hr, rr, spo2 }: { bp: string; hr: string; rr: string; spo2: string }) {
   return (
     <p>
-      <span className="font-bold">BP :</span> {bp || "……………"} mmHg,{" "}
-      <span className="font-bold">HR :</span> {hr || "……………"} bpm,{" "}
-      <span className="font-bold">RR :</span> {rr || "……………"} times/min,{" "}
-      <span className="font-bold">SpO2 :</span> {spo2 || "………"} %
+      <span className="font-bold">BP :</span> {bp || "-"} mmHg,{" "}
+      <span className="font-bold">HR :</span> {hr || "-"} bpm,{" "}
+      <span className="font-bold">RR :</span> {rr || "-"} times/min,{" "}
+      <span className="font-bold">SpO2 :</span> {spo2 || "-"} %
     </p>
   );
 }
 
-export function SignatureBlock({ name }: { name?: string }) {
+/**
+ * ลงชื่อ / ตำแหน่ง / ใบอนุญาตเลขที่ — filled from the report author's employee
+ * record (รายชื่อพนักงาน) per client 22 ก.ค. 2569; no dotted signature lines.
+ */
+export function SignatureBlock({ name, position, license }: { name?: string; position?: string | null; license?: string | null }) {
   return (
     <div className="ml-auto mt-6 w-72 space-y-4 break-inside-avoid">
-      <p>ลงชื่อ<span className="inline-block w-52 border-b border-dotted border-black text-center">{name ?? ""}</span></p>
-      <p>ตำแหน่ง<span className="inline-block w-48 border-b border-dotted border-black" /></p>
-      <p>ใบอนุญาตเลขที่<span className="inline-block w-40 border-b border-dotted border-black" /></p>
+      <p>ลงชื่อ<span className="inline-block w-52 text-center">{name ?? ""}</span></p>
+      <p>ตำแหน่ง<span className="ml-2 inline-block w-48">{position ?? ""}</span></p>
+      <p>ใบอนุญาตเลขที่<span className="ml-2 inline-block w-40">{license ?? ""}</span></p>
     </div>
   );
 }
@@ -101,13 +107,13 @@ function patientHeaderRows(r: ReportDetail) {
       <tr>
         <td colSpan={2} className={`${box} px-2 py-1.5`}>
           <span className="font-bold">วันที่ประเมินแรกรับ :</span>{" "}
-          {r.firstAssessmentDate ? formatThaiDate(r.firstAssessmentDate, { month: "long" }) : "…………………………………"}
+          {r.firstAssessmentDate ? formatThaiDate(r.firstAssessmentDate, { month: "long" }) : "-"}
         </td>
       </tr>
       <tr>
         <td colSpan={2} className={`${box} px-2 py-1.5`}>
           <span className="font-bold">ชื่อ-สกุล (ผู้รับบริการ) :</span> {r.patientName}
-          <span className="ml-6">อายุ {r.patientAge ?? "…………"} ปี</span>
+          <span className="ml-6">อายุ {r.patientAge ?? "-"} ปี</span>
         </td>
       </tr>
       <tr>
@@ -227,7 +233,7 @@ export function SummaryPrint({ r }: { r: ReportDetail }) {
             <td className={`${box} px-2 py-1.5`}>
               <Check on={pv(r, "goal_achieved") === "ผ่าน"} label="ผ่าน" />
               <Check on={pv(r, "goal_achieved") === "ไม่ผ่าน"} label="ไม่ผ่าน" />
-              ; <span className="inline-block min-w-72 border-b border-dotted border-black">{pv(r, "goal_achieved_note")}</span>
+              ; <span className="inline-block min-w-72">{pv(r, "goal_achieved_note")}</span>
             </td>
           </tr>
           <tr>
@@ -241,12 +247,13 @@ export function SummaryPrint({ r }: { r: ReportDetail }) {
           </tr>
           <tr>
             <td colSpan={2} className={`${box} px-2 py-1.5`}>
-              <span className="font-bold">เป้าหมายเดือน (เลือกใส่เดือนได้) :</span> {pv(r, "next_goal")}
+              {/* Month comes from the form's month picker (client 22 ก.ค. 2569). */}
+              <span className="font-bold">เป้าหมายเดือน{pv(r, "next_goal_month") ? ` ${pv(r, "next_goal_month")}` : ""} :</span> {pv(r, "next_goal")}
             </td>
           </tr>
         </tbody>
       </table>
-      <SignatureBlock name={r.authorName} />
+      <SignatureBlock name={r.authorName} position={r.authorPosition} license={r.authorLicense} />
     </>
   );
 }
@@ -353,7 +360,7 @@ export function AssessmentPrint({ r }: { r: ReportDetail }) {
               {UNDERLYING_OPTS.map((o) => <Check key={o} on={hasUnderlying(o)} label={o} />)}
               <span className="whitespace-nowrap">
                 <Check on={!!pv(r, "underlying_other")} label="other ;" />
-                <span className="inline-block min-w-40 border-b border-dotted border-black">{pv(r, "underlying_other")}</span>
+                <span className="inline-block min-w-40">{pv(r, "underlying_other")}</span>
               </span>
             </td>
           </tr>
@@ -402,7 +409,7 @@ export function AssessmentPrint({ r }: { r: ReportDetail }) {
       </table>
 
       <p className="my-3 bg-[#7EC4E8] py-4 text-center text-base font-bold print:bg-[#7EC4E8]">
-        จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน {pv(r, "sessions_per_week") || "………"} ครั้ง/สัปดาห์
+        จำนวนครั้งที่แนะนำในการฟื้นฟูการกลืน {pv(r, "sessions_per_week") || "-"} ครั้ง/สัปดาห์
       </p>
 
       <table className={`w-full border-collapse ${box}`}>
@@ -447,7 +454,7 @@ export function AssessmentPrint({ r }: { r: ReportDetail }) {
         </ol>
       </section>
 
-      <SignatureBlock name={r.authorName} />
+      <SignatureBlock name={r.authorName} position={r.authorPosition} license={r.authorLicense} />
     </>
   );
 }

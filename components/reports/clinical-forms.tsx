@@ -9,6 +9,11 @@ import { FOIS_LABEL } from "@/lib/i18n/th";
 
 type FormProps = { patientName: string; backHref: string; sessionId: string };
 
+const THAI_MONTHS = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+];
+
 function FoisSelect({ label = "Functional Oral Intake Scale (FOIS)", name = "fois" }: { label?: string; name?: string }) {
   return (
     <Field label={label}>
@@ -188,9 +193,10 @@ export function HandForm({ patientName, backHref, sessionId }: FormProps) {
         <Field label="Diagnosis"><TextInput name="diagnosis" /></Field>
         <Field label="Chief Complaint"><Textarea name="chief_complaint" /></Field>
         {/* Client review 2026-07: vitals move above Underlying; Precaution is
-            replaced by the same Underlying set as the Swallowing form. */}
+            replaced by the same Underlying set as the Swallowing form.
+            22 ก.ค. 2569: Temp (°C) replaced by SpO2 (%). */}
         <SubLabel>Vital signs</SubLabel>
-        <Vitals withTemp withSpO2={false} />
+        <Vitals />
         <SubLabel>Underlying</SubLabel>
         <CheckRow name="underlying" options={UNDERLYING} />
         <SubLabel>Mobility</SubLabel>
@@ -308,12 +314,12 @@ const ABILITY_FIELDS: { name: string; label: string }[] = [
   { name: "ability_awareness", label: "1. การรับรู้และการตื่นตัว" },
   { name: "ability_sitting", label: "2. การควบคุมนั่งและการควบคุมศีรษะ" },
   { name: "ability_oral_face", label: "3. โครงสร้างปาก · กล้ามเนื้อใบหน้าและริมฝีปาก" },
-  { name: "ability_oral_tongue", label: "3. โครงสร้างปาก · กล้ามเนื้อลิ้น" },
-  { name: "ability_oral_jaw", label: "3. โครงสร้างปาก · ขากรรไกร" },
+  { name: "ability_oral_tongue", label: "3.1 โครงสร้างปาก · กล้ามเนื้อลิ้น" },
+  { name: "ability_oral_jaw", label: "3.2 โครงสร้างปาก · ขากรรไกร" },
   { name: "ability_reflex", label: "4. ปฏิกิริยาอัตโนมัติเกี่ยวข้องกับการกลืน" },
   { name: "ability_swallow_oral", label: "5. ความสามารถด้านการกลืน · ระยะช่องปาก (Oral Phase)" },
-  { name: "ability_swallow_pharyngeal", label: "5. ความสามารถด้านการกลืน · ระยะคอหอย (Pharyngeal phase)" },
-  { name: "ability_swallow_esophageal", label: "5. ความสามารถด้านการกลืน · ระยะหลอดอาหาร (Esophageal phase)" },
+  { name: "ability_swallow_pharyngeal", label: "5.1 ความสามารถด้านการกลืน · ระยะคอหอย (Pharyngeal phase)" },
+  { name: "ability_swallow_esophageal", label: "5.2 ความสามารถด้านการกลืน · ระยะหลอดอาหาร (Esophageal phase)" },
 ];
 
 export function AssessmentReportForm({ patientName, backHref, sessionId }: FormProps) {
@@ -444,7 +450,14 @@ export function SummaryReportForm({ patientName, backHref, sessionId }: FormProp
         <RadioRow name="goal_achieved" options={["ผ่าน", "ไม่ผ่าน"]} />
         <Field label="หมายเหตุ (กรณีไม่ผ่าน)"><TextInput name="goal_achieved_note" /></Field>
         <Field label="โปรแกรมการฟื้นฟู/รักษา"><Textarea name="rehab_program" /></Field>
-        <Field label="เป้าหมายเดือน (เลือกใส่เดือนได้)"><Textarea name="next_goal" /></Field>
+        {/* Client 22 ก.ค. 2569: the month is actually pickable, not just a label. */}
+        <Field label="เป้าหมายเดือน · เลือกเดือน">
+          <Select name="next_goal_month" defaultValue="">
+            <option value="">เลือกเดือน</option>
+            {THAI_MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </Select>
+        </Field>
+        <Field label="เป้าหมายเดือน"><Textarea name="next_goal" /></Field>
       </ReportSection>
 
       <ReportSection title="รูปภาพ">

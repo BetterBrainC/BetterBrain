@@ -42,11 +42,11 @@ export default async function SessionPage({
 
       <header className="space-y-1">
         <h1 className="font-display text-2xl font-bold text-navy">{session.patientName}</h1>
+        {/* Client 22 ก.ค. 2569: the assessment-type badge was hardcoded to
+            "Hand Function" (wrong for Swallowing cases) — removed, not shown. */}
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted">{session.program}</p>
-          {session.kind === "assessment" ? (
-            <span className="rounded-pill bg-[var(--info-bg)] px-2 py-0.5 text-2xs font-semibold text-[var(--info-fg)]">ประเมิน · Hand Function</span>
-          ) : (
+          {session.kind !== "assessment" && (
             <span className="rounded-pill bg-surface-tint px-2 py-0.5 text-2xs font-semibold text-primary-700">โปรแกรม</span>
           )}
         </div>

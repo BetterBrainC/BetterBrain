@@ -19,7 +19,8 @@ export function DashboardTrend({
   return (
     <div className="h-48 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -22 }} barCategoryGap="25%">
+        {/* left margin 0 (was -22, which clipped the Y-axis tick numbers). */}
+        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="25%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#6B7280" }} tickLine={false} axisLine={false} />
           <YAxis allowDecimals={false} width={32} tick={{ fontSize: 10, fill: "#6B7280" }} tickLine={false} axisLine={false} />

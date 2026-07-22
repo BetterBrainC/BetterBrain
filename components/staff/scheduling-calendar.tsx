@@ -433,7 +433,7 @@ export function SchedulingCalendar({
               onClick={goToday}
               className="h-9 rounded-pill border border-border px-3 text-sm font-medium text-ink hover:bg-surface-tint"
             >
-              กลับวันนี้
+              วันนี้
             </button>
           </div>
         </div>

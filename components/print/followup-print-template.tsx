@@ -36,7 +36,7 @@ export function FollowupPrint({ r }: { r: ReportDetail }) {
           <tr>
             <td colSpan={3} className={`${box} px-2 py-1.5`}>
               <span className="font-bold">ชื่อ-สกุล (ผู้รับบริการ) :</span> {v("patient_name") || r.patientName}
-              <span className="ml-6">อายุ {r.patientAge ?? "…………"} ปี</span>
+              <span className="ml-6">อายุ {r.patientAge ?? "-"} ปี</span>
             </td>
           </tr>
           <tr>
@@ -66,8 +66,10 @@ export function FollowupPrint({ r }: { r: ReportDetail }) {
               {v("problem_list")}
             </td>
           </tr>
+          {/* "Plan of treatment" spans the Treatment + Post Rx rows as ONE merged
+              cell, matching the clinic's paper form (client 22 ก.ค. 2569). */}
           <tr>
-            <td className={`${box} px-2 py-1.5 align-top font-bold`}>Plan of treatment :</td>
+            <td rowSpan={2} className={`${box} px-2 py-1.5 align-top font-bold`}>Plan of treatment :</td>
             <td className={`${box} w-32 px-2 py-1.5 align-top font-bold`}>Treatment :</td>
             <td className={`${box} p-0 align-top`}>
               <div className="border-b border-black px-2 py-1.5">
@@ -76,17 +78,14 @@ export function FollowupPrint({ r }: { r: ReportDetail }) {
               </div>
               <div className="space-y-2 px-2 py-2">
                 <DotLine value={v("treatment")} />
-                <DotLine />
               </div>
             </td>
           </tr>
           <tr>
-            <td className={`${box} px-2 py-1.5`} />
             <td className={`${box} px-2 py-1.5 align-top font-bold`}>Post Rx :</td>
             <td className={`${box} p-0 align-top`}>
               <div className="space-y-2 px-2 py-2">
                 <DotLine value={v("post_treatment")} />
-                <DotLine />
               </div>
             </td>
           </tr>
@@ -98,7 +97,7 @@ export function FollowupPrint({ r }: { r: ReportDetail }) {
           </tr>
         </tbody>
       </table>
-      <SignatureBlock name={pv(r, "ot_name") || r.authorName} />
+      <SignatureBlock name={pv(r, "ot_name") || r.authorName} position={r.authorPosition} license={r.authorLicense} />
     </>
   );
 }

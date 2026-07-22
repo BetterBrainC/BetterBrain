@@ -138,7 +138,7 @@ export function EmployeeCalendar({ sessions }: { sessions: CalendarSession[] }) 
                           >
                             <span className="font-semibold tabular-nums">{s.time}</span>
                             <span className="truncate">{s.patient}</span>
-                            {s.kind === "assessment" && <span className="ml-auto shrink-0 text-[9px] font-bold">ปม</span>}
+                            {s.kind === "assessment" && <span className="ml-auto shrink-0 text-[9px] font-bold">ประเมิน</span>}
                           </Link>
                         );
                       })}

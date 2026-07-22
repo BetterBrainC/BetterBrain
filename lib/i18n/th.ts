@@ -32,8 +32,8 @@ export const BOOKING_STATUS_LABEL = {
 
 export const PATIENT_STATUS_LABEL = {
   active: "กำลังให้บริการ",
-  hold: "พักชั่วคราว (Hold)",
-  no_service: "จบคอร์ส (No service)",
+  hold: "พักชั่วคราว",
+  no_service: "จบคอร์ส",
 } as const;
 
 export const COURSE_STATUS_LABEL = {

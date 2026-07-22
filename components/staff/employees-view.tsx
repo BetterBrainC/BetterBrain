@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, Td } from "@/components/ui/table";
 import { deleteEmployee } from "@/actions/employees";
@@ -14,20 +14,6 @@ const EMPLOYMENT_LABEL: Record<string, string> = { monthly: "Full-time", part_ti
 
 type EmploymentFilter = "all" | "monthly" | "part_time";
 type ProfessionFilter = "all" | "ot" | "pt" | "none";
-
-/** Gradient-initial avatar fallback when an employee has no photo. */
-function Avatar({ name, src }: { name: string; src: string | null }) {
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt="" className="h-9 w-9 rounded-full object-cover" />;
-  }
-  const initial = name.trim().charAt(0) || "?";
-  return (
-    <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-tint text-sm font-semibold text-primary-700">
-      {initial}
-    </span>
-  );
-}
 
 export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
   const router = useRouter();
@@ -116,8 +102,7 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
           <tr key={e.id} className="hover:bg-surface-tint">
             <Td className="tabular-nums text-muted">{e.employee_code ?? "—"}</Td>
             <Td>
-              <Link href={`/staff/employees/${e.id}`} className="flex items-center gap-2.5 font-medium text-navy">
-                <Avatar name={e.full_name} src={e.photo_url} />
+              <Link href={`/staff/employees/${e.id}`} className="font-medium text-navy">
                 {e.full_name}
               </Link>
             </Td>
@@ -130,17 +115,26 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
               </Badge>
             </Td>
             <Td>
-              {e.is_enabled && (
-                <button
-                  type="button"
-                  onClick={() => remove(e)}
-                  disabled={busyId === e.id}
-                  aria-label={`ลบ ${e.full_name}`}
-                  className="rounded-md p-1.5 text-muted hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)] disabled:opacity-50"
+              <div className="flex items-center gap-1">
+                <Link
+                  href={`/staff/employees/${e.id}`}
+                  aria-label={`แก้ไขข้อมูล ${e.full_name}`}
+                  className="rounded-md p-1.5 text-muted hover:bg-surface-tint hover:text-primary-700"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
+                  <Pencil className="h-4 w-4" />
+                </Link>
+                {e.is_enabled && (
+                  <button
+                    type="button"
+                    onClick={() => remove(e)}
+                    disabled={busyId === e.id}
+                    aria-label={`ลบ ${e.full_name}`}
+                    className="rounded-md p-1.5 text-muted hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)] disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </Td>
           </tr>
         ))}
