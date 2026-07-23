@@ -21,6 +21,7 @@ const SESSION_TONE: Record<string, "completed" | "late" | "info" | "neutral" | "
 const REPORT_LABEL: Record<string, string> = {
   assessment_swallow: "Assessment · Swallowing",
   assessment_hand: "Assessment · Hand Function",
+  assessment_report: "รายงานประเมินแรกรับ",
   followup: "Follow up (รายวัน)",
   summary: "Summary (รายเดือน)",
 };
@@ -105,18 +106,25 @@ export default async function PatientDetail({
             <CreateCourseControl patientId={p.id} />
           )}
           <Card>
-            <CardTitle className="mb-2 text-base">รายงาน ({reports.length})</CardTitle>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <CardTitle className="text-base">รายงาน ({reports.length})</CardTitle>
+              {/* Full drill-in = report list + FOIS/Barthel/FIM stats for this recipient. */}
+              <Link href={`/staff/reports/patient/${p.id}`} className="text-sm font-medium text-primary-700 hover:underline">
+                ดูรายงานทั้งหมด + สถิติ
+              </Link>
+            </div>
             <ul className="space-y-1 text-sm">
               {reports.length === 0 && <li className="text-muted">ยังไม่มีรายงาน</li>}
               {reports.map((r) => (
                 <li key={r.id} className="border-b border-border last:border-0">
                   <Link
                     href={`/staff/reports/${r.id}`}
-                    className="flex items-center justify-between gap-2 py-1.5 hover:text-primary-700"
+                    className="group flex items-center justify-between gap-2 py-1.5"
                   >
-                    <span className="text-ink">{REPORT_LABEL[r.report_type] ?? r.report_type}</span>
-                    <span className="text-xs text-muted">
+                    <span className="text-ink group-hover:text-primary-700">{REPORT_LABEL[r.report_type] ?? r.report_type}</span>
+                    <span className="flex shrink-0 items-center gap-2 text-xs text-muted">
                       <ThaiDate value={r.report_date} /> · {r.status === "completed" ? "จบเคส" : "ร่าง"}
+                      <span className="font-medium text-primary-700 group-hover:underline">ดูรายงาน</span>
                     </span>
                   </Link>
                 </li>
