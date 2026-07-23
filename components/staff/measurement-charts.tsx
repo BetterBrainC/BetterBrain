@@ -63,7 +63,7 @@ export function MeasurementCharts({ patient }: { patient: PatientKpiResult[] }) 
               ) : (
                 <div className="h-52 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -22 }}>
+                    <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis
                         dataKey="name"

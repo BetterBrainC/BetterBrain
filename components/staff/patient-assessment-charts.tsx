@@ -61,7 +61,7 @@ export function PatientAssessmentCharts({ kpi }: { kpi: Kpi }) {
               ) : (
                 <div className="h-52 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -22 }}>
+                    <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} />
                       <YAxis domain={m.domain} ticks={m.ticks} allowDecimals={false} width={28} tick={TICK} tickLine={false} axisLine={false} />

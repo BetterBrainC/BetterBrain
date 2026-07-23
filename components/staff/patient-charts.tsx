@@ -131,7 +131,7 @@ function RecipientTimeSeries({ series }: { series: Series }) {
       ) : (
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -22 }}>
+            <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} interval={gran === "month" ? 2 : 0} />
               <YAxis allowDecimals={false} width={32} tick={TICK} tickLine={false} axisLine={false} />

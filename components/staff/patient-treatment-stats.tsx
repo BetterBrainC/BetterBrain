@@ -89,7 +89,7 @@ export function PatientTreatmentStats({ sessions }: { sessions: PatientSession[]
           <p className="text-sm font-medium text-ink">จำนวนเคสรายเดือน</p>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthly} margin={{ top: 8, right: 8, bottom: 0, left: -22 }}>
+              <BarChart data={monthly} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} />
                 <YAxis allowDecimals={false} width={32} tick={TICK} tickLine={false} axisLine={false} />
