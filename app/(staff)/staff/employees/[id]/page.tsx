@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmployeeAdminPanel } from "@/components/staff/employee-admin-panel";
 import { SlotsEditor } from "@/components/staff/slots-editor";
 import { getEmployeeDetail, getEmployeeWorkHours } from "@/lib/data/queries";
+import { requireStaff } from "@/lib/auth";
 
 export default async function EmployeeDetail({
   params,
@@ -13,9 +14,10 @@ export default async function EmployeeDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detail, work] = await Promise.all([getEmployeeDetail(id), getEmployeeWorkHours(id)]);
+  const [detail, work, me] = await Promise.all([getEmployeeDetail(id), getEmployeeWorkHours(id), requireStaff()]);
   if (!detail) notFound();
   const { profile: e, slots } = detail;
+  const canEditRole = me.profile?.role === "director";
 
   return (
     <div className="space-y-5">
@@ -39,8 +41,10 @@ export default async function EmployeeDetail({
           phone: e.phone ?? "",
           employmentType: e.employment_type,
           profession: e.profession ?? "",
+          role: e.role,
           isEnabled: e.is_enabled,
         }}
+        canEditRole={canEditRole}
       />
 
       <SlotsEditor employeeId={e.id} initial={slots} />

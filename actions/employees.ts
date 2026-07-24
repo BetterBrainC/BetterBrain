@@ -103,6 +103,52 @@ export async function createEmployee(input: {
   return { ok: true };
 }
 
+/**
+ * Director changes an existing account's role (fix a mis-set role). Director-only
+ * (privilege change). Guards the director cap (2) and refuses to strip the last
+ * director. Not filtered to role='employee', so an account mis-set to admin/
+ * director can be corrected back.
+ */
+export async function setEmployeeRole(input: { id: string; role: Role }): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: me } = await supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle();
+  const callerRole = (me as { role?: string } | null)?.role;
+  if (callerRole !== "director") return { error: "เฉพาะ Director เท่านั้นที่แก้สิทธิ์ได้" };
+
+  const admin = createAdminClient();
+  const { data: target } = await admin.from("profiles").select("role").eq("id", input.id).maybeSingle();
+  const currentRole = (target as { role?: string } | null)?.role;
+  if (!currentRole) return { error: "ไม่พบบัญชี" };
+  if (currentRole === input.role) return { ok: true };
+
+  const { count: directorCount } = await admin
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "director");
+  const directors = directorCount ?? 0;
+  // Never leave the system with zero directors.
+  if (currentRole === "director" && input.role !== "director" && directors <= 1) {
+    return { error: "ต้องมี Director อย่างน้อย 1 บัญชี" };
+  }
+  // Director cap (2) when promoting.
+  if (input.role === "director" && directors >= 2) {
+    return { error: "มีบัญชี Director ครบ 2 บัญชีแล้ว ไม่สามารถเพิ่มได้" };
+  }
+
+  const { error } = await admin.from("profiles").update({ role: input.role }).eq("id", input.id);
+  if (error) {
+    if (/director account cap/i.test(error.message)) return { error: "มีบัญชี Director ครบ 2 บัญชีแล้ว ไม่สามารถเพิ่มได้" };
+    return { error: error.message };
+  }
+  await writeAudit({ action: "update", entity: "employee", entityId: input.id, before: { role: currentRole }, after: { role: input.role } });
+  revalidatePath(`/staff/employees/${input.id}`);
+  revalidatePath("/staff/employees");
+  return { ok: true };
+}
+
 /** Admin edits an existing employee's profile fields. */
 export async function updateEmployee(input: {
   id: string;

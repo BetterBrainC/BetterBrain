@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Select } from "@/components/ui/field";
-import { updateEmployee, resetPassword, setEmployeeEnabled } from "@/actions/employees";
+import { ROLE_LABEL } from "@/lib/i18n/th";
+import { updateEmployee, resetPassword, setEmployeeEnabled, setEmployeeRole } from "@/actions/employees";
+
+type Role = "employee" | "admin" | "director";
 
 export interface EmployeeAdminData {
   id: string;
@@ -16,12 +19,26 @@ export interface EmployeeAdminData {
   phone: string;
   employmentType: "monthly" | "part_time";
   profession: "pt" | "ot" | "";
+  role: Role;
   isEnabled: boolean;
 }
 
-export function EmployeeAdminPanel({ employee }: { employee: EmployeeAdminData }) {
+export function EmployeeAdminPanel({ employee, canEditRole }: { employee: EmployeeAdminData; canEditRole: boolean }) {
   const router = useRouter();
   const [f, setF] = React.useState(employee);
+
+  const [role, setRole] = React.useState<Role>(employee.role);
+  const [roleBusy, setRoleBusy] = React.useState(false);
+  const [roleMsg, setRoleMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
+  async function saveRole(e: React.FormEvent) {
+    e.preventDefault();
+    setRoleBusy(true);
+    setRoleMsg(null);
+    const res = await setEmployeeRole({ id: f.id, role });
+    setRoleBusy(false);
+    setRoleMsg(res);
+    if (res.ok) router.refresh();
+  }
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
   const set = (k: keyof EmployeeAdminData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -105,6 +122,29 @@ export function EmployeeAdminPanel({ employee }: { employee: EmployeeAdminData }
           </div>
         </Card>
       </form>
+
+      {canEditRole && (
+        <form onSubmit={saveRole}>
+          <Card className="space-y-3">
+            <CardTitle className="text-base">สิทธิ์การใช้งาน (role)</CardTitle>
+            <div className="flex items-end gap-2">
+              <Field label="กำหนดสิทธิ์" className="flex-1">
+                <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                  <option value="employee">{ROLE_LABEL.employee}</option>
+                  <option value="admin">{ROLE_LABEL.admin}</option>
+                  <option value="director">{ROLE_LABEL.director}</option>
+                </Select>
+              </Field>
+              <Button type="submit" variant="secondary" disabled={roleBusy || role === employee.role}>
+                {roleBusy ? "กำลังบันทึก…" : "บันทึกสิทธิ์"}
+              </Button>
+            </div>
+            {roleMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{roleMsg.error}</p>}
+            {roleMsg?.ok && <p className="text-sm text-teal">อัปเดตสิทธิ์แล้ว</p>}
+            <p className="text-2xs text-muted">Director = ผู้ดูแลสูงสุด (สูงสุด 2 บัญชี) · Admin = ปฏิบัติการ · พนักงาน = ผู้ให้บริการ</p>
+          </Card>
+        </form>
+      )}
 
       <form onSubmit={changePw}>
         <Card className="space-y-3">

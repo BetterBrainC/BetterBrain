@@ -377,6 +377,26 @@ export async function getEmployees(): Promise<EmployeeLite[]> {
   return rows<EmployeeLite>(data);
 }
 
+export interface StaffAccountLite {
+  id: string;
+  full_name: string;
+  employee_code: string | null;
+  role: "admin" | "director";
+  is_enabled: boolean;
+}
+
+/** Admin + Director accounts (Director-only view) — so a mis-set role stays reachable. */
+export async function getStaffAdmins(): Promise<StaffAccountLite[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name, employee_code, role, is_enabled")
+    .in("role", ["admin", "director"])
+    .order("role")
+    .order("full_name");
+  return rows<StaffAccountLite>(data);
+}
+
 export async function getEmployeeDetail(id: string): Promise<{
   profile: Database["public"]["Tables"]["profiles"]["Row"];
   slots: { slot_start: string; slot_end: string }[];
