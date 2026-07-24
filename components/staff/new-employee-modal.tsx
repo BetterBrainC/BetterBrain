@@ -6,10 +6,11 @@ import { ImagePlus } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Select } from "@/components/ui/field";
+import { ROLE_LABEL } from "@/lib/i18n/th";
 import { createEmployee, uploadEmployeePhoto } from "@/actions/employees";
 
 /** Admin provisions a new employee account (auth user + profile). */
-export function NewEmployeeModal() {
+export function NewEmployeeModal({ myRole }: { myRole: "admin" | "director" }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [f, setF] = React.useState({
@@ -17,6 +18,7 @@ export function NewEmployeeModal() {
     positionTitle: "", licenseNo: "", phone: "",
     employmentType: "monthly" as "monthly" | "part_time",
     profession: "ot" as "pt" | "ot",
+    role: "employee" as "employee" | "admin" | "director",
   });
   const [photoUrl, setPhotoUrl] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
@@ -46,7 +48,7 @@ export function NewEmployeeModal() {
     setBusy(false);
     if (res.error) return setError(res.error);
     setOpen(false);
-    setF({ fullName: "", email: "", password: "", employeeCode: "", positionTitle: "", licenseNo: "", phone: "", employmentType: "monthly", profession: "ot" });
+    setF({ fullName: "", email: "", password: "", employeeCode: "", positionTitle: "", licenseNo: "", phone: "", employmentType: "monthly", profession: "ot", role: "employee" });
     setPhotoUrl(null);
     router.refresh();
   }
@@ -71,6 +73,15 @@ export function NewEmployeeModal() {
             </label>
           </div>
           <Field label="ชื่อ-สกุล"><TextInput value={f.fullName} onChange={set("fullName")} required /></Field>
+          {myRole === "director" && (
+            <Field label="สิทธิ์การใช้งาน (role)">
+              <Select value={f.role} onChange={set("role")}>
+                <option value="employee">{ROLE_LABEL.employee}</option>
+                <option value="admin">{ROLE_LABEL.admin}</option>
+                <option value="director">{ROLE_LABEL.director}</option>
+              </Select>
+            </Field>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field label="อีเมล (สำหรับเข้าระบบ)"><TextInput type="email" value={f.email} onChange={set("email")} required /></Field>
             <Field label="รหัสผ่านเริ่มต้น"><TextInput type="text" value={f.password} onChange={set("password")} required /></Field>

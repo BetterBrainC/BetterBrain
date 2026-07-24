@@ -30,6 +30,8 @@ async function adminIfStaff(): Promise<ReturnType<typeof createAdminClient> | nu
  * employment fields. Director cap (2) is enforced by a DB trigger, so creating
  * employees here is always safe.
  */
+type Role = "employee" | "admin" | "director";
+
 export async function createEmployee(input: {
   fullName: string;
   email: string;
@@ -40,11 +42,13 @@ export async function createEmployee(input: {
   phone: string;
   employmentType: "monthly" | "part_time";
   profession?: Profession | null;
+  role?: Role;
   photoUrl?: string | null;
 }): Promise<ActionResult> {
   if (!input.fullName.trim()) return { error: "กรอกชื่อ-สกุล" };
   if (!/.+@.+\..+/.test(input.email)) return { error: "อีเมลไม่ถูกต้อง" };
   if (input.password.length < 6) return { error: "รหัสผ่านอย่างน้อย 6 ตัวอักษร" };
+  const desiredRole: Role = input.role ?? "employee";
 
   // Only staff may run this (the page is staff-guarded, re-check here too).
   const supabase = await createClient();
@@ -54,8 +58,17 @@ export async function createEmployee(input: {
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle();
   const role = (me as { role?: string } | null)?.role;
   if (role !== "admin" && role !== "director") return { error: "ไม่มีสิทธิ์" };
+  // Assigning Admin/Director is a privilege escalation → Director-only.
+  if ((desiredRole === "admin" || desiredRole === "director") && role !== "director") {
+    return { error: "เฉพาะ Director เท่านั้นที่กำหนดสิทธิ์ Admin/Director ได้" };
+  }
 
   const admin = createAdminClient();
+  // Fail fast on the director cap (2) before creating an auth user we'd have to unwind.
+  if (desiredRole === "director") {
+    const { count } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("role", "director");
+    if ((count ?? 0) >= 2) return { error: "มีบัญชี Director ครบ 2 บัญชีแล้ว ไม่สามารถเพิ่มได้" };
+  }
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email: input.email.trim(),
     password: input.password,
@@ -70,6 +83,7 @@ export async function createEmployee(input: {
     .from("profiles")
     .update({
       full_name: input.fullName.trim(),
+      role: desiredRole,
       employee_code: input.employeeCode.trim() || null,
       position_title: input.positionTitle.trim() || null,
       license_no: input.licenseNo.trim() || null,
@@ -79,9 +93,12 @@ export async function createEmployee(input: {
       photo_url: input.photoUrl ?? null,
     })
     .eq("id", newId);
-  if (profErr) return { error: profErr.message };
+  if (profErr) {
+    if (/director account cap/i.test(profErr.message)) return { error: "มีบัญชี Director ครบ 2 บัญชีแล้ว ไม่สามารถเพิ่มได้" };
+    return { error: profErr.message };
+  }
 
-  await writeAudit({ action: "create", entity: "employee", entityId: newId, after: { fullName: input.fullName.trim(), employmentType: input.employmentType, profession: input.profession ?? null } });
+  await writeAudit({ action: "create", entity: "employee", entityId: newId, after: { fullName: input.fullName.trim(), role: desiredRole, employmentType: input.employmentType, profession: input.profession ?? null } });
   revalidatePath("/staff/employees");
   return { ok: true };
 }
