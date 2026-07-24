@@ -64,14 +64,15 @@ export function VitalLine({ bp, hr, rr, spo2 }: { bp: string; hr: string; rr: st
 
 /**
  * ลงชื่อ / ตำแหน่ง / ใบอนุญาตเลขที่ — filled from the report author's employee
- * record (รายชื่อพนักงาน) per client 22 ก.ค. 2569; no dotted signature lines.
+ * record (รายชื่อพนักงาน) per client 22 ก.ค. 2569; no dotted signature lines and
+ * no blank signing space — each value sits right after its label (client 24 ก.ค. 2569).
  */
 export function SignatureBlock({ name, position, license }: { name?: string; position?: string | null; license?: string | null }) {
   return (
     <div className="ml-auto mt-6 w-72 space-y-4 break-inside-avoid">
-      <p>ลงชื่อ<span className="inline-block w-52 text-center">{name ?? ""}</span></p>
-      <p>ตำแหน่ง<span className="ml-2 inline-block w-48">{position ?? ""}</span></p>
-      <p>ใบอนุญาตเลขที่<span className="ml-2 inline-block w-40">{license ?? ""}</span></p>
+      <p>ลงชื่อ<span className="ml-2">{name ?? ""}</span></p>
+      <p>ตำแหน่ง<span className="ml-2">{position ?? ""}</span></p>
+      <p>ใบอนุญาตเลขที่<span className="ml-2">{license ?? ""}</span></p>
     </div>
   );
 }
