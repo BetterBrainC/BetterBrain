@@ -9,11 +9,11 @@ import { DataTable, Td } from "@/components/ui/table";
 import { deleteEmployee } from "@/actions/employees";
 import type { EmployeeLite } from "@/lib/data/queries";
 
-const PROFESSION_LABEL: Record<string, string> = { ot: "นักกิจกรรมบำบัด (OT)", pt: "นักกายภาพบำบัด (PT)" };
+const PROFESSION_LABEL: Record<string, string> = { ot: "นักกิจกรรมบำบัด (OT)", pt: "นักกายภาพบำบัด (PT)", other: "อื่นๆ" };
 const EMPLOYMENT_LABEL: Record<string, string> = { monthly: "Full-time", part_time: "Part-time" };
 
 type EmploymentFilter = "all" | "monthly" | "part_time";
-type ProfessionFilter = "all" | "ot" | "pt" | "none";
+type ProfessionFilter = "all" | "ot" | "pt" | "other" | "none";
 
 export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
   const router = useRouter();
@@ -33,7 +33,7 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
     (e) =>
       (filter === "all" || e.employment_type === filter) &&
       (profFilter === "all" ||
-        (profFilter === "none" ? e.profession !== "ot" && e.profession !== "pt" : e.profession === profFilter)),
+        (profFilter === "none" ? !e.profession : e.profession === profFilter)),
   );
 
   async function remove(e: EmployeeLite) {
@@ -54,6 +54,7 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
     { key: "all", label: "ทุกตำแหน่ง" },
     { key: "ot", label: "นักกิจกรรมบำบัด (OT)" },
     { key: "pt", label: "นักกายภาพบำบัด (PT)" },
+    { key: "other", label: "อื่นๆ" },
     { key: "none", label: "ไม่ระบุ" },
   ];
 

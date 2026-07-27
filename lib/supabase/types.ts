@@ -1351,7 +1351,7 @@ export type Database = {
         | "substitute_assigned"
         | "generic"
       patient_status: "active" | "hold" | "no_service"
-      profession: "pt" | "ot"
+      profession: "pt" | "ot" | "other"
       report_status: "draft" | "completed" | "corrected" | "discarded"
       report_type:
         | "assessment_swallow"
@@ -1551,7 +1551,7 @@ export const Constants = {
         "generic",
       ],
       patient_status: ["active", "hold", "no_service"],
-      profession: ["pt", "ot"],
+      profession: ["pt", "ot", "other"],
       report_status: ["draft", "completed", "corrected", "discarded"],
       report_type: [
         "assessment_swallow",

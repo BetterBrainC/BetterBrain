@@ -18,7 +18,7 @@ export interface EmployeeAdminData {
   licenseNo: string;
   phone: string;
   employmentType: "monthly" | "part_time";
-  profession: "pt" | "ot" | "";
+  profession: "pt" | "ot" | "other" | "";
   role: Role;
   isEnabled: boolean;
 }
@@ -103,6 +103,7 @@ export function EmployeeAdminPanel({ employee, canEditRole }: { employee: Employ
                 <option value="">— ไม่ระบุ —</option>
                 <option value="ot">นักกิจกรรมบำบัด (OT)</option>
                 <option value="pt">นักกายภาพบำบัด (PT)</option>
+                <option value="other">อื่นๆ</option>
               </Select>
             </Field>
             <Field label="ตำแหน่ง"><TextInput value={f.positionTitle} onChange={set("positionTitle")} /></Field>

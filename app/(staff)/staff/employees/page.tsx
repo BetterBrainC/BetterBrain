@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { NewEmployeeModal } from "@/components/staff/new-employee-modal";
 import { EmployeesView } from "@/components/staff/employees-view";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,13 @@ export default async function EmployeesPage() {
                 <div className="flex items-center gap-2">
                   <Badge tone={a.role === "director" ? "info" : "neutral"}>{ROLE_LABEL[a.role]}</Badge>
                   {!a.is_enabled && <Badge tone="nocheckin">ปิด</Badge>}
+                  <Link
+                    href={`/staff/employees/${a.id}`}
+                    aria-label={`แก้ไขข้อมูล ${a.full_name}`}
+                    className="rounded-md p-1.5 text-muted hover:bg-surface-tint hover:text-primary-700"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Link>
                 </div>
               </li>
             ))}

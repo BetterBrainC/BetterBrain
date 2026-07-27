@@ -11,7 +11,7 @@ export interface ActionResult {
   error?: string;
 }
 
-type Profession = "pt" | "ot";
+type Profession = "pt" | "ot" | "other";
 
 /** Returns the admin client only if the caller is staff (admin/director). */
 async function adminIfStaff(): Promise<ReturnType<typeof createAdminClient> | null> {
@@ -22,6 +22,25 @@ async function adminIfStaff(): Promise<ReturnType<typeof createAdminClient> | nu
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle();
   const role = (me as { role?: string } | null)?.role;
   return role === "admin" || role === "director" ? createAdminClient() : null;
+}
+
+/**
+ * Admin client scoped to managing one target account: admin may manage
+ * role='employee' targets only; Director may manage anyone. Returns null when
+ * the caller lacks rights over that target (admin touching an admin/director).
+ */
+async function adminForTarget(targetId: string): Promise<ReturnType<typeof createAdminClient> | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: me } = await supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle();
+  const callerRole = (me as { role?: string } | null)?.role;
+  if (callerRole !== "admin" && callerRole !== "director") return null;
+  const admin = createAdminClient();
+  if (callerRole === "director") return admin;
+  const { data: target } = await admin.from("profiles").select("role").eq("id", targetId).maybeSingle();
+  return (target as { role?: string } | null)?.role === "employee" ? admin : null;
 }
 
 /**
@@ -149,7 +168,7 @@ export async function setEmployeeRole(input: { id: string; role: Role }): Promis
   return { ok: true };
 }
 
-/** Admin edits an existing employee's profile fields. */
+/** Staff edits an existing account's profile fields (admin → employees only; Director → anyone). */
 export async function updateEmployee(input: {
   id: string;
   fullName: string;
@@ -162,7 +181,7 @@ export async function updateEmployee(input: {
   photoUrl?: string | null;
 }): Promise<ActionResult> {
   if (!input.fullName.trim()) return { error: "กรอกชื่อ-สกุล" };
-  const admin = await adminIfStaff();
+  const admin = await adminForTarget(input.id);
   if (!admin) return { error: "ไม่มีสิทธิ์" };
   const { error } = await admin
     .from("profiles")
@@ -176,8 +195,7 @@ export async function updateEmployee(input: {
       profession: input.profession ?? null,
       ...(input.photoUrl !== undefined ? { photo_url: input.photoUrl } : {}),
     })
-    .eq("id", input.id)
-    .eq("role", "employee");
+    .eq("id", input.id);
   if (error) return { error: error.message };
   await writeAudit({ action: "update", entity: "employee", entityId: input.id, after: { fullName: input.fullName.trim() } });
   revalidatePath(`/staff/employees/${input.id}`);
@@ -185,10 +203,10 @@ export async function updateEmployee(input: {
   return { ok: true };
 }
 
-/** Admin resets an employee's password (service-role). */
+/** Staff resets an account's password (admin → employees only; Director → anyone). */
 export async function resetPassword(input: { id: string; password: string }): Promise<ActionResult> {
   if (input.password.length < 6) return { error: "รหัสผ่านอย่างน้อย 6 ตัวอักษร" };
-  const admin = await adminIfStaff();
+  const admin = await adminForTarget(input.id);
   if (!admin) return { error: "ไม่มีสิทธิ์" };
   const { error } = await admin.auth.admin.updateUserById(input.id, { password: input.password });
   if (error) return { error: error.message };
@@ -196,15 +214,32 @@ export async function resetPassword(input: { id: string; password: string }): Pr
   return { ok: true };
 }
 
-/** Admin enables/disables an employee account (blocks writes via is_enabled()). */
+/** Refuses to disable the account when it is the last enabled director (lockout guard). */
+async function guardLastDirector(admin: ReturnType<typeof createAdminClient>, targetId: string): Promise<string | null> {
+  const { data: target } = await admin.from("profiles").select("role, is_enabled").eq("id", targetId).maybeSingle();
+  const t = target as { role?: string; is_enabled?: boolean } | null;
+  if (t?.role !== "director" || t.is_enabled === false) return null;
+  const { count } = await admin
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "director")
+    .eq("is_enabled", true)
+    .neq("id", targetId);
+  return (count ?? 0) >= 1 ? null : "ต้องเหลือ Director ที่ใช้งานได้อย่างน้อย 1 บัญชี";
+}
+
+/** Staff enables/disables an account (admin → employees only; Director → anyone). */
 export async function setEmployeeEnabled(input: { id: string; enabled: boolean }): Promise<ActionResult> {
-  const admin = await adminIfStaff();
+  const admin = await adminForTarget(input.id);
   if (!admin) return { error: "ไม่มีสิทธิ์" };
+  if (!input.enabled) {
+    const guard = await guardLastDirector(admin, input.id);
+    if (guard) return { error: guard };
+  }
   const { error } = await admin
     .from("profiles")
     .update({ is_enabled: input.enabled })
-    .eq("id", input.id)
-    .eq("role", "employee");
+    .eq("id", input.id);
   if (error) return { error: error.message };
   await writeAudit({ action: "update", entity: "employee", entityId: input.id, after: { is_enabled: input.enabled } });
   revalidatePath(`/staff/employees/${input.id}`);
@@ -218,13 +253,14 @@ export async function setEmployeeEnabled(input: { id: string; enabled: boolean }
  * history. A true row delete would orphan past cases, so we never hard-delete.
  */
 export async function deleteEmployee(input: { id: string }): Promise<ActionResult> {
-  const admin = await adminIfStaff();
+  const admin = await adminForTarget(input.id);
   if (!admin) return { error: "ไม่มีสิทธิ์" };
+  const guard = await guardLastDirector(admin, input.id);
+  if (guard) return { error: guard };
   const { error } = await admin
     .from("profiles")
     .update({ is_enabled: false })
-    .eq("id", input.id)
-    .eq("role", "employee");
+    .eq("id", input.id);
   if (error) return { error: error.message };
   await writeAudit({ action: "delete", entity: "employee", entityId: input.id, after: { is_enabled: false } });
   revalidatePath("/staff/employees");

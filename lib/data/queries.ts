@@ -364,7 +364,7 @@ export async function getAuditLogs(): Promise<AuditLogRow[]> {
 export type EmployeeLite = {
   id: string; full_name: string; employee_code: string | null; position_title: string | null;
   license_no: string | null; phone: string | null; employment_type: "monthly" | "part_time";
-  profession: "pt" | "ot" | null; photo_url: string | null; is_enabled: boolean;
+  profession: "pt" | "ot" | "other" | null; photo_url: string | null; is_enabled: boolean;
 };
 
 export async function getEmployees(): Promise<EmployeeLite[]> {

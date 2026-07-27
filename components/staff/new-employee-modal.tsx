@@ -17,7 +17,7 @@ export function NewEmployeeModal({ myRole }: { myRole: "admin" | "director" }) {
     fullName: "", email: "", password: "", employeeCode: "",
     positionTitle: "", licenseNo: "", phone: "",
     employmentType: "monthly" as "monthly" | "part_time",
-    profession: "ot" as "pt" | "ot",
+    profession: "ot" as "pt" | "ot" | "other",
     role: "employee" as "employee" | "admin" | "director",
   });
   const [photoUrl, setPhotoUrl] = React.useState<string | null>(null);
@@ -95,6 +95,7 @@ export function NewEmployeeModal({ myRole }: { myRole: "admin" | "director" }) {
               <Select value={f.profession} onChange={set("profession")}>
                 <option value="ot">นักกิจกรรมบำบัด (OT)</option>
                 <option value="pt">นักกายภาพบำบัด (PT)</option>
+                <option value="other">อื่นๆ</option>
               </Select>
             </Field>
             <Field label="ตำแหน่ง"><TextInput value={f.positionTitle} onChange={set("positionTitle")} placeholder="นักกิจกรรมบำบัด" /></Field>
