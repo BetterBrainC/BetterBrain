@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { PencilLine, ChevronRight, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
 import { AccountProfile } from "@/components/employee/account-profile";
-import { PushToggle } from "@/components/shell/push-toggle";
+import { InstallAppCard } from "@/components/shell/install-app-card";
 import { signOut } from "@/actions/auth";
 import { getCurrentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/data/queries";
@@ -36,10 +35,8 @@ export default async function AccountPage() {
         }}
       />
 
-      <Card className="space-y-2">
-        <CardTitle className="text-base">การแจ้งเตือน (Web Push)</CardTitle>
-        <PushToggle />
-      </Card>
+      {/* Install first, notifications after — see InstallAppCard. */}
+      <InstallAppCard />
 
       <div className="space-y-2">
         {links.map(({ href, label, icon: Icon }) => (
