@@ -10,7 +10,6 @@ export default async function CheckInIndexPage() {
     <div className="space-y-5 px-[var(--gutter-page)] pt-6">
       <header>
         <h1 className="font-display text-2xl font-bold text-navy">เช็คอิน</h1>
-        <p className="text-sm text-muted">เลือกเคสเพื่อเช็คอินเข้างาน</p>
       </header>
       <CheckInList
         sessions={sessions}

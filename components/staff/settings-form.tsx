@@ -16,6 +16,7 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
   const [late, setLate] = React.useState(String(initial.lateThresholdMin));
   const [early, setEarly] = React.useState(String(initial.earlyThresholdMin));
   const [radius, setRadius] = React.useState(String(initial.geofenceRadiusM));
+  const [corrections, setCorrections] = React.useState(initial.correctionsEnabled);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -47,6 +48,7 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
       lateThresholdMin: Number(late) || 0,
       earlyThresholdMin: Number(early) || 0,
       geofenceRadiusM: Number(radius) || 0,
+      correctionsEnabled: corrections,
     });
     setBusy(false);
     if (res.error) return setError(res.error);
@@ -91,6 +93,17 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
             className={"relative h-6 w-11 rounded-full transition-colors " + (selfie ? "bg-primary" : "bg-border-strong")}
           >
             <span className={"absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all " + (selfie ? "left-[22px]" : "left-0.5")} />
+          </button>
+        </label>
+        <label className="flex items-center justify-between">
+          <span className="text-sm text-ink">เปิดให้พนักงานส่ง “ขอแก้ไขเช็คอิน”</span>
+          <button
+            type="button"
+            onClick={() => setCorrections((v) => !v)}
+            aria-pressed={corrections}
+            className={"relative h-6 w-11 shrink-0 rounded-full transition-colors " + (corrections ? "bg-primary" : "bg-border-strong")}
+          >
+            <span className={"absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all " + (corrections ? "left-[22px]" : "left-0.5")} />
           </button>
         </label>
         <div className="grid gap-4 sm:grid-cols-3">

@@ -72,16 +72,18 @@ export function DashboardPatientsTable({ patients }: { patients: PatientRow[] })
     if (range === "month") return d.slice(0, 7) === today.slice(0, 7);
     return Number(d.slice(0, 4)) === year;
   });
+  const totalVisits = filtered.reduce((sum, p) => sum + (p.visits ?? 0), 0);
 
   return (
     <Card className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle className="text-base">
-          จำนวนผู้รับบริการราย{RANGE_LABEL[range]}
+          ผู้รับบริการ{RANGE_LABEL[range]}
           {range === "year" ? ` ${year + 543}` : ""}
-          <span className="ml-2 text-sm font-normal text-muted">{filtered.length} ราย</span>
+          <span className="ml-2 text-sm font-normal text-muted">
+            จำนวน {filtered.length} เคส · {totalVisits} visit
+          </span>
         </CardTitle>
-        <p className="text-xs text-faint">คลิกชื่อผู้รับบริการเพื่อแก้โปรแกรม / คอร์ส / สถานะ</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

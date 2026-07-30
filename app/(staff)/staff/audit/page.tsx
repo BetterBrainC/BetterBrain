@@ -23,8 +23,7 @@ export default async function AuditPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="font-display text-2xl font-bold text-navy">บันทึกการใช้งาน (Audit log)</h1>
-        <p className="text-sm text-muted">บันทึกแบบเพิ่มอย่างเดียว · เห็นเฉพาะ Director · 100 รายการล่าสุด</p>
+        <h1 className="font-display text-2xl font-bold text-navy">บันทึกการใช้งาน</h1>
       </header>
 
       {logs.length === 0 ? (

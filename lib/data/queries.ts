@@ -194,9 +194,14 @@ export interface PatientRow {
   status: PatientStatus;
   courseUsed: number;
   courseTotal: number;
+  /** จำนวนครั้งที่เข้าฝึกจริง (visit) — sessions actually attended. */
+  visits: number;
   /** ISO timestamp — powers the dashboard วัน/สัปดาห์/เดือน/ปี filter. */
   createdAt: string | null;
 }
+
+/** Session statuses that count as a real visit (เข้าฝึก) — งด/ไม่ได้เช็คอิน never do. */
+const VISIT_STATUSES = ["attended", "late", "completed"] as const;
 
 export async function getPatients(): Promise<PatientRow[]> {
   const supabase = await createClient();
@@ -206,8 +211,9 @@ export async function getPatients(): Promise<PatientRow[]> {
     .from("patients")
     .select("id, hn, full_name, age_years, training_program, diagnosis_category, status, created_at")
     .eq("appointment_status", "booked")
-    // Latest-registered first — client rule: every recipient list leads with
-    // the newest entries.
+    // Patient ID (HN) high → low on every recipient list — client 30 ก.ค. 2569.
+    // created_at is the tiebreak for rows that have no HN yet.
+    .order("hn", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   const patients = rows<{
     id: string; hn: string | null; full_name: string; age_years: number | null;
@@ -237,6 +243,17 @@ export async function getPatients(): Promise<PatientRow[]> {
     });
   }
 
+  // จำนวนครั้งที่เข้าฝึก (visit) per recipient — client 30 ก.ค. 2569.
+  const { data: vData } = await supabase
+    .from("schedule_sessions")
+    .select("patient_id")
+    .in("patient_id", patients.map((p) => p.id))
+    .in("status", VISIT_STATUSES as unknown as string[]);
+  const visitsByPatient = new Map<string, number>();
+  for (const v of rows<{ patient_id: string }>(vData)) {
+    visitsByPatient.set(v.patient_id, (visitsByPatient.get(v.patient_id) ?? 0) + 1);
+  }
+
   return patients.map((p) => ({
     id: p.id,
     hn: p.hn,
@@ -247,6 +264,7 @@ export async function getPatients(): Promise<PatientRow[]> {
     status: p.status,
     courseUsed: byPatient.get(p.id)?.used ?? 0,
     courseTotal: byPatient.get(p.id)?.total ?? 0,
+    visits: visitsByPatient.get(p.id) ?? 0,
     createdAt: p.created_at,
   }));
 }
@@ -383,6 +401,32 @@ export interface StaffAccountLite {
   employee_code: string | null;
   role: "admin" | "director";
   is_enabled: boolean;
+}
+
+export interface AccountUsage {
+  email: string | null;
+  /** null = ยังไม่เคยเข้าใช้งาน (never signed in). */
+  lastSignInAt: string | null;
+}
+
+/**
+ * Login email + last sign-in per profile id, read with the service role
+ * (auth.users is not reachable through PostgREST). Powers the "สถานะการใช้งาน"
+ * column, which must reflect real usage rather than just the enabled flag
+ * (client 30 ก.ค. 2569). Staff-only pages — never expose this to employees.
+ */
+export async function getAccountUsage(): Promise<Map<string, AccountUsage>> {
+  const admin = createAdminClient();
+  const out = new Map<string, AccountUsage>();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data.users.length) break;
+    for (const u of data.users) {
+      out.set(u.id, { email: u.email ?? null, lastSignInAt: u.last_sign_in_at ?? null });
+    }
+    if (data.users.length < 200) break;
+  }
+  return out;
 }
 
 /** Admin + Director accounts (Director-only view) — so a mis-set role stays reachable. */
@@ -1774,7 +1818,10 @@ export async function getReportPatients(): Promise<ReportPatientRow[]> {
       });
     }
   }
-  return [...byPatient.values()].sort((a, b) => b.lastDate.localeCompare(a.lastDate));
+  // Patient ID (HN) high → low — client 30 ก.ค. 2569; newest report date breaks ties.
+  return [...byPatient.values()].sort(
+    (a, b) => (b.patientHn ?? "").localeCompare(a.patientHn ?? "") || b.lastDate.localeCompare(a.lastDate),
+  );
 }
 
 // ── per-recipient assessment history + KPI trend (report drill-in) ──────────
@@ -1801,9 +1848,12 @@ export async function getPatientAssessmentHistory(patientId: string): Promise<Pa
 
   const { data: rData } = await supabase
     .from("reports")
-    .select("id, report_type, report_date, status, payload")
+    .select("id, report_type, report_date, status, payload, created_at")
     .eq("patient_id", patientId)
+    // Newest saved report always first — created_at breaks same-day ties
+    // (client 30 ก.ค. 2569: "บันทึกล่าสุดให้แสดงบนสุดเสมอ").
     .order("report_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(300);
   const rawReports = rows<{ id: string; report_type: string; report_date: string; status: string; payload: unknown }>(rData);
   const reports = rawReports.map((r) => ({
@@ -1963,18 +2013,21 @@ export interface SettingsData {
   lateThresholdMin: number;
   earlyThresholdMin: number;
   geofenceRadiusM: number;
+  /** แสดงเมนู "ขอแก้ไขเช็คอิน" ให้พนักงานหรือไม่ (stored in settings.extra). */
+  correctionsEnabled: boolean;
 }
 
 export async function getSettings(): Promise<SettingsData> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("settings")
-    .select("company_name, logo_url, selfie_enforced, late_threshold_minutes, early_threshold_minutes, geofence_radius_m")
+    .select("company_name, logo_url, selfie_enforced, late_threshold_minutes, early_threshold_minutes, geofence_radius_m, extra")
     .eq("id", 1)
     .maybeSingle();
   const s = one<{
     company_name: string; logo_url: string | null; selfie_enforced: boolean;
     late_threshold_minutes: number; early_threshold_minutes: number; geofence_radius_m: number;
+    extra: Record<string, unknown> | null;
   }>(data);
   return {
     companyName: s?.company_name ?? "Better Brain Rehab at Home",
@@ -1983,6 +2036,9 @@ export async function getSettings(): Promise<SettingsData> {
     lateThresholdMin: Number(s?.late_threshold_minutes ?? 15),
     earlyThresholdMin: Number(s?.early_threshold_minutes ?? 15),
     geofenceRadiusM: Number(s?.geofence_radius_m ?? 1000),
+    // Off by default — staff only see "ขอแก้ไขเช็คอิน" when Director turns it on
+    // for the moment it is needed (client 30 ก.ค. 2569).
+    correctionsEnabled: s?.extra?.corrections_enabled === true,
   };
 }
 

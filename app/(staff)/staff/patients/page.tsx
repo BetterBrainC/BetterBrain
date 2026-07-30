@@ -15,7 +15,6 @@ export default async function PatientsPage() {
       <header className="flex items-end justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">ผู้รับบริการ</h1>
-          <p className="text-sm text-muted">ทะเบียนผู้รับบริการ {patients.length} ราย</p>
         </div>
         <Link href="/staff/patients/new">
           <Button>+ เพิ่มผู้รับบริการ</Button>

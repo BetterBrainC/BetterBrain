@@ -6,8 +6,9 @@ import { DataTable, Td } from "@/components/ui/table";
 import { ThaiDate } from "@/components/ui/thai-date";
 import type { ReportPatientRow } from "@/lib/data/queries";
 
-const STATUS: Record<string, { label: string; tone: "completed" | "info" | "nocheckin" | "late" }> = {
-  completed: { label: "จบเคส", tone: "completed" },
+// จบเคส = สีเทา (neutral) — client 30 ก.ค. 2569.
+const STATUS: Record<string, { label: string; tone: "neutral" | "info" | "nocheckin" | "late" }> = {
+  completed: { label: "จบเคส", tone: "neutral" },
   draft: { label: "ร่าง", tone: "late" },
   corrected: { label: "แก้ไขแล้ว", tone: "info" },
   discarded: { label: "ยกเลิก", tone: "nocheckin" },

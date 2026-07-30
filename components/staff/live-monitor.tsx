@@ -99,9 +99,6 @@ export function LiveMonitor({ rows, employeeCount }: { rows: MonitorRow[]; emplo
           })}
         </ul>
       )}
-      <p className="mt-2 text-xs text-faint">
-        คลิกที่นัดเพื่อดูรายละเอียดผู้รับบริการ · Admin และ Director เห็นเหมือนกัน · พนักงาน {employeeCount} คน
-      </p>
     </Card>
   );
 }

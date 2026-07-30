@@ -2,11 +2,15 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { ImagePlus } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, Select } from "@/components/ui/field";
 import { ROLE_LABEL } from "@/lib/i18n/th";
-import { updateEmployee, resetPassword, setEmployeeEnabled, setEmployeeRole } from "@/actions/employees";
+import {
+  updateEmployee, resetPassword, setEmployeeEnabled, setEmployeeRole,
+  setEmployeeEmail, uploadEmployeePhoto,
+} from "@/actions/employees";
 
 type Role = "employee" | "admin" | "director";
 
@@ -21,6 +25,8 @@ export interface EmployeeAdminData {
   profession: "pt" | "ot" | "other" | "";
   role: Role;
   isEnabled: boolean;
+  photoUrl: string | null;
+  email: string;
 }
 
 export function EmployeeAdminPanel({ employee, canEditRole }: { employee: EmployeeAdminData; canEditRole: boolean }) {
@@ -43,6 +49,38 @@ export function EmployeeAdminPanel({ employee, canEditRole }: { employee: Employ
   const [msg, setMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
   const set = (k: keyof EmployeeAdminData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((s) => ({ ...s, [k]: e.target.value }));
+
+  const [photoUrl, setPhotoUrl] = React.useState<string | null>(employee.photoUrl);
+  const [uploading, setUploading] = React.useState(false);
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setMsg(null);
+    const fd = new FormData();
+    fd.set("file", file);
+    const up = await uploadEmployeePhoto(fd);
+    if (up.error) { setUploading(false); return setMsg({ error: up.error }); }
+    // Persist immediately — an uploaded file that is never saved looks like a
+    // silent failure ("อัปโหลดแล้วไม่มีรูป", client 30 ก.ค. 2569).
+    const res = await updateEmployee({ ...f, profession: f.profession || null, photoUrl: up.url ?? null });
+    setUploading(false);
+    setMsg(res);
+    if (res.ok) { setPhotoUrl(up.url ?? null); router.refresh(); }
+  }
+
+  const [email, setEmail] = React.useState(employee.email);
+  const [emailBusy, setEmailBusy] = React.useState(false);
+  const [emailMsg, setEmailMsg] = React.useState<{ ok?: boolean; error?: string } | null>(null);
+  async function saveEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailBusy(true);
+    setEmailMsg(null);
+    const res = await setEmployeeEmail({ id: f.id, email });
+    setEmailBusy(false);
+    setEmailMsg(res);
+    if (res.ok) router.refresh();
+  }
 
   const [pw, setPw] = React.useState("");
   const [pwBusy, setPwBusy] = React.useState(false);
@@ -95,6 +133,20 @@ export function EmployeeAdminPanel({ employee, canEditRole }: { employee: Employ
       <form onSubmit={save}>
         <Card className="space-y-4">
           <CardTitle className="text-base">แก้ไขโปรไฟล์</CardTitle>
+          <div className="flex items-center gap-3">
+            <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-surface-tint text-muted">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={photoUrl} alt="" className="h-16 w-16 object-cover" />
+              ) : (
+                <ImagePlus className="h-6 w-6" />
+              )}
+            </span>
+            <label className="cursor-pointer text-sm font-medium text-primary-700 hover:underline">
+              {uploading ? "กำลังอัปโหลด…" : photoUrl ? "เปลี่ยนรูป" : "เพิ่มรูปพนักงาน"}
+              <input type="file" accept="image/*" className="sr-only" onChange={onPhoto} disabled={uploading} />
+            </label>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="ชื่อ-สกุล"><TextInput value={f.fullName} onChange={set("fullName")} required /></Field>
             <Field label="รหัสพนักงาน"><TextInput value={f.employeeCode} onChange={set("employeeCode")} /></Field>
@@ -146,6 +198,22 @@ export function EmployeeAdminPanel({ employee, canEditRole }: { employee: Employ
           </Card>
         </form>
       )}
+
+      <form onSubmit={saveEmail}>
+        <Card className="space-y-3">
+          <CardTitle className="text-base">อีเมลสำหรับเข้าระบบ</CardTitle>
+          <div className="flex items-end gap-2">
+            <Field label="อีเมล" className="flex-1">
+              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </Field>
+            <Button type="submit" variant="secondary" disabled={emailBusy || email.trim() === employee.email}>
+              {emailBusy ? "กำลังบันทึก…" : "บันทึกอีเมล"}
+            </Button>
+          </div>
+          {emailMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{emailMsg.error}</p>}
+          {emailMsg?.ok && <p className="text-sm text-teal">อัปเดตอีเมลแล้ว</p>}
+        </Card>
+      </form>
 
       <form onSubmit={changePw}>
         <Card className="space-y-3">

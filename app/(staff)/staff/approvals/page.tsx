@@ -10,7 +10,6 @@ export default async function ApprovalsPage() {
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl font-bold text-navy">การอนุมัติ</h1>
-        <p className="text-sm text-muted">Director อนุมัติ · Admin ดำเนินการ</p>
       </header>
 
       <ApprovalsClient

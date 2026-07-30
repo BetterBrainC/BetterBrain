@@ -126,11 +126,6 @@ export default async function SessionPage({
             <DailyReportCard sessionId={session.id} patientName={session.patientName} otName={myName} />
           )}
         </div>
-        <p className="text-xs text-faint">
-          {session.kind === "assessment"
-            ? "เคสนี้เป็นการประเมิน Hand Function (ครั้งแรก ครั้งเดียว) · ต้องเช็คอินก่อนบันทึก"
-            : "Assessment + Follow up ต้องเช็คอินก่อน · Follow up เปิดอัตโนมัติเมื่อกดเช็คเอาท์"}
-        </p>
       </section>
 
       <section className="space-y-2">

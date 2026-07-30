@@ -333,13 +333,10 @@ export function AssessmentReportForm({ patientName, backHref, sessionId }: FormP
       submitLabel="บันทึก"
     >
       <ReportSection title="ข้อมูลทั่วไป">
-        <p className="text-xs text-muted">
-          วันที่ประเมินแรกรับ · ชื่อ-สกุล · อายุ · การวินิจฉัยโรค ดึงจากข้อมูลผู้รับบริการอัตโนมัติตอนพิมพ์
-        </p>
         <Field label="การวินิจฉัยทางกิจกรรมบำบัด"><TextInput name="ot_diagnosis" /></Field>
         <SubLabel>โรคประจำตัว</SubLabel>
         <CheckRow name="underlying" options={UNDERLYING_TH} />
-        <Field label="other ; (ระบุเพิ่มเติม)"><TextInput name="underlying_other" /></Field>
+        <Field label="other"><TextInput name="underlying_other" /></Field>
       </ReportSection>
 
       <ReportSection title="ระดับความสามารถปัจจุบัน">

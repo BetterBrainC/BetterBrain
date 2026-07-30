@@ -203,6 +203,31 @@ export async function updateEmployee(input: {
   return { ok: true };
 }
 
+/**
+ * Staff changes an account's login email (admin → employees only; Director →
+ * anyone). Client 30 ก.ค. 2569: the email must be visible AND editable — a typo
+ * at create time otherwise locks the person out with no way to fix it.
+ */
+export async function setEmployeeEmail(input: { id: string; email: string }): Promise<ActionResult> {
+  const email = input.email.trim();
+  if (!/.+@.+\..+/.test(email)) return { error: "อีเมลไม่ถูกต้อง" };
+  const admin = await adminForTarget(input.id);
+  if (!admin) return { error: "ไม่มีสิทธิ์" };
+  const { data: before } = await admin.auth.admin.getUserById(input.id);
+  const { error } = await admin.auth.admin.updateUserById(input.id, { email, email_confirm: true });
+  if (error) {
+    if (/already/i.test(error.message)) return { error: "อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว" };
+    return { error: error.message };
+  }
+  await writeAudit({
+    action: "update", entity: "employee", entityId: input.id,
+    before: { email: before.user?.email ?? null }, after: { email },
+  });
+  revalidatePath(`/staff/employees/${input.id}`);
+  revalidatePath("/staff/employees");
+  return { ok: true };
+}
+
 /** Staff resets an account's password (admin → employees only; Director → anyone). */
 export async function resetPassword(input: { id: string; password: string }): Promise<ActionResult> {
   if (input.password.length < 6) return { error: "รหัสผ่านอย่างน้อย 6 ตัวอักษร" };

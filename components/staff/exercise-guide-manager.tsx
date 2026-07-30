@@ -34,7 +34,6 @@ function ProgramCard({ program, initial }: { program: string; initial: ExerciseG
         <span className="text-2xs text-muted">{items.filter((i) => i.title.trim()).length} ข้อ</span>
       </div>
       <div className="space-y-3">
-        {items.length === 0 && <p className="text-sm text-muted">ยังไม่มีคำแนะนำ — กด “เพิ่มข้อ”</p>}
         {items.map((it, i) => (
           <div key={i} className="space-y-2 rounded-md bg-surface-tint p-3">
             <div className="flex items-center gap-2">

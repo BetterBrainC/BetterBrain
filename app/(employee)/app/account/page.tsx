@@ -6,15 +6,17 @@ import { AccountProfile } from "@/components/employee/account-profile";
 import { PushToggle } from "@/components/shell/push-toggle";
 import { signOut } from "@/actions/auth";
 import { getCurrentUser } from "@/lib/auth";
+import { getSettings } from "@/lib/data/queries";
 
 // Leave system removed per client (3.pdf p.7); handled later in a unified HR module.
-const LINKS = [
-  { href: "/app/corrections", label: "ขอแก้ไขเช็คอิน", icon: PencilLine },
-];
+// "ขอแก้ไขเช็คอิน" is gated by a Director switch — staff only see it while it is
+// switched on (client 30 ก.ค. 2569).
+const CORRECTION_LINK = { href: "/app/corrections", label: "ขอแก้ไขเช็คอิน", icon: PencilLine };
 
 export default async function AccountPage() {
-  const u = await getCurrentUser();
+  const [u, settings] = await Promise.all([getCurrentUser(), getSettings()]);
   const p = u?.profile;
+  const links = settings.correctionsEnabled ? [CORRECTION_LINK] : [];
 
   return (
     <div className="space-y-5 px-[var(--gutter-page)] pt-6">
@@ -30,17 +32,17 @@ export default async function AccountPage() {
           licenseNo: p?.license_no ?? "",
           employeeCode: p?.employee_code ?? "",
           email: u?.email ?? "",
+          photoUrl: p?.photo_url ?? null,
         }}
       />
 
       <Card className="space-y-2">
         <CardTitle className="text-base">การแจ้งเตือน (Web Push)</CardTitle>
-        <p className="text-xs text-muted">รับแจ้งเตือนนัด/เวร/อนุมัติ บนอุปกรณ์นี้</p>
         <PushToggle />
       </Card>
 
       <div className="space-y-2">
-        {LINKS.map(({ href, label, icon: Icon }) => (
+        {links.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

@@ -13,7 +13,6 @@ export default async function BookingsPage() {
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">การทำนัด</h1>
-          <p className="text-sm text-muted">รอชำระเงิน · รอทำนัด · ยกเลิกนัด (ทำนัดแล้ว → หน้าผู้รับบริการ)</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <RegisterLinkModal />

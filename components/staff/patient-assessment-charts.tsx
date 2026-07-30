@@ -75,7 +75,7 @@ export function PatientAssessmentCharts({ kpi }: { kpi: Kpi }) {
           );
         })}
       </div>
-      <p className="text-xs text-faint">FOIS แสดงระดับ 1–7 · Barthel 0–100 · แสดงตามวันที่ประเมิน</p>
+      <p className="text-center text-xs text-faint">FOIS · Barthel · FIM แสดงตามวันที่ประเมิน</p>
     </Card>
   );
 }

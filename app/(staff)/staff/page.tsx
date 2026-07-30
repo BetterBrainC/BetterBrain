@@ -7,15 +7,14 @@ import { getDashboard } from "@/lib/data/queries";
 
 export default async function StaffDashboard() {
   const d = await getDashboard();
-  const checkedPct = d.totalToday ? Math.round((d.checkedIn / d.totalToday) * 100) : 0;
 
   const tiles = [
-    { label: "เคสทั้งหมดวันนี้", value: String(d.totalToday), hint: "ทุกพนักงาน" },
-    { label: "เช็คอินแล้ว", value: String(d.checkedIn), hint: `${checkedPct}% ของวันนี้` },
-    { label: "กำลังทำ", value: String(d.inProgress), hint: "กำลังฝึก" },
-    { label: "ผู้รับบริการใหม่", value: String(d.newRecipients), hint: "เคสประเมินแรกรับ" },
-    { label: "ยกเลิก", value: String(d.cancelledToday), hint: "เคสแจ้งงด" },
-    { label: "รออนุมัติ", value: String(d.pendingApprovals), hint: "แก้เช็คอิน" },
+    { label: "เคสทั้งหมดวันนี้", value: String(d.totalToday) },
+    { label: "เช็คอินแล้ว", value: String(d.checkedIn) },
+    { label: "กำลังทำ", value: String(d.inProgress) },
+    { label: "ผู้รับบริการใหม่", value: String(d.newRecipients) },
+    { label: "ยกเลิก", value: String(d.cancelledToday) },
+    { label: "รออนุมัติ", value: String(d.pendingApprovals) },
   ];
 
   return (
@@ -29,10 +28,9 @@ export default async function StaffDashboard() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {tiles.map((t) => (
-          <Card key={t.label}>
+          <Card key={t.label} className="text-center">
             <p className="text-sm text-muted">{t.label}</p>
             <p className="mt-1 font-display text-stat font-bold tabular-nums text-navy">{t.value}</p>
-            <p className="mt-1 text-xs text-faint">{t.hint}</p>
           </Card>
         ))}
       </div>

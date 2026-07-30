@@ -38,7 +38,7 @@ function ProgramField({ programs, defaultValue }: { programs: string[]; defaultV
       >
         <option value="">— ไม่ระบุ —</option>
         {programs.map((p) => (<option key={p} value={p}>{p}</option>))}
-        <option value={CUSTOM_PROGRAM}>อื่นๆ (พิมพ์เอง)…</option>
+        <option value={CUSTOM_PROGRAM}>อื่นๆ…</option>
       </Select>
       {custom && (
         <div className="mt-2">

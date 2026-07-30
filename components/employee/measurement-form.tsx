@@ -44,7 +44,6 @@ export function MeasurementForm({
     <div className="space-y-5 px-[var(--gutter-page)] pt-6">
       <header>
         <h1 className="font-display text-2xl font-bold text-navy">เรียนรู้ด้วยตนเอง</h1>
-        <p className="text-sm text-muted">เช็คสุขภาพใจ + แบบทบทวนความรู้</p>
       </header>
 
       <div className="space-y-4">

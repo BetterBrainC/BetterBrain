@@ -37,9 +37,9 @@ export function CorrectionForm({
 
       <Card className="space-y-4">
         <CardTitle className="text-base">รายละเอียดคำขอ</CardTitle>
-        <Field label="เคส/นัด">
+        <Field label="เลือกผู้รับบริการ">
           <Select name="session_id" defaultValue="" required>
-            <option value="" disabled>เลือกเคส</option>
+            <option value="" disabled>เลือกผู้รับบริการ</option>
             {sessions.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}

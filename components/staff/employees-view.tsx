@@ -15,7 +15,24 @@ const EMPLOYMENT_LABEL: Record<string, string> = { monthly: "Full-time", part_ti
 type EmploymentFilter = "all" | "monthly" | "part_time";
 type ProfessionFilter = "all" | "ot" | "pt" | "other" | "none";
 
-export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
+/**
+ * Account state shown in the สถานะ column. `is_enabled` alone read as "ใช้งาน"
+ * even for someone who had never signed in — client 30 ก.ค. 2569 asked for the
+ * real usage state, so a never-signed-in account is called out separately.
+ */
+function accountState(isEnabled: boolean, lastSignInAt: string | null | undefined) {
+  if (!isEnabled) return { label: "ปิด", tone: "nocheckin" as const };
+  if (!lastSignInAt) return { label: "ยังไม่เข้าใช้", tone: "neutral" as const };
+  return { label: "ใช้งาน", tone: "completed" as const };
+}
+
+export function EmployeesView({
+  employees,
+  lastSignIn = {},
+}: {
+  employees: EmployeeLite[];
+  lastSignIn?: Record<string, string | null>;
+}) {
   const router = useRouter();
   const [filter, setFilter] = React.useState<EmploymentFilter>("all");
   const [profFilter, setProfFilter] = React.useState<ProfessionFilter>("all");
@@ -26,7 +43,7 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
     { label: "ทั้งหมด", n: employees.length },
     { label: "Full-time", n: employees.filter((e) => e.employment_type === "monthly").length },
     { label: "Part-time", n: employees.filter((e) => e.employment_type === "part_time").length },
-    { label: "กำลังใช้งาน", n: employees.filter((e) => e.is_enabled).length },
+    { label: "กำลังใช้งาน", n: employees.filter((e) => e.is_enabled && lastSignIn[e.id]).length },
   ];
 
   const shown = employees.filter(
@@ -62,7 +79,7 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {groups.map((g) => (
-          <div key={g.label} className="rounded-lg border border-border bg-surface px-3 py-2.5">
+          <div key={g.label} className="rounded-lg border border-border bg-surface px-3 py-2.5 text-center">
             <p className="font-display text-xl font-bold tabular-nums text-navy">{g.n}</p>
             <p className="mt-0.5 text-2xs text-muted">{g.label}</p>
           </div>
@@ -103,7 +120,15 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
           <tr key={e.id} className="hover:bg-surface-tint">
             <Td className="tabular-nums text-muted">{e.employee_code ?? "—"}</Td>
             <Td>
-              <Link href={`/staff/employees/${e.id}`} className="font-medium text-navy">
+              <Link href={`/staff/employees/${e.id}`} className="flex items-center gap-2 font-medium text-navy">
+                {e.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={e.photo_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-tint text-2xs text-muted">
+                    {e.full_name?.trim().charAt(0) || "—"}
+                  </span>
+                )}
                 {e.full_name}
               </Link>
             </Td>
@@ -111,9 +136,10 @@ export function EmployeesView({ employees }: { employees: EmployeeLite[] }) {
             <Td className="text-muted">{e.license_no ?? "—"}</Td>
             <Td>{EMPLOYMENT_LABEL[e.employment_type]}</Td>
             <Td>
-              <Badge tone={e.is_enabled ? "completed" : "nocheckin"}>
-                {e.is_enabled ? "ใช้งาน" : "ปิด"}
-              </Badge>
+              {(() => {
+                const st = accountState(e.is_enabled, lastSignIn[e.id]);
+                return <Badge tone={st.tone}>{st.label}</Badge>;
+              })()}
             </Td>
             <Td>
               <div className="flex items-center gap-1">

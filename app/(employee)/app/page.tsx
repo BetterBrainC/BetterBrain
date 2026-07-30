@@ -9,7 +9,6 @@ export default async function EmployeeHome() {
     getCurrentUser(),
     getCheckinSettings(),
   ]);
-  const doneCount = sessions.filter((s) => s.status === "completed").length;
 
   return (
     <div className="space-y-6 px-[var(--gutter-page)] pt-6">
@@ -20,9 +19,7 @@ export default async function EmployeeHome() {
         <h1 className="font-display text-2xl font-bold text-navy">
           สวัสดี {u?.profile?.full_name ?? ""} 👋
         </h1>
-        <p className="text-sm text-muted">
-          วันนี้มี {sessions.length} เคส · เข้าฝึกแล้ว {doneCount}
-        </p>
+        <p className="text-sm text-muted">ผู้รับบริการวันนี้ {sessions.length}</p>
       </header>
 
       <TodayBoard

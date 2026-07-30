@@ -47,10 +47,14 @@ export async function saveSettings(input: {
   lateThresholdMin: number;
   earlyThresholdMin: number;
   geofenceRadiusM: number;
+  correctionsEnabled: boolean;
 }): Promise<ActionResult> {
   if (!(await requireDirectorRole())) return { error: "ไม่มีสิทธิ์" };
   if (!input.companyName.trim()) return { error: "กรอกชื่อบริษัท" };
   const supabase = await createClient();
+  // Merge into settings.extra so unrelated keys survive the write.
+  const { data: cur } = await supabase.from("settings").select("extra").eq("id", 1).maybeSingle();
+  const extra = { ...(((cur as { extra?: Record<string, unknown> } | null)?.extra) ?? {}), corrections_enabled: input.correctionsEnabled };
   const { error } = await supabase
     .from("settings")
     .update({
@@ -60,9 +64,11 @@ export async function saveSettings(input: {
       late_threshold_minutes: Math.max(0, Math.round(input.lateThresholdMin)),
       early_threshold_minutes: Math.max(0, Math.round(input.earlyThresholdMin)),
       geofence_radius_m: Math.max(0, Math.round(input.geofenceRadiusM)),
+      extra,
     })
     .eq("id", 1);
   if (error) return { error: error.message };
   revalidatePath("/staff/settings");
+  revalidatePath("/app/account");
   return { ok: true };
 }

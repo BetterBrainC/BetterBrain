@@ -12,8 +12,9 @@ import { requireStaff } from "@/lib/auth";
 
 export const metadata = { title: "สถิติการประเมินผู้รับบริการ" };
 
-const STATUS: Record<string, { label: string; tone: "completed" | "info" | "nocheckin" | "late" }> = {
-  completed: { label: "จบเคส", tone: "completed" },
+// จบเคส = สีเทา (neutral) — client 30 ก.ค. 2569; green now means "กำลังใช้งาน" only.
+const STATUS: Record<string, { label: string; tone: "neutral" | "info" | "nocheckin" | "late" }> = {
+  completed: { label: "จบเคส", tone: "neutral" },
   draft: { label: "ร่าง", tone: "late" },
   corrected: { label: "แก้ไขแล้ว", tone: "info" },
   discarded: { label: "ยกเลิก", tone: "nocheckin" },
@@ -48,7 +49,7 @@ export default async function ReportPatientPage({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-lg border border-border bg-surface px-3 py-3">
+          <div key={t.label} className="rounded-lg border border-border bg-surface px-3 py-3 text-center">
             <p className="font-display text-2xl font-bold tabular-nums text-navy">{t.value}</p>
             <p className="mt-0.5 text-2xs text-muted">{t.label}</p>
           </div>

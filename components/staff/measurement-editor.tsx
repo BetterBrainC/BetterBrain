@@ -178,7 +178,6 @@ export function MeasurementEditor({ templates }: { templates: KpiTemplate[] }) {
             </Button>
           )}
         </div>
-        <p className="text-xs text-faint">บันทึกเป็น kpi_templates · เฉลยเก็บฝั่งเซิร์ฟเวอร์ (พนักงานมองไม่เห็น)</p>
       </Card>
     </div>
   );

@@ -10,9 +10,6 @@ export default async function ReportsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">บันทึกรายงาน</h1>
-          <p className="text-sm text-muted">
-            รายชื่อผู้รับบริการ — คลิกที่แถวเพื่อดูสถิติการประเมินที่ผ่านมาทั้งหมด
-          </p>
         </div>
         <ExportButton
           filename="tpm-report-patients"

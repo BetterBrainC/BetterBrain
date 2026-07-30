@@ -14,6 +14,7 @@ export interface AccountProfileData {
   licenseNo: string;
   employeeCode: string;
   email: string;
+  photoUrl: string | null;
 }
 
 /** Employee profile card with inline self-edit for name + phone. */
@@ -63,7 +64,18 @@ export function AccountProfile({ profile }: { profile: AccountProfileData }) {
   return (
     <Card className="space-y-2">
       <div className="flex items-center justify-between">
-        <CardTitle className="text-base">โปรไฟล์พนักงาน</CardTitle>
+        <div className="flex items-center gap-2.5">
+          {/* Photo is set by Admin/Director on the staff side; read-only here. */}
+          {profile.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.photoUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
+          ) : (
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-surface-tint text-sm font-medium text-muted">
+              {fullName.trim().charAt(0) || "—"}
+            </span>
+          )}
+          <CardTitle className="text-base">โปรไฟล์พนักงาน</CardTitle>
+        </div>
         <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:underline">
           <PencilLine className="h-3.5 w-3.5" /> แก้ไข
         </button>
