@@ -3,12 +3,18 @@
 import * as React from "react";
 import { MapPin, LocateFixed } from "lucide-react";
 import { Field, TextInput } from "@/components/ui/field";
+import { resolveMapLink } from "@/actions/geo";
+
+/** Short Google links carry no coordinates — the server has to expand them. */
+function isShortMapLink(s: string): boolean {
+  return /^https:\/\/(maps\.app\.goo\.gl|goo\.gl|g\.co)\//i.test(s.trim());
+}
 
 /**
  * Extract lat/lng from a pasted Google Maps link (or a raw "lat,lng" string).
  * Handles @lat,lng, ?q=/query=/ll=/destination=lat,lng, and !3dLAT!4dLNG place
- * URLs. Short links (goo.gl / maps.app.goo.gl) hide coordinates behind a
- * redirect and can't be parsed here — use "ดึงตำแหน่งปัจจุบัน" instead.
+ * URLs. Short links (goo.gl / maps.app.goo.gl) are expanded server-side by
+ * resolveMapLink().
  */
 export function extractLatLng(input: string): { lat: number; lng: number } | null {
   const s = input.trim();
@@ -55,18 +61,45 @@ export function LocationPicker({
   const [note, setNote] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
+  // Guards against a stale in-flight resolve overwriting a newer paste.
+  const resolveSeq = React.useRef(0);
+
+  async function resolveShortLink(v: string) {
+    const seq = ++resolveSeq.current;
+    setBusy(true);
+    setNote("กำลังเปิดลิงก์เพื่อดึงพิกัด…");
+    const res = await resolveMapLink(v);
+    if (seq !== resolveSeq.current) return; // superseded
+    setBusy(false);
+    if (res.lat != null && res.lng != null) {
+      setLat(res.lat);
+      setLng(res.lng);
+      setNote(null);
+    } else {
+      setNote(res.error ?? "ดึงพิกัดจากลิงก์ไม่ได้ — กด “ดึงตำแหน่งปัจจุบัน” แทน");
+    }
+  }
+
   function onLinkChange(v: string) {
     setMapUrl(v);
     const coords = extractLatLng(v);
     if (coords) {
+      resolveSeq.current++; // cancel any pending resolve
       setLat(coords.lat);
       setLng(coords.lng);
       setNote(null);
-    } else if (v.trim()) {
-      setNote("ดึงพิกัดจากลิงก์ไม่ได้ — วางลิงก์ที่มีพิกัด หรือกด “ดึงตำแหน่งปัจจุบัน”");
-    } else {
-      setNote(null);
+      return;
     }
+    if (!v.trim()) {
+      resolveSeq.current++;
+      setNote(null);
+      return;
+    }
+    if (isShortMapLink(v)) {
+      void resolveShortLink(v);
+      return;
+    }
+    setNote("ดึงพิกัดจากลิงก์ไม่ได้ — วางลิงก์ที่มีพิกัด หรือกด “ดึงตำแหน่งปัจจุบัน”");
   }
 
   function useCurrentLocation() {
@@ -102,7 +135,7 @@ export function LocationPicker({
           name="map_url"
           value={mapUrl}
           onChange={(e) => onLinkChange(e.target.value)}
-          placeholder="วางลิงก์ Google Maps หรือพิกัด เช่น 13.7563,100.5018"
+          placeholder="วางลิงก์ Google Maps (รวมลิงก์ย่อ maps.app.goo.gl) หรือพิกัด เช่น 13.7563,100.5018"
           inputMode="url"
         />
       </Field>

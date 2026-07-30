@@ -825,8 +825,9 @@ const DX_META: Record<Diagnosis, { label: string; varName: string }> = {
   parkinson: { label: "Parkinson", varName: "--dx-parkinson" },
   dementia_alzheimer: { label: "Dementia/Alzheimer", varName: "--dx-dementia" },
   als: { label: "ALS", varName: "--dx-als" },
-  ms: { label: "MS", varName: "--dx-ms" },
-  other: { label: "Other", varName: "--dx-other" },
+  // MS → CA, Other → Adult (client 30 ก.ค. 2569); enum keys unchanged.
+  ms: { label: "CA", varName: "--dx-ms" },
+  other: { label: "Adult", varName: "--dx-other" },
 };
 
 /** Actionable counts for staff nav badges (pending corrections + new bookings). */

@@ -66,13 +66,16 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   export: "ส่งออกข้อมูล",
 };
 
+// Client 30 ก.ค. 2569 renamed two categories: MS → CA, อื่นๆ → Adult. The enum
+// values stay `ms`/`other` (renaming them needs a migration and buys nothing) —
+// only what staff read changes.
 export const DIAGNOSIS_LABEL = {
   stroke: "Stroke",
   parkinson: "Parkinson",
   dementia_alzheimer: "Dementia / Alzheimer",
   als: "ALS",
-  ms: "MS",
-  other: "อื่นๆ",
+  ms: "CA",
+  other: "Adult",
 } as const;
 
 /** Functional Oral Intake Scale (FOIS) — 7 levels (client wording, 3.pdf p.8). */

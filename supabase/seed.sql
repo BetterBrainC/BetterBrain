@@ -13,8 +13,9 @@ insert into public.diagnoses (category, label_en, sort) values
   ('parkinson',          'Parkinson',                       2),
   ('dementia_alzheimer', 'Dementia / Alzheimer',            3),
   ('als',                'Amyotrophic Lateral Sclerosis (ALS)', 4),
-  ('ms',                 'Multiple Sclerosis (MS)',         5),
-  ('other',              'Other',                           6)
+  -- Renamed by the client 30 ก.ค. 2569 (enum keys kept): MS → CA, Other → Adult.
+  ('ms',                 'CA',                              5),
+  ('other',              'Adult',                           6)
 on conflict (category) do update set label_en = excluded.label_en, sort = excluded.sort;
 
 -- ── Director accounts (max 2) ───────────────────────────────────────────
