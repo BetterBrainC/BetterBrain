@@ -3,7 +3,7 @@
 import * as React from "react";
 import { MapPin, LocateFixed } from "lucide-react";
 import { Field, TextInput } from "@/components/ui/field";
-import { resolveMapLink } from "@/actions/geo";
+import { resolveMapLink, geocodeAddress } from "@/actions/geo";
 
 /** Short Google links carry no coordinates — the server has to expand them. */
 function isShortMapLink(s: string): boolean {
@@ -60,6 +60,10 @@ export function LocationPicker({
   const [lng, setLng] = React.useState<number | null>(initialLng ?? null);
   const [note, setNote] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  // Address recovered from a share link that carried no coordinates. Held here
+  // (not geocoded straight away) so the address only leaves the system on a tap.
+  const [pendingAddress, setPendingAddress] = React.useState<string | null>(null);
+  const [approx, setApprox] = React.useState(false);
 
   // Guards against a stale in-flight resolve overwriting a newer paste.
   const resolveSeq = React.useRef(0);
@@ -67,6 +71,7 @@ export function LocationPicker({
   async function resolveShortLink(v: string) {
     const seq = ++resolveSeq.current;
     setBusy(true);
+    setPendingAddress(null);
     setNote("กำลังเปิดลิงก์เพื่อดึงพิกัด…");
     const res = await resolveMapLink(v);
     if (seq !== resolveSeq.current) return; // superseded
@@ -74,9 +79,32 @@ export function LocationPicker({
     if (res.lat != null && res.lng != null) {
       setLat(res.lat);
       setLng(res.lng);
+      setApprox(false);
       setNote(null);
+      return;
+    }
+    if (res.needsGeocode && res.addressText) {
+      setPendingAddress(res.addressText);
+      setNote(null);
+      return;
+    }
+    setNote(res.error ?? "ดึงพิกัดจากลิงก์ไม่ได้ — กด “ดึงตำแหน่งปัจจุบัน” แทน");
+  }
+
+  async function geocodePending() {
+    if (!pendingAddress) return;
+    setBusy(true);
+    setNote("กำลังค้นหาพิกัดจากที่อยู่…");
+    const res = await geocodeAddress(pendingAddress);
+    setBusy(false);
+    if (res.lat != null && res.lng != null) {
+      setLat(res.lat);
+      setLng(res.lng);
+      setApprox(true);
+      setPendingAddress(null);
+      setNote("พิกัดโดยประมาณจากที่อยู่ — ตรวจสอบบนแผนที่ก่อนบันทึก");
     } else {
-      setNote(res.error ?? "ดึงพิกัดจากลิงก์ไม่ได้ — กด “ดึงตำแหน่งปัจจุบัน” แทน");
+      setNote(res.error ?? "ค้นหาพิกัดไม่สำเร็จ");
     }
   }
 
@@ -87,11 +115,14 @@ export function LocationPicker({
       resolveSeq.current++; // cancel any pending resolve
       setLat(coords.lat);
       setLng(coords.lng);
+      setApprox(false);
+      setPendingAddress(null);
       setNote(null);
       return;
     }
     if (!v.trim()) {
       resolveSeq.current++;
+      setPendingAddress(null);
       setNote(null);
       return;
     }
@@ -157,10 +188,29 @@ export function LocationPicker({
             rel="noopener noreferrer"
             className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-border px-3 text-sm font-medium text-ink hover:bg-surface-tint"
           >
-            <MapPin className="h-4 w-4 text-teal" /> {lat!.toFixed(5)}, {lng!.toFixed(5)}
+            <MapPin className={`h-4 w-4 ${approx ? "text-[var(--accent)]" : "text-teal"}`} />{" "}
+            {lat!.toFixed(5)}, {lng!.toFixed(5)}
+            {approx && <span className="text-xs text-muted">(ประมาณ)</span>}
           </a>
         )}
       </div>
+
+      {pendingAddress && (
+        <div className="space-y-2 rounded-md bg-surface-tint p-3">
+          <p className="text-xs text-muted">ลิงก์นี้ไม่มีพิกัด แต่พบที่อยู่:</p>
+          <p className="text-sm text-ink">{pendingAddress}</p>
+          <button
+            type="button"
+            onClick={geocodePending}
+            disabled={busy}
+            className="inline-flex h-9 items-center gap-1.5 rounded-pill bg-primary px-3 text-sm font-semibold text-primary-fg disabled:opacity-60"
+          >
+            <MapPin className="h-4 w-4" /> ค้นหาพิกัดจากที่อยู่นี้
+          </button>
+          <p className="text-2xs text-faint">ที่อยู่จะถูกส่งไปค้นหาที่ OpenStreetMap เพื่อหาพิกัดโดยประมาณ</p>
+        </div>
+      )}
+
       {note && <p className="text-xs text-[var(--warning-fg)]">{note}</p>}
     </div>
   );

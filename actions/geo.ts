@@ -60,11 +60,31 @@ function coordsFrom(text: string): { lat: number; lng: number } | null {
   return null;
 }
 
+/**
+ * Pull the place/address text out of a /maps/place/<TEXT>/… URL. Google shares
+ * places by ID and renders the pin client-side, so a share link often carries
+ * the address but no coordinates — that text is the only lead we get.
+ */
+function placeTextFrom(url: string): string | null {
+  const seg = url.match(/\/maps\/place\/([^/@?]+)/)?.[1];
+  if (!seg) return null;
+  try {
+    const text = decodeURIComponent(seg.replace(/\+/g, " ")).trim();
+    return text && !/^data=/.test(text) ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface ResolveMapResult {
   lat?: number;
   lng?: number;
   /** The expanded long URL, when we managed to follow the short link. */
   resolvedUrl?: string;
+  /** Address found in the link when it carried no coordinates. */
+  addressText?: string;
+  /** true → the caller must ask before geocoding (the address is personal data). */
+  needsGeocode?: boolean;
   error?: string;
 }
 
@@ -112,10 +132,84 @@ export async function resolveMapLink(input: string): Promise<ResolveMapResult> {
       }
       const fromBody = coordsFrom(body);
       if (fromBody) return { ...fromBody, resolvedUrl: finalUrl };
+
+      const address = placeTextFrom(finalUrl) ?? placeTextFrom(current.toString());
+      if (address) return { addressText: address, resolvedUrl: finalUrl, needsGeocode: true };
       break;
     }
   } catch {
     return { error: "เปิดลิงก์ไม่สำเร็จ ลองใหม่อีกครั้ง" };
   }
   return { error: "ลิงก์นี้ไม่มีพิกัด — เปิดใน Google Maps แล้วคัดลอกพิกัดมาวาง" };
+}
+
+/**
+ * Look up coordinates for an address via OpenStreetMap/Nominatim.
+ *
+ * Deliberately a separate, explicitly-invoked step: a recipient's home address
+ * is personal data under PDPA, so it only leaves the system when staff tap the
+ * button — never automatically while someone types.
+ *
+ * Accuracy is street level, which is well inside the 1 km check-in geofence,
+ * but the caller must present the result as ประมาณ and let staff confirm.
+ */
+export async function geocodeAddress(query: string): Promise<{
+  lat?: number;
+  lng?: number;
+  displayName?: string;
+  error?: string;
+}> {
+  const raw = String(query ?? "").trim();
+  if (raw.length < 6) return { error: "ที่อยู่สั้นเกินไป" };
+
+  // Google encodes the address with '+' between every token, so decoding splits
+  // Thai compounds that are normally written closed up ("ถนน มหิดล"). Rejoin them
+  // or Nominatim only ever matches down to the subdistrict, which can sit a
+  // couple of km off the real house.
+  const normalize = (s: string) =>
+    s.replace(/(ถนน|ซอย|ตำบล|แขวง|อำเภอ|เขต|จังหวัด|หมู่บ้าน)\s+/g, "$1").replace(/\s{2,}/g, " ").trim();
+
+  // Business names rarely exist in OSM — retry from the house number, then from
+  // the road/subdistrict, so a "ชื่อร้าน 255 ถนน…" string still resolves.
+  const base = normalize(raw);
+  const candidates: string[] = [];
+  const push = (s: string) => {
+    const v = s.trim();
+    if (v.length >= 6 && !candidates.includes(v)) candidates.push(v);
+  };
+  push(base);
+  for (const marker of [/\d/, /ถนน|ซอย/, /ตำบล|แขวง/, /อำเภอ|เขต/]) {
+    const idx = base.search(marker);
+    if (idx > 0) push(base.slice(idx));
+  }
+
+  try {
+    for (const q of candidates.slice(0, 5)) {
+      const url =
+        "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=th&q=" +
+        encodeURIComponent(q);
+      const res = await fetch(url, {
+        headers: {
+          // Nominatim requires an identifying UA; anonymous calls get blocked.
+          "User-Agent": "TPM-BetterBrain/1.0 (clinic home-visit scheduling)",
+          "Accept-Language": "th",
+        },
+        signal: AbortSignal.timeout(10000),
+        cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const hits = (await res.json()) as { lat?: string; lon?: string; display_name?: string }[];
+      const hit = Array.isArray(hits) ? hits[0] : null;
+      const lat = Number(hit?.lat);
+      const lng = Number(hit?.lon);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng, displayName: hit?.display_name };
+      }
+      // Nominatim asks for ≤1 request/second.
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+  } catch {
+    return { error: "ค้นหาพิกัดไม่สำเร็จ ลองใหม่อีกครั้ง" };
+  }
+  return { error: "ไม่พบพิกัดของที่อยู่นี้ — กรอกพิกัดเองหรือกด “ดึงตำแหน่งปัจจุบัน”" };
 }
