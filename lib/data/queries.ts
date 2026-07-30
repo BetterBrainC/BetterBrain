@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { formatThaiTime, formatThaiClock, formatThaiDateTime, formatThaiDate } from "@/lib/date/buddhist";
-import { DEFAULT_EXERCISE_GUIDE, parseExerciseItems, type ExerciseGuideItem } from "@/lib/content/exercise-guide";
+import { parseExerciseItems, type ExerciseGuideItem } from "@/lib/content/exercise-guide";
 import type { Database } from "@/lib/supabase/types";
 
 type Diagnosis = Database["public"]["Enums"]["diagnosis_category"];
@@ -1196,7 +1196,8 @@ export async function getRelativePortal(
 
   // Home-training guide (โปรแกรมฝึกที่บ้าน): staff can pin a specific program
   // per recipient (settings.extra.portal_home_programs) — otherwise it follows
-  // the recipient's โปรแกรมการฝึก → legacy global list → hardcoded default.
+  // the recipient's โปรแกรมการฝึก, then the legacy global list. Nothing written
+  // by staff = nothing shown; the app never authors clinical advice.
   const byProgram = extra.exercise_guides && typeof extra.exercise_guides === "object"
     ? (extra.exercise_guides as Record<string, unknown>)
     : {};
@@ -1207,7 +1208,7 @@ export async function getRelativePortal(
   const program = pinnedProgram || (patient.training_program ?? "").trim();
   const perProgram = program ? parseExerciseItems(byProgram[program]) : [];
   const legacy = parseExerciseItems(extra.exercise_guide);
-  const exercises = perProgram.length > 0 ? perProgram : legacy.length > 0 ? legacy : DEFAULT_EXERCISE_GUIDE;
+  const exercises = perProgram.length > 0 ? perProgram : legacy;
 
   const total = Number(course?.total_sessions ?? 0);
   const courseComplete = course?.status === "course_complete" || (total > 0 && used >= total);

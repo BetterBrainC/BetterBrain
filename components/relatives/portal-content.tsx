@@ -269,18 +269,20 @@ export function PortalContent({ data, token }: { data: RelativePortalData; token
         )}
       </Card>
 
-      <Card className="space-y-2">
-        <CardTitle className="text-base">วิธีออกกำลังกาย</CardTitle>
-        <p className="text-xs text-muted">ท่าฝึกและคำแนะนำสำหรับทำต่อที่บ้าน</p>
-        <ul className="space-y-3">
-          {data.exercises.map((ex, i) => (
-            <li key={i} className="rounded-md bg-surface-tint p-3">
-              <p className="text-sm font-semibold text-navy">{i + 1}. {ex.title}</p>
-              <p className="mt-1 text-sm text-ink">{ex.detail}</p>
-            </li>
-          ))}
-        </ul>
-      </Card>
+      {/* Staff-authored only — hidden until they write something for this program. */}
+      {data.exercises.length > 0 && (
+        <Card className="space-y-2">
+          <CardTitle className="text-base">วิธีออกกำลังกาย</CardTitle>
+          <ul className="space-y-3">
+            {data.exercises.map((ex, i) => (
+              <li key={i} className="rounded-md bg-surface-tint p-3">
+                <p className="text-sm font-semibold text-navy">{i + 1}. {ex.title}</p>
+                {ex.detail && <p className="mt-1 text-sm text-ink">{ex.detail}</p>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </main>
   );
 }
