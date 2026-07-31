@@ -14,16 +14,25 @@ import { decideCourseOutcome } from "@/actions/courses";
  */
 export function CourseCard({
   used,
+  booked = 0,
   total,
   bonus,
   patientId,
   courseId,
+  label,
+  takesNextBooking = false,
 }: {
   used: number;
+  /** Sessions already on the calendar for this course (may exceed `used`). */
+  booked?: number;
   total: number;
   bonus: number;
   patientId: string;
   courseId: string;
+  /** Set when the recipient holds more than one live course. */
+  label?: string;
+  /** This is the course a newly assigned session will land in. */
+  takesNextBooking?: boolean;
 }) {
   const router = useRouter();
   const base = total - bonus;
@@ -48,8 +57,11 @@ export function CourseCard({
 
   return (
     <Card className="space-y-3">
-      <div className="flex items-center justify-between">
-        <CardTitle className="text-base">คอร์สการฟื้นฟู</CardTitle>
+      <div className="flex items-center justify-between gap-2">
+        <CardTitle className="text-base">
+          คอร์สการฟื้นฟู
+          {label && <span className="ml-2 text-xs font-normal text-muted">{label}</span>}
+        </CardTitle>
         {complete ? (
           <Badge tone="late">ครบคอร์ส</Badge>
         ) : nearEnd ? (
@@ -69,6 +81,12 @@ export function CourseCard({
         <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
         </div>
+        {booked > used && (
+          <p className="text-xs text-muted">
+            ลงคิวไว้แล้ว {booked}/{total} ครั้ง{booked >= total ? " — คอร์สนี้เต็มแล้ว" : ""}
+          </p>
+        )}
+        {takesNextBooking && <p className="text-xs text-primary-700">คิวที่ลงใหม่จะเข้าคอร์สนี้</p>}
       </div>
 
       {complete && !decision && (

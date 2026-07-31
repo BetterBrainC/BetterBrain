@@ -281,10 +281,15 @@ export type PatientSession = {
   employee: string;
 };
 
+/** A live course plus how much of it is spent (checked in) and booked (on the calendar). */
+export type PatientCourse = CourseLite & { used: number; booked: number };
+
 export async function getPatientDetail(id: string): Promise<{
   patient: PatientFull;
   course: CourseLite | null;
   courseUsed: number;
+  /** All live courses, oldest first — the running one plus any queued next course. */
+  courses: PatientCourse[];
   reports: ReportLite[];
   sessions: PatientSession[];
 } | null> {
@@ -293,24 +298,49 @@ export async function getPatientDetail(id: string): Promise<{
   const patient = one<PatientFull>(data);
   if (!patient) return null;
 
+  // Every live course, oldest first — a recipient can hold the running course
+  // plus the next one they already bought, and hiding all but the newest made
+  // it look like the new course had overwritten the old (client 31 ก.ค. 2569).
   const { data: cData } = await supabase
     .from("courses")
     .select("id, total_sessions, bonus_sessions, status")
     .eq("patient_id", id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const course = one<CourseLite>(cData);
+    .in("status", ["on_process", "hold"])
+    .order("created_at", { ascending: true });
+  const activeCourses = rows<CourseLite>(cData);
 
-  let used = 0;
-  if (course) {
-    const { data: pr } = await supabase
-      .from("course_progress")
-      .select("used_sessions")
-      .eq("course_id", course.id)
-      .maybeSingle();
-    used = Number(one<{ used_sessions: number }>(pr)?.used_sessions ?? 0);
+  const { data: progData } = activeCourses.length
+    ? await supabase
+        .from("course_progress")
+        .select("course_id, used_sessions")
+        .in("course_id", activeCourses.map((c) => c.id))
+    : { data: null };
+  const usedByCourse = new Map(
+    rows<{ course_id: string; used_sessions: number }>(progData).map((r) => [r.course_id, Number(r.used_sessions)]),
+  );
+
+  // Sessions already sitting on each course (booked counts, งด/ยกเลิก do not).
+  const { data: bookData } = activeCourses.length
+    ? await supabase
+        .from("schedule_sessions")
+        .select("course_id")
+        .in("course_id", activeCourses.map((c) => c.id))
+        .in("status", ["scheduled", "in_progress", "attended", "late", "completed", "corrected"])
+    : { data: null };
+  const bookedByCourse = new Map<string, number>();
+  for (const b of rows<{ course_id: string | null }>(bookData)) {
+    if (b.course_id) bookedByCourse.set(b.course_id, (bookedByCourse.get(b.course_id) ?? 0) + 1);
   }
+
+  const courses: PatientCourse[] = activeCourses.map((c) => ({
+    ...c,
+    used: usedByCourse.get(c.id) ?? 0,
+    booked: bookedByCourse.get(c.id) ?? 0,
+  }));
+  // "Current" = the first course still taking bookings; else the newest.
+  const course =
+    courses.find((c) => c.booked < (c.total_sessions ?? 0)) ?? courses[courses.length - 1] ?? null;
+  const used = course ? (usedByCourse.get(course.id) ?? 0) : 0;
 
   const { data: rData } = await supabase
     .from("reports")
@@ -335,7 +365,7 @@ export async function getPatientDetail(id: string): Promise<{
     employee: s.employee?.full_name ?? "—",
   }));
 
-  return { patient, course, courseUsed: used, reports: rows<ReportLite>(rData), sessions };
+  return { patient, course, courseUsed: used, courses, reports: rows<ReportLite>(rData), sessions };
 }
 
 export type AuditLogRow = {

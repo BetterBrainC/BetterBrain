@@ -34,11 +34,14 @@ export default async function PatientDetail({
   const { id } = await params;
   const [detail, history] = await Promise.all([getPatientDetail(id), getPatientAssessmentHistory(id)]);
   if (!detail) notFound();
-  const { patient: p, course, courseUsed, reports, sessions } = detail;
+  const { patient: p, course, courseUsed, courses, reports, sessions } = detail;
   const courseTotal = course?.total_sessions ?? 0;
   const remaining = course ? Math.max(courseTotal - courseUsed, 0) : 0;
+  // Headline counts every live course, so a queued next course is visible here too.
+  const allRemaining = courses.reduce((n, c) => n + Math.max((c.total_sessions ?? 0) - c.used, 0), 0);
+  const allTotal = courses.reduce((n, c) => n + (c.total_sessions ?? 0), 0);
   const stats: [string, string][] = [
-    ["คอร์สคงเหลือ", course ? `${remaining}/${courseTotal}` : "—"],
+    ["คอร์สคงเหลือ", courses.length ? `${allRemaining}/${allTotal}` : "—"],
     ["รายงาน", String(reports.length)],
     ["เคสทั้งหมด", String(sessions.length)],
   ];
@@ -94,15 +97,22 @@ export default async function PatientDetail({
         </Card>
 
         <div className="space-y-4">
-          {course && (
+          {/* One card per live course — the running one and any queued next
+              course. Showing only the newest read as "the new course replaced
+              the old one" (client 31 ก.ค. 2569). */}
+          {courses.map((c, i) => (
             <CourseCard
-              used={courseUsed}
-              total={course.total_sessions ?? 0}
-              bonus={course.bonus_sessions ?? 0}
+              key={c.id}
+              used={c.used}
+              booked={c.booked}
+              total={c.total_sessions ?? 0}
+              bonus={c.bonus_sessions ?? 0}
               patientId={p.id}
-              courseId={course.id}
+              courseId={c.id}
+              label={courses.length > 1 ? `คอร์สที่ ${i + 1}` : undefined}
+              takesNextBooking={courses.length > 1 && c.id === course?.id}
             />
-          )}
+          ))}
           {/* Always available: staff must be able to buy the next course before
               the current one runs out, or dates past its last session have no
               course to land in (client 31 ก.ค. 2569). */}
