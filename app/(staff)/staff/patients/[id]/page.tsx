@@ -94,7 +94,7 @@ export default async function PatientDetail({
         </Card>
 
         <div className="space-y-4">
-          {course ? (
+          {course && (
             <CourseCard
               used={courseUsed}
               total={course.total_sessions ?? 0}
@@ -102,9 +102,11 @@ export default async function PatientDetail({
               patientId={p.id}
               courseId={course.id}
             />
-          ) : (
-            <CreateCourseControl patientId={p.id} />
           )}
+          {/* Always available: staff must be able to buy the next course before
+              the current one runs out, or dates past its last session have no
+              course to land in (client 31 ก.ค. 2569). */}
+          <CreateCourseControl patientId={p.id} hasCourse={!!course} />
           <Card>
             <div className="mb-2 flex items-center justify-between gap-2">
               <CardTitle className="text-base">รายงาน ({reports.length})</CardTitle>

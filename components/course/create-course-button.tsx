@@ -8,8 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Field, TextInput } from "@/components/ui/field";
 import { createCourse } from "@/actions/courses";
 
-/** Staff control to open a course when a patient has none — custom count or preset. */
-export function CreateCourseControl({ patientId }: { patientId: string }) {
+/**
+ * Staff control to open a course — custom count or preset.
+ *
+ * Also used to queue the NEXT course while one is still running: relatives
+ * confirm a whole month up front, so staff must be able to buy the follow-on
+ * course before the current one is used up, otherwise dates past the last
+ * remaining session have no course to belong to (client 31 ก.ค. 2569).
+ */
+export function CreateCourseControl({
+  patientId,
+  hasCourse = false,
+}: {
+  patientId: string;
+  hasCourse?: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -26,8 +39,12 @@ export function CreateCourseControl({ patientId }: { patientId: string }) {
 
   return (
     <Card className="space-y-3">
-      <CardTitle className="text-base">เปิดคอร์ส</CardTitle>
-      <p className="text-sm text-muted">ระบุจำนวนครั้งเอง หรือเลือกแพ็กเกจสำเร็จรูป</p>
+      <CardTitle className="text-base">{hasCourse ? "เปิดคอร์สถัดไป" : "เปิดคอร์ส"}</CardTitle>
+      <p className="text-sm text-muted">
+        {hasCourse
+          ? "ผู้รับบริการต่อคอร์สแล้ว? เปิดไว้ล่วงหน้าได้เลย — คิวที่ลงเกินจำนวนครั้งของคอร์สปัจจุบันจะนับเข้าคอร์สถัดไปให้อัตโนมัติ"
+          : "ระบุจำนวนครั้งเอง หรือเลือกแพ็กเกจสำเร็จรูป"}
+      </p>
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <Field label="จำนวนครั้ง (กำหนดเอง)">

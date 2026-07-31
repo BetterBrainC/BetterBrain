@@ -127,6 +127,49 @@ async function authed() {
   return { supabase, userId: user?.id ?? null };
 }
 
+/** Session statuses that occupy a slot in a course (งด/ไม่ได้เช็คอิน/ยกเลิก never do). */
+const OCCUPYING_STATUSES = ["scheduled", "in_progress", "attended", "late", "completed", "corrected"];
+
+/**
+ * Which course a newly booked session belongs to.
+ *
+ * Fills the running course first, then rolls over into the next one the
+ * recipient has already bought — relatives confirm a month up front, so dates
+ * past the current course's last session must land in the follow-on course
+ * rather than pile onto a full one (client 31 ก.ค. 2569).
+ *
+ * Capacity counts booked sessions too, not just attended ones: a slot that is
+ * already on the calendar is spoken for even though nobody has checked in yet.
+ * Falls back to the newest course when everything is full, so the session stays
+ * linked to something the reports can roll up.
+ */
+async function pickCourseForNewSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  patientId: string,
+): Promise<string | null> {
+  const { data: cData } = await supabase
+    .from("courses")
+    .select("id, total_sessions")
+    .eq("patient_id", patientId)
+    .eq("status", "on_process")
+    .order("created_at", { ascending: true });
+  const courses = (cData ?? []) as { id: string; total_sessions: number | null }[];
+  if (courses.length === 0) return null;
+
+  const { data: sData } = await supabase
+    .from("schedule_sessions")
+    .select("course_id")
+    .in("course_id", courses.map((c) => c.id))
+    .in("status", OCCUPYING_STATUSES);
+  const taken = new Map<string, number>();
+  for (const s of (sData ?? []) as { course_id: string | null }[]) {
+    if (s.course_id) taken.set(s.course_id, (taken.get(s.course_id) ?? 0) + 1);
+  }
+
+  const withRoom = courses.find((c) => (taken.get(c.id) ?? 0) < (c.total_sessions ?? 0));
+  return (withRoom ?? courses[courses.length - 1]!).id;
+}
+
 /** Admin assigns a case on the monthly calendar (patient → employee → date/slot). */
 export async function createAssignment(input: {
   patientId: string;
@@ -146,16 +189,7 @@ export async function createAssignment(input: {
   }
 
   const { supabase, userId } = await authed();
-
-  // Attach the patient's current (latest on_process) course if any.
-  const { data: course } = await supabase
-    .from("courses")
-    .select("id")
-    .eq("patient_id", input.patientId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const courseId = (course as { id: string } | null)?.id ?? null;
+  const courseId = await pickCourseForNewSession(supabase, input.patientId);
 
   const { error } = await supabase.from("schedule_sessions").insert({
     patient_id: input.patientId,
