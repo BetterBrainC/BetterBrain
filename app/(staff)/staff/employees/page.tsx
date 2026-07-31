@@ -35,32 +35,25 @@ export default async function EmployeesPage() {
         <Card className="space-y-3">
           <CardTitle className="text-base">บัญชีผู้ดูแลระบบ</CardTitle>
           <ul className="divide-y divide-border">
-            {admins.map((a) => {
-              const signedIn = lastSignIn[a.id];
-              const state = !a.is_enabled
-                ? { label: "ปิด", tone: "nocheckin" as const }
-                : signedIn
-                  ? { label: "ใช้งาน", tone: "completed" as const }
-                  : { label: "ยังไม่เข้าใช้", tone: "neutral" as const };
-              return (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <Link href={`/staff/employees/${a.id}`} className="font-medium text-navy hover:underline">
-                    {a.full_name || a.employee_code || "—"}
+            {admins.map((a) => (
+              <li key={a.id} className="flex items-center justify-between py-2">
+                <Link href={`/staff/employees/${a.id}`} className="font-medium text-navy hover:underline">
+                  {a.full_name || a.employee_code || "—"}
+                </Link>
+                <div className="flex items-center gap-2">
+                  {/* Admin and Director read as one group here — same tone (client 31 ก.ค. 2569). */}
+                  <Badge tone="info">{ROLE_LABEL[a.role]}</Badge>
+                  {!a.is_enabled && <Badge tone="nocheckin">ปิด</Badge>}
+                  <Link
+                    href={`/staff/employees/${a.id}`}
+                    aria-label={`แก้ไขข้อมูล ${a.full_name}`}
+                    className="rounded-md p-1.5 text-muted hover:bg-surface-tint hover:text-primary-700"
+                  >
+                    <Pencil className="h-4 w-4" />
                   </Link>
-                  <div className="flex items-center gap-2">
-                    <Badge tone={a.role === "director" ? "info" : "neutral"}>{ROLE_LABEL[a.role]}</Badge>
-                    <Badge tone={state.tone}>{state.label}</Badge>
-                    <Link
-                      href={`/staff/employees/${a.id}`}
-                      aria-label={`แก้ไขข้อมูล ${a.full_name}`}
-                      className="rounded-md p-1.5 text-muted hover:bg-surface-tint hover:text-primary-700"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
+                </div>
+              </li>
+            ))}
           </ul>
         </Card>
       )}

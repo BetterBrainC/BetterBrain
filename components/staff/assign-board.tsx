@@ -41,7 +41,6 @@ export function AssignBoard({
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">มอบหมายงาน</h1>
           <p className="text-sm text-muted">
-            ปฏิทินนัดหมายรวม — เลือกผู้รับบริการ → พนักงาน → วัน/เวลา (คลิกวันว่างในปฏิทินเพื่อมอบหมายได้เลย)
           </p>
         </div>
         <div className="flex gap-2">

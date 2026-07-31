@@ -32,12 +32,19 @@ export function NewEmployeeModal({ myRole }: { myRole: "admin" | "director" }) {
     if (!file) return;
     setUploading(true);
     setError(null);
-    const fd = new FormData();
-    fd.set("file", file);
-    const res = await uploadEmployeePhoto(fd);
-    setUploading(false);
-    if (res.error) return setError(res.error);
-    setPhotoUrl(res.url ?? null);
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      const res = await uploadEmployeePhoto(fd);
+      if (res.error) return setError(res.error);
+      setPhotoUrl(res.url ?? null);
+    } catch {
+      // Without this the label stuck on "กำลังอัปโหลด…" forever (client 31 ก.ค. 2569).
+      setError("อัปโหลดรูปไม่สำเร็จ — ตรวจสอบไฟล์ (ไม่เกิน 4MB) แล้วลองใหม่");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   }
 
   async function submit(e: React.FormEvent) {

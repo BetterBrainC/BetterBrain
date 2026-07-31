@@ -668,7 +668,7 @@ export async function getEmployeeWorkHours(
 }
 
 export type BookingLite = {
-  id: string; full_name: string; phone: string; area: string | null;
+  id: string; hn: string | null; full_name: string; phone: string; area: string | null;
   status: Database["public"]["Enums"]["booking_status"]; created_at: string;
 };
 
@@ -681,15 +681,19 @@ export async function getBookings(): Promise<BookingLite[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("patients")
-    .select("id, full_name, phone, address, appointment_status, created_at")
+    .select("id, hn, full_name, phone, address, appointment_status, created_at")
     .in("appointment_status", ["awaiting_payment", "awaiting_appointment", "cancelled"])
+    // Patient ID high → low like every other recipient list (client 31 ก.ค. 2569);
+    // rows with no HN yet fall back to newest-first.
+    .order("hn", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   const raw = rows<{
-    id: string; full_name: string; phone: string | null; address: string | null;
+    id: string; hn: string | null; full_name: string; phone: string | null; address: string | null;
     appointment_status: Database["public"]["Enums"]["booking_status"]; created_at: string;
   }>(data);
   return raw.map((r) => ({
     id: r.id,
+    hn: r.hn,
     full_name: r.full_name,
     phone: r.phone ?? "",
     area: r.address,

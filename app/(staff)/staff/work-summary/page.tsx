@@ -88,7 +88,6 @@ export default async function WorkSummaryPage({
       <header className="space-y-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">สรุปการทำงาน</h1>
-          <p className="text-sm text-muted">ภาพรวมรายพนักงาน — เคส การเข้างาน ชั่วโมงทำงาน เคสพิเศษ และเวรแทน</p>
         </div>
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="ช่วงเวลา">
           {PERIODS.map((p) => (
@@ -205,10 +204,6 @@ export default async function WorkSummaryPage({
             </div>
           </>
         )}
-        <p className="text-xs text-faint">
-          รับใหม่ = เคสประเมินครั้งแรก · ตรงเวลา = เข้าฝึก/จบเคส (ไม่รวมสาย) · ชั่วโมงทำงาน = เวลาเช็คเอาท์ − เช็คอินจริง (Asia/Bangkok) ·
-          งด/ไม่ได้เช็คอินไม่นับชั่วโมง · เคสพิเศษ = เคสที่ติ๊ก &quot;เคสพิเศษ&quot; พร้อมค่าตอบแทนเพิ่ม · รับแทน = เคสที่รับเวรแทนเพื่อนร่วมงาน
-        </p>
       </Card>
     </div>
   );

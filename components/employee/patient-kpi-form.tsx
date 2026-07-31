@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { savePatientKpi } from "@/actions/kpi";
 
 // Functional checklist (client Final brief #22) — NOT scored; captured as flags.
-const FUNCTION_ITEMS = ["พูดได้เป็นคำ", "พูดได้เข้าใจ", "กินได้ มีสายอยู่", "ถอดสายได้"];
+const FUNCTION_ITEMS = ["พูดได้เป็นคำ", "พูดได้เข้าใจ", "กินได้ มีสายอยู่", "ถอดสายได้", "กลืนน้ำลายได้"];
 const FOIS_ENTRIES = Object.entries(FOIS_LABEL) as [string, string][];
 
 function FoisPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {

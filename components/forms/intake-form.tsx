@@ -214,7 +214,6 @@ export function IntakeForm({
           </Field>
           {apptStatus === "booked" && (
             <div className="space-y-3 rounded-md bg-surface-tint p-3">
-              <p className="text-xs text-muted">นัดประเมินครั้งแรก (ไม่บังคับ — เว้นว่างเพื่อมอบหมายภายหลัง)</p>
               <Field label="พนักงาน">
                 <Select name="appt_employee" defaultValue="">
                   <option value="">— ยังไม่เลือก —</option>

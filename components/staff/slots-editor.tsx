@@ -64,7 +64,6 @@ export function SlotsEditor({
         </Button>
       </div>
       {msg?.error && <p className="text-sm text-[var(--danger-fg)]">{msg.error}</p>}
-      <p className="text-xs text-muted">ชั่วโมงทำงานคำนวณจากเช็คอิน/เช็คเอาท์ (Asia/Bangkok) — งด/ไม่ได้เช็คอินไม่นับ</p>
     </Card>
   );
 }

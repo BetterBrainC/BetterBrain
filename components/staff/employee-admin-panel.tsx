@@ -57,16 +57,28 @@ export function EmployeeAdminPanel({ employee, canEditRole }: { employee: Employ
     if (!file) return;
     setUploading(true);
     setMsg(null);
-    const fd = new FormData();
-    fd.set("file", file);
-    const up = await uploadEmployeePhoto(fd);
-    if (up.error) { setUploading(false); return setMsg({ error: up.error }); }
-    // Persist immediately — an uploaded file that is never saved looks like a
-    // silent failure ("อัปโหลดแล้วไม่มีรูป", client 30 ก.ค. 2569).
-    const res = await updateEmployee({ ...f, profession: f.profession || null, photoUrl: up.url ?? null });
-    setUploading(false);
-    setMsg(res);
-    if (res.ok) { setPhotoUrl(up.url ?? null); router.refresh(); }
+    // try/finally is the point: a throwing action (offline, timeout, oversized
+    // upload) used to leave the label stuck on "กำลังอัปโหลด…" with no error
+    // shown at all (client 31 ก.ค. 2569).
+    try {
+      const fd = new FormData();
+      fd.set("file", file);
+      const up = await uploadEmployeePhoto(fd);
+      if (up.error) return setMsg({ error: up.error });
+      // Persist immediately — an uploaded file that is never saved looks like a
+      // silent failure ("อัปโหลดแล้วไม่มีรูป", client 30 ก.ค. 2569).
+      const res = await updateEmployee({ ...f, profession: f.profession || null, photoUrl: up.url ?? null });
+      setMsg(res);
+      if (res.ok) {
+        setPhotoUrl(up.url ?? null);
+        router.refresh();
+      }
+    } catch {
+      setMsg({ error: "อัปโหลดรูปไม่สำเร็จ — ตรวจสอบไฟล์ (ไม่เกิน 4MB) แล้วลองใหม่" });
+    } finally {
+      setUploading(false);
+      e.target.value = ""; // let the same file be picked again after a failure
+    }
   }
 
   const [email, setEmail] = React.useState(employee.email);
@@ -194,7 +206,6 @@ export function EmployeeAdminPanel({ employee, canEditRole }: { employee: Employ
             </div>
             {roleMsg?.error && <p className="text-sm text-[var(--danger-fg)]">{roleMsg.error}</p>}
             {roleMsg?.ok && <p className="text-sm text-teal">อัปเดตสิทธิ์แล้ว</p>}
-            <p className="text-2xs text-muted">Director = ผู้ดูแลสูงสุด (สูงสุด 2 บัญชี) · Admin = ปฏิบัติการ · พนักงาน = ผู้ให้บริการ</p>
           </Card>
         </form>
       )}

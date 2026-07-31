@@ -57,7 +57,7 @@ export async function rescheduleSession(input: {
   const name = sess.patients?.full_name ?? "ผู้รับบริการ";
 
   let patch: Record<string, unknown> = { status: "rescheduled" };
-  let body = `เวร ${name} ถูกเลื่อนแบบไม่มีกำหนด`;
+  let body = `เคส ${name} ถูกเลื่อนแบบไม่มีกำหนด`;
   if (input.mode === "datetime") {
     if (!input.date || !input.slot) return { error: "เลือกวันและเวลาที่จะเลื่อนไป" };
     const [start, end] = input.slot.split("-");
@@ -69,7 +69,7 @@ export async function rescheduleSession(input: {
       scheduled_end: bangkokTimestamp(input.date, end),
       note: "เลื่อนนัด",
     };
-    body = `เวร ${name} ถูกเลื่อนไปวันที่ ${input.date} เวลา ${start}`;
+    body = `เคส ${name} ถูกเลื่อนไปวันที่ ${input.date} เวลา ${start}`;
   } else {
     patch.note = "เลื่อนไม่มีกำหนด";
   }

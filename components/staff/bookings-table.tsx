@@ -52,7 +52,10 @@ export function BookingsTable({
   const filtered = bookings.filter(
     (b) =>
       (filter === "all" || b.status === filter) &&
-      (!term || b.full_name.toLowerCase().includes(term) || (b.phone ?? "").includes(term)),
+      (!term ||
+        b.full_name.toLowerCase().includes(term) ||
+        (b.phone ?? "").includes(term) ||
+        (b.hn ?? "").includes(term)),
   );
 
   const active = bookings.find((b) => b.id === sheetId) ?? null;
@@ -64,7 +67,7 @@ export function BookingsTable({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ค้นหา ชื่อ / เบอร์โทร"
+            placeholder="ค้นหา ชื่อ / เบอร์โทร / Patient ID"
             className="h-9 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none focus:border-primary"
           />
         </div>
@@ -87,9 +90,10 @@ export function BookingsTable({
         {filtered.length === 0 ? (
           <EmptyState icon={Inbox} title="ไม่พบรายการ" description="ลองปรับคำค้นหาหรือตัวกรอง" />
         ) : (
-          <DataTable headers={["ชื่อ-สกุล", "โทรศัพท์", "พื้นที่บริการ", "วันและเวลานัด", "สถานะ", ""]}>
+          <DataTable headers={["Patient ID", "ชื่อ-สกุล", "โทรศัพท์", "พื้นที่บริการ", "วันและเวลานัด", "สถานะ", ""]}>
             {filtered.map((b) => (
               <tr key={b.id} className="hover:bg-surface-tint">
+                <Td className="tabular-nums text-muted">{b.hn ?? "—"}</Td>
                 <Td className="font-medium text-navy">{b.full_name}</Td>
                 <Td className="tabular-nums text-muted">{b.phone || "—"}</Td>
                 <Td>{b.area ?? "—"}</Td>

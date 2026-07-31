@@ -52,10 +52,6 @@ export function ProgramsManager({ initial }: { initial: string[] }) {
   return (
     <Card className="space-y-3">
       <CardTitle className="text-base">โปรแกรมฝึก (คอร์สการฟื้นฟู)</CardTitle>
-      <p className="text-sm text-muted">
-        ใช้เป็นตัวเลือกในฟอร์มผู้รับบริการ และผูกกับ “โปรแกรมฝึกที่บ้าน” ในหน้าจัดการญาติ —
-        แก้ชื่อที่นี่แล้วชื่อจะเปลี่ยนตามให้ทุกจุด
-      </p>
       <div className="space-y-2">
         {rows.length === 0 && <p className="text-sm text-muted">ยังไม่มีโปรแกรม — กด “เพิ่มโปรแกรม”</p>}
         {rows.map((r, i) => (

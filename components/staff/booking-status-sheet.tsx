@@ -84,7 +84,6 @@ export function BookingStatusSheet({
         </Field>
         {status === "booked" && (
           <div className="space-y-3 rounded-md bg-surface-tint p-3">
-            <p className="text-xs text-muted">นัดประเมินครั้งแรก (ไม่บังคับ)</p>
             <Field label="พนักงาน">
               <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
                 <option value="">— ยังไม่เลือก —</option>
