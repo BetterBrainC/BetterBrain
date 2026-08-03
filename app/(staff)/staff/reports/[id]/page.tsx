@@ -7,6 +7,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { BackButton } from "@/components/ui/back-button";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { ReportPrintBody } from "@/components/print/report-print-body";
+import { ReportEditor } from "@/components/staff/report-editor";
 import { requireStaff } from "@/lib/auth";
 import { getReportDetail } from "@/lib/data/queries";
 
@@ -52,14 +53,18 @@ export default async function ReportDetailPage({
 
       {/* On-screen view = the same letterhead layout as the export file
           (client 22 ก.ค. 2569: โชว์ข้อมูลแบบเดียวกับไฟล์ export). */}
-      <Card>
-        <CardTitle className="mb-3 text-base">ข้อมูลแบบประเมิน</CardTitle>
+      <Card className="space-y-3">
+        <CardTitle className="text-base">ข้อมูลแบบประเมิน</CardTitle>
         {r.fields.length === 0 ? (
           <p className="text-sm text-muted">ไม่มีข้อมูลที่บันทึกไว้</p>
         ) : (
-          <div className="overflow-x-auto rounded-md bg-white p-4 text-[13px] leading-relaxed text-black [color-scheme:light]">
-            <ReportPrintBody r={r} />
-          </div>
+          <>
+            <div className="overflow-x-auto rounded-md bg-white p-4 text-[13px] leading-relaxed text-black [color-scheme:light]">
+              <ReportPrintBody r={r} />
+            </div>
+            {/* Admin/Director may correct a filed report (client 3 ส.ค. 2569). */}
+            <ReportEditor reportId={r.id} payload={r.payload} />
+          </>
         )}
       </Card>
     </div>

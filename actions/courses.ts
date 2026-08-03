@@ -71,6 +71,45 @@ export async function createCourse(input: {
 }
 
 /**
+ * Delete a course opened by mistake (client 3 ส.ค. 2569 — wrong session count
+ * typed in). Refuses once anything hangs off it: sessions already booked or a
+ * report written against it must not lose their link, and a course that has
+ * been used is clinical history, not a typo. Detach-and-delete would silently
+ * orphan the schedule, so the caller is told to fix the sessions first.
+ */
+export async function deleteCourse(input: { courseId: string; patientId: string }): Promise<ActionResult> {
+  const guard = await requireStaffUser();
+  if (!guard.ok) return { error: guard.error };
+  const supabase = await createClient();
+
+  const { count: sessionCount } = await supabase
+    .from("schedule_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", input.courseId);
+  if ((sessionCount ?? 0) > 0) {
+    return { error: `ลบไม่ได้ — มีคิว ${sessionCount} รายการผูกกับคอร์สนี้ ให้ย้ายหรือลบคิวก่อน` };
+  }
+
+  const { count: reportCount } = await supabase
+    .from("reports")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", input.courseId);
+  if ((reportCount ?? 0) > 0) return { error: "ลบไม่ได้ — มีรายงานผูกกับคอร์สนี้แล้ว" };
+
+  const { data: before } = await supabase
+    .from("courses")
+    .select("course_type, base_sessions, bonus_sessions, status")
+    .eq("id", input.courseId)
+    .maybeSingle();
+
+  const { error } = await supabase.from("courses").delete().eq("id", input.courseId);
+  if (error) return { error: error.message };
+  await writeAudit({ action: "delete", entity: "course", entityId: input.courseId, actorId: guard.id, before });
+  revalidatePath(`/staff/patients/${input.patientId}`);
+  return { ok: true };
+}
+
+/**
  * Record the ครบคอร์ส decision: Continue → mark current course outcome + open a
  * new course; No service → mark outcome no_service + set course/patient to
  * no_service (the Summary report + การวัดผล Score follow). Persists courses.outcome.

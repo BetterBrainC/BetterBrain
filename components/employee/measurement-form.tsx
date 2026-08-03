@@ -87,7 +87,6 @@ export function MeasurementForm({
             ),
           )}
           {knowledge.questions.length === 0 && <p className="text-sm text-muted">ยังไม่มีชุดคำถามปีนี้</p>}
-          <p className="text-xs text-faint">ชุดคำถามแก้ไขได้รายปีโดย Director (kpi_templates)</p>
           <Button type="button" className="w-full" disabled={eBusy || knowledge.questions.length === 0} onClick={() => submitSelf("knowledge")}>
             {eBusy ? "กำลังบันทึก…" : "ส่งคำตอบ"}
           </Button>

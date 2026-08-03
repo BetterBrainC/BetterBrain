@@ -127,3 +127,73 @@ export async function saveReport(input: {
   revalidatePath("/staff/reports");
   return { ok: true };
 }
+
+/**
+ * Staff correct a report the employee already filed (client 3 ส.ค. 2569 — all
+ * five report types must be editable by Director/Admin after submission).
+ *
+ * Values arrive keyed by dot-path so nested payload sections survive the round
+ * trip, and each is written back with the type it had: a number stays a number,
+ * a checkbox stays a boolean. Editing content never flips the report's status —
+ * "จบเคส" is a clinical decision, not a side effect of fixing a typo.
+ * `reports_update_staff` RLS already permits this; the audit keeps before/after.
+ */
+export async function updateReportPayload(input: {
+  reportId: string;
+  values: Record<string, string>;
+}): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: me } = await supabase.from("profiles").select("role, is_enabled").eq("id", user?.id ?? "").maybeSingle();
+  const prof = me as { role?: string; is_enabled?: boolean } | null;
+  if (prof?.role !== "admin" && prof?.role !== "director") return { error: "ไม่มีสิทธิ์" };
+  if (prof?.is_enabled === false) return { error: "บัญชีถูกปิดการใช้งาน" };
+
+  const { data: current } = await supabase
+    .from("reports")
+    .select("payload, patient_id")
+    .eq("id", input.reportId)
+    .maybeSingle();
+  const row = current as { payload?: unknown; patient_id?: string | null } | null;
+  if (!row) return { error: "ไม่พบรายงาน" };
+
+  const before = (row.payload && typeof row.payload === "object" ? row.payload : {}) as Record<string, unknown>;
+  const after = structuredClone(before);
+  for (const [path, raw] of Object.entries(input.values)) setByPath(after, path.split("."), raw);
+
+  const { error } = await supabase.from("reports").update({ payload: after as never }).eq("id", input.reportId);
+  if (error) return { error: error.message };
+
+  await writeAudit({
+    action: "update",
+    entity: "report",
+    entityId: input.reportId,
+    actorId: user?.id ?? null,
+    before,
+    after,
+    context: { editedFields: Object.keys(input.values).length },
+  });
+  revalidatePath(`/staff/reports/${input.reportId}`);
+  revalidatePath("/staff/reports");
+  if (row.patient_id) revalidatePath(`/staff/patients/${row.patient_id}`);
+  return { ok: true };
+}
+
+/** Write `raw` into `target` at `path`, keeping the leaf's original JSON type. */
+function setByPath(target: Record<string, unknown>, path: string[], raw: string): void {
+  let node: Record<string, unknown> = target;
+  for (const seg of path.slice(0, -1)) {
+    const next = node[seg];
+    if (!next || typeof next !== "object") return; // path no longer exists — skip
+    node = next as Record<string, unknown>;
+  }
+  const leaf = path[path.length - 1]!;
+  const previous = node[leaf];
+  if (typeof previous === "boolean") node[leaf] = raw === "true";
+  else if (typeof previous === "number") {
+    const n = Number(raw);
+    node[leaf] = raw.trim() === "" ? null : Number.isFinite(n) ? n : previous;
+  } else node[leaf] = raw;
+}

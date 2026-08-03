@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { decideCourseOutcome } from "@/actions/courses";
+import { Trash2 } from "lucide-react";
+import { decideCourseOutcome, deleteCourse } from "@/actions/courses";
 
 /**
  * Course progress + lifecycle (P7). At 0 remaining → "ครบคอร์ส" → Continue
@@ -45,6 +46,16 @@ export function CourseCard({
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
+  async function remove() {
+    if (!window.confirm("ลบคอร์สนี้? ใช้เมื่อลงข้อมูลผิดเท่านั้น")) return;
+    setBusy(true);
+    setErr(null);
+    const res = await deleteCourse({ courseId, patientId });
+    setBusy(false);
+    if (res.error) return setErr(res.error);
+    router.refresh();
+  }
+
   async function decide(d: "continue" | "no_service") {
     setBusy(true);
     setErr(null);
@@ -62,13 +73,29 @@ export function CourseCard({
           คอร์สการฟื้นฟู
           {label && <span className="ml-2 text-xs font-normal text-muted">{label}</span>}
         </CardTitle>
-        {complete ? (
-          <Badge tone="late">ครบคอร์ส</Badge>
-        ) : nearEnd ? (
-          <Badge tone="late">ใกล้ครบคอร์ส</Badge>
-        ) : (
-          <Badge tone="completed">กำลังดำเนินการ</Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {complete ? (
+            <Badge tone="late">ครบคอร์ส</Badge>
+          ) : nearEnd ? (
+            <Badge tone="late">ใกล้ครบคอร์ส</Badge>
+          ) : (
+            <Badge tone="completed">กำลังดำเนินการ</Badge>
+          )}
+          {/* Escape hatch for a mistyped course — blocked server-side once the
+              course has any session or report attached. */}
+          {used === 0 && booked === 0 && (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={busy}
+              aria-label="ลบคอร์สนี้"
+              title="ลบคอร์ส (กรณีลงข้อมูลผิด)"
+              className="rounded-md p-1.5 text-muted hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)] disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -115,6 +142,8 @@ export function CourseCard({
           ตั้งสถานะ No service แล้ว — ทำ Summary report + ประเมิน Score (การวัดผล)
         </p>
       )}
+      {/* Delete errors land here — the ครบคอร์ส block above may not be rendered. */}
+      {err && !complete && <p className="text-sm text-[var(--danger-fg)]">{err}</p>}
     </Card>
   );
 }

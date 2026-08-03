@@ -643,13 +643,22 @@ function Agenda({
               {chips.length === 0 ? (
                 <p className="px-1 py-2 text-sm text-muted">ไม่มีเคส</p>
               ) : (
-                chips.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2">
-                    <span className="w-12 shrink-0 text-xs font-semibold tabular-nums text-muted">{s.time}</span>
-                    <div className="flex-1">
-                      <SessionChip s={s} onSelect={onSelect} />
-                    </div>
-                    <span className="hidden shrink-0 text-2xs text-faint sm:block">{s.employee}</span>
+                // Grouped by therapist so a day's workload can be read per person
+                // (client 3 ส.ค. 2569); times stay ascending inside each group.
+                groupByEmployee(chips).map(([employee, list]) => (
+                  <div key={employee} className="space-y-1">
+                    <p className="flex items-center justify-between px-1 pt-1 text-2xs font-semibold text-muted">
+                      <span>{employee}</span>
+                      <span className="font-normal text-faint">{list.length} เคส</span>
+                    </p>
+                    {list.map((s) => (
+                      <div key={s.id} className="flex items-center gap-2">
+                        <span className="w-12 shrink-0 text-xs font-semibold tabular-nums text-muted">{s.time}</span>
+                        <div className="flex-1">
+                          <SessionChip s={s} onSelect={onSelect} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))
               )}
@@ -659,6 +668,20 @@ function Agenda({
       })}
     </div>
   );
+}
+
+/** Sessions bucketed per therapist, therapists A→Z (Thai), each list by time. */
+function groupByEmployee(sessions: CalendarSession[]): [string, CalendarSession[]][] {
+  const groups = new Map<string, CalendarSession[]>();
+  for (const s of sessions) {
+    const key = s.employee || "— ยังไม่ระบุพนักงาน —";
+    const list = groups.get(key);
+    if (list) list.push(s);
+    else groups.set(key, [s]);
+  }
+  return [...groups.entries()]
+    .map(([name, list]) => [name, [...list].sort((a, b) => a.time.localeCompare(b.time))] as [string, CalendarSession[]])
+    .sort((a, b) => a[0].localeCompare(b[0], "th"));
 }
 
 function Legend() {

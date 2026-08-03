@@ -15,7 +15,9 @@ import { ThaiDate } from "@/components/ui/thai-date";
 const STATUS_TONE = { active: "info", hold: "hold", no_service: "noservice" } as const;
 const SESSION_TONE: Record<string, "completed" | "late" | "info" | "neutral" | "nocheckin" | "skipped"> = {
   completed: "completed", attended: "completed", in_progress: "info", late: "late",
-  no_checkin: "nocheckin", skipped: "skipped", scheduled: "neutral", rescheduled: "info",
+  // นัดไว้ = เขียว (client 3 ส.ค. 2569) — an upcoming case reads as "live", grey
+  // is reserved for finished/void rows.
+  no_checkin: "nocheckin", skipped: "skipped", scheduled: "completed", rescheduled: "info",
   cancelled: "skipped", corrected: "info",
 };
 const REPORT_LABEL: Record<string, string> = {
@@ -37,9 +39,13 @@ export default async function PatientDetail({
   const { patient: p, course, courseUsed, courses, reports, sessions } = detail;
   const courseTotal = course?.total_sessions ?? 0;
   const remaining = course ? Math.max(courseTotal - courseUsed, 0) : 0;
-  // Headline counts every live course, so a queued next course is visible here too.
-  const allRemaining = courses.reduce((n, c) => n + Math.max((c.total_sessions ?? 0) - c.used, 0), 0);
-  const allTotal = courses.reduce((n, c) => n + (c.total_sessions ?? 0), 0);
+  // Headline covers courses that still have sessions left. A used-up course is
+  // excluded so starting an 11-session course reads 11/11, not 11/12
+  // (client 3 ส.ค. 2569).
+  const liveCourses = courses.filter((c) => (c.total_sessions ?? 0) - c.used > 0);
+  const shown = liveCourses.length ? liveCourses : courses;
+  const allRemaining = shown.reduce((n, c) => n + Math.max((c.total_sessions ?? 0) - c.used, 0), 0);
+  const allTotal = shown.reduce((n, c) => n + (c.total_sessions ?? 0), 0);
   const stats: [string, string][] = [
     ["คอร์สคงเหลือ", courses.length ? `${allRemaining}/${allTotal}` : "—"],
     ["รายงาน", String(reports.length)],

@@ -80,7 +80,6 @@ export function PatientKpiForm({ patientId }: { patientId: string }) {
     <form onSubmit={submit}>
       <Card className="space-y-4">
         <CardTitle className="text-base">วัดผลผู้รับบริการ</CardTitle>
-        <p className="text-xs text-muted">บันทึกการวัดผลก่อนปิดเคส · ผลเห็นเฉพาะ Director</p>
         <FoisPicker value={fois} onChange={setFois} />
         <Field label="Barthel score (0–100)">
           <TextInput type="number" min={0} max={100} value={barthel} onChange={(e) => setBarthel(e.target.value)} />
@@ -95,8 +94,8 @@ export function PatientKpiForm({ patientId }: { patientId: string }) {
             ))}
           </div>
         </fieldset>
-        <Field label="FIM score" hint="บันทึกคะแนนรวมได้ · เกณฑ์ย่อยรอจากลูกค้า">
-          <TextInput type="number" placeholder="คะแนน FIM" value={fim} onChange={(e) => setFim(e.target.value)} />
+        <Field label="FIM score">
+          <TextInput type="number" value={fim} onChange={(e) => setFim(e.target.value)} />
         </Field>
         {msg?.error && <p className="text-sm text-[var(--danger-fg)]">{msg.error}</p>}
         {msg?.ok && <p className="text-sm text-teal">บันทึกการวัดผลแล้ว</p>}
