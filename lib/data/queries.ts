@@ -200,6 +200,20 @@ export interface PatientRow {
   createdAt: string | null;
 }
 
+/**
+ * Surname-only label for calendar chips (space is tight there).
+ *
+ * Splits on whitespace RUNS: two staff records were typed with a double space
+ * ("กบ.จิรวดี··โพธิ"), and the old `split(" ")[1]` returned the empty string
+ * between them, so their cases showed up as "ยังไม่ระบุพนักงาน"
+ * (client 4 ส.ค. 2569). Falls back to the whole name for single-word records.
+ */
+export function shortEmployeeName(fullName: string | null | undefined): string {
+  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  return parts[parts.length - 1]!;
+}
+
 /** Session statuses that count as a real visit (เข้าฝึก) — งด/ไม่ได้เช็คอิน never do. */
 const VISIT_STATUSES = ["attended", "late", "completed"] as const;
 
@@ -989,7 +1003,7 @@ export async function getMonthAssignments(
     (byDay[day] ??= []).push({
       time: formatThaiTime(s.scheduled_start),
       patient: (s.patients?.full_name ?? "—").replace(/^คุณ/, ""),
-      emp: (s.employee?.full_name ?? "").split(" ")[1] ?? "—",
+      emp: shortEmployeeName(s.employee?.full_name),
     });
   }
   return byDay;
@@ -1041,7 +1055,7 @@ export async function getCalendarSessions(): Promise<CalendarSession[]> {
       dateISO: s.scheduled_date,
       time: formatThaiTime(s.scheduled_start),
       patient: full.replace(/^คุณ/, ""),
-      employee: emp.split(" ")[1] ?? emp,
+      employee: shortEmployeeName(s.employee?.full_name),
       status: s.status,
       kind: s.kind,
       isSpecial: s.is_special_case,
