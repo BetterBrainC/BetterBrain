@@ -358,9 +358,6 @@ export function AssessmentReportForm({ patientName, backHref, sessionId }: FormP
         <ReportPhotoUpload sessionId={sessionId} />
       </ReportSection>
 
-      <p className="px-1 text-xs text-muted">
-        โปรแกรมฟื้นฟูการกลืน · คำแนะนำ · หมายเหตุ เป็นข้อความมาตรฐาน พิมพ์ออกให้อัตโนมัติ ไม่ต้องกรอก
-      </p>
     </ReportFormShell>
   );
 }

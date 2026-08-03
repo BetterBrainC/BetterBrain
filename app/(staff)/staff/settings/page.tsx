@@ -13,7 +13,6 @@ export default async function SettingsPage() {
       <SettingsForm initial={settings} />
       <Card className="max-w-2xl space-y-2">
         <CardTitle className="text-base">การแจ้งเตือนของฉัน (Web Push)</CardTitle>
-        <p className="text-xs text-muted">เปิดรับแจ้งเตือนบนอุปกรณ์นี้ (ผูกกับบัญชีคุณเท่านั้น)</p>
         <PushToggle />
       </Card>
     </div>

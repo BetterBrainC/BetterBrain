@@ -32,7 +32,6 @@ export function CorrectionForm({
     <form action={action} className="space-y-5 px-[var(--gutter-page)] pt-6">
       <header>
         <h1 className="font-display text-2xl font-bold text-navy">ขอแก้ไขเช็คอิน</h1>
-        <p className="text-sm text-muted">กรณีลืมเช็คอิน/เช็คเอาท์ หรือเวลาผิด</p>
       </header>
 
       <Card className="space-y-4">

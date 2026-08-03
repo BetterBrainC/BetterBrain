@@ -97,7 +97,6 @@ export function MeasurementCharts({ patient }: { patient: PatientKpiResult[] }) 
           );
         })}
       </div>
-      <p className="text-xs text-faint">เปรียบเทียบคะแนนล่าสุดของผู้รับบริการแต่ละราย · FOIS แสดงระดับ 1–7</p>
     </Card>
   );
 }

@@ -40,11 +40,6 @@ export function CreateCourseControl({
   return (
     <Card className="space-y-3">
       <CardTitle className="text-base">{hasCourse ? "เปิดคอร์สถัดไป" : "เปิดคอร์ส"}</CardTitle>
-      <p className="text-sm text-muted">
-        {hasCourse
-          ? "ผู้รับบริการต่อคอร์สแล้ว? เปิดไว้ล่วงหน้าได้เลย — คิวที่ลงเกินจำนวนครั้งของคอร์สปัจจุบันจะนับเข้าคอร์สถัดไปให้อัตโนมัติ"
-          : "ระบุจำนวนครั้งเอง หรือเลือกแพ็กเกจสำเร็จรูป"}
-      </p>
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <Field label="จำนวนครั้ง (กำหนดเอง)">

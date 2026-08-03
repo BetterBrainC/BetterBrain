@@ -65,7 +65,7 @@ export function SettingsForm({ initial }: { initial: SettingsData }) {
         <Field label="ชื่อบริษัท">
           <TextInput value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
         </Field>
-        <Field label="โลโก้ (URL)" hint="วางลิงก์ หรืออัปโหลดไฟล์ด้านล่าง">
+        <Field label="โลโก้ (URL)">
           <TextInput value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" />
         </Field>
         <div className="flex items-center gap-3">

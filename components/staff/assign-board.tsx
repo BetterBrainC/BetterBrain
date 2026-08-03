@@ -40,8 +40,6 @@ export function AssignBoard({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-navy">มอบหมายงาน</h1>
-          <p className="text-sm text-muted">
-          </p>
         </div>
         <div className="flex gap-2">
           <SubstituteModal employees={employees} sessions={upcoming} />
