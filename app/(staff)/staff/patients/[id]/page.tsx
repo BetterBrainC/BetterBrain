@@ -39,15 +39,20 @@ export default async function PatientDetail({
   const { patient: p, course, courseUsed, courses, reports, sessions } = detail;
   const courseTotal = course?.total_sessions ?? 0;
   const remaining = course ? Math.max(courseTotal - courseUsed, 0) : 0;
-  // Headline covers courses that still have sessions left. A used-up course is
-  // excluded so starting an 11-session course reads 11/11, not 11/12
-  // (client 3 ส.ค. 2569).
-  const liveCourses = courses.filter((c) => (c.total_sessions ?? 0) - c.used > 0);
-  const shown = liveCourses.length ? liveCourses : courses;
-  const allRemaining = shown.reduce((n, c) => n + Math.max((c.total_sessions ?? 0) - c.used, 0), 0);
-  const allTotal = shown.reduce((n, c) => n + (c.total_sessions ?? 0), 0);
+  // Headline shows ONE course — the one being delivered now (earliest with
+  // sessions left). Summing every live course mixed a finishing course with a
+  // freshly bought one and read as a single oversized package
+  // (client 4 ส.ค. 2569: "คอร์สที่ 1 กับคอร์สที่ 2 ไม่ควรนำมานับรวมกัน").
+  const activeIndex = courses.findIndex((c) => (c.total_sessions ?? 0) - c.used > 0);
+  const headlineIndex = activeIndex >= 0 ? activeIndex : courses.length - 1;
+  const headline = courses[headlineIndex];
+  const headlineRemaining = headline ? Math.max((headline.total_sessions ?? 0) - headline.used, 0) : 0;
   const stats: [string, string][] = [
-    ["คอร์สคงเหลือ", courses.length ? `${allRemaining}/${allTotal}` : "—"],
+    [
+      // Name the course when there is more than one, so the number is unambiguous.
+      courses.length > 1 ? `คอร์สคงเหลือ (คอร์สที่ ${headlineIndex + 1})` : "คอร์สคงเหลือ",
+      headline ? `${headlineRemaining}/${headline.total_sessions ?? 0}` : "—",
+    ],
     ["รายงาน", String(reports.length)],
     ["เคสทั้งหมด", String(sessions.length)],
   ];
