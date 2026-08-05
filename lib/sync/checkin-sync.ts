@@ -55,8 +55,14 @@ export async function flushReports(): Promise<{ synced: number; failed: number }
       const payload = (q.payload ?? {}) as Record<string, unknown>;
       const res =
         q.reportType === "followup"
-          ? await saveFollowup(q.sessionId, payload, q.clientUuid)
-          : await saveReport({ sessionId: q.sessionId, reportType: q.reportType as AssessmentType, payload, reportId: q.clientUuid });
+          ? await saveFollowup(q.sessionId, payload, q.clientUuid, q.draftId ?? null)
+          : await saveReport({
+              sessionId: q.sessionId,
+              reportType: q.reportType as AssessmentType,
+              payload,
+              reportId: q.clientUuid,
+              draftId: q.draftId ?? null,
+            });
       if (res.error) {
         await db.reports.update(q.clientUuid, { syncState: "failed", attempts: q.attempts + 1, lastError: res.error });
         failed += 1;

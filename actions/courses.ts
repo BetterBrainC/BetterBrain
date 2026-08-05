@@ -90,10 +90,13 @@ export async function deleteCourse(input: { courseId: string; patientId: string 
     return { error: `ลบไม่ได้ — มีคิว ${sessionCount} รายการผูกกับคอร์สนี้ ให้ย้ายหรือลบคิวก่อน` };
   }
 
+  // Unfiled drafts do not count — they are invisible to staff, so blocking on one
+  // would read as an unexplainable error.
   const { count: reportCount } = await supabase
     .from("reports")
     .select("id", { count: "exact", head: true })
-    .eq("course_id", input.courseId);
+    .eq("course_id", input.courseId)
+    .not("status", "in", "(draft,discarded)");
   if ((reportCount ?? 0) > 0) return { error: "ลบไม่ได้ — มีรายงานผูกกับคอร์สนี้แล้ว" };
 
   const { data: before } = await supabase

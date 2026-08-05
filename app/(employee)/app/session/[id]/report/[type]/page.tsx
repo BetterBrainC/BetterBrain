@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSessionDetail } from "@/lib/data/queries";
+import { loadReportDraft, type DraftReportType } from "@/actions/report-drafts";
 import {
   SwallowingForm,
   HandForm,
@@ -13,6 +14,13 @@ import {
 const TYPES = ["swallowing", "hand", "assessment-report", "summary"] as const;
 type ReportType = (typeof TYPES)[number];
 
+const DB_TYPE: Record<ReportType, DraftReportType> = {
+  swallowing: "assessment_swallow",
+  hand: "assessment_hand",
+  "assessment-report": "assessment_report",
+  summary: "summary",
+};
+
 export default async function ReportPage({
   params,
 }: {
@@ -22,10 +30,14 @@ export default async function ReportPage({
   const session = await getSessionDetail(id);
   if (!session || !TYPES.includes(type as ReportType)) notFound();
 
+  // Pick up where the employee left off, if they saved a draft of this report.
+  const draft = await loadReportDraft(id, DB_TYPE[type as ReportType]);
+
   const props = {
     patientName: session.patientName,
     backHref: `/app/session/${id}`,
     sessionId: id,
+    draft,
   };
 
   switch (type as ReportType) {

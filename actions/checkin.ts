@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit/log";
 import { createNotification } from "@/lib/notifications/create";
+import { discardReportDraft } from "@/actions/report-drafts";
 
 export interface ActionResult {
   ok?: boolean;
@@ -122,11 +123,15 @@ export async function completeAssessment(sessionId: string): Promise<ActionResul
 }
 
 /** Save the Follow-up (daily) report → marks session completed ("จบเคส").
- *  reportId (client UUID) keeps an offline-queued report idempotent on flush. */
+ *  reportId (client UUID) keeps an offline-queued report idempotent on flush.
+ *  draftId retires the employee's draft once the real report is in — the filed
+ *  copy comes from the RPC (it also flips the session to completed), so the draft
+ *  row is parked as `discarded` rather than promoted. */
 export async function saveFollowup(
   sessionId: string,
   payload: Record<string, unknown>,
   reportId?: string | null,
+  draftId?: string | null,
 ): Promise<ActionResult> {
   const guard = await requireEnabledUser();
   if (!guard.ok) return { error: guard.error };
@@ -138,6 +143,7 @@ export async function saveFollowup(
     p_report_id: reportId ?? null,
   });
   if (error) return { error: error.message };
+  if (draftId) await discardReportDraft(draftId);
   await writeAudit({ action: "create", entity: "report", entityId: sessionId, actorId: guard.id, context: { type: "followup" } });
   await emitCourseAlerts(sessionId);
   revalidatePath(`/app/session/${sessionId}`);

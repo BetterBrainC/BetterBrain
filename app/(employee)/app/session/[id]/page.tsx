@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Clock, Navigation } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { CheckInPanel } from "@/components/checkin/check-in-panel";
 import { PatientKpiForm } from "@/components/employee/patient-kpi-form";
 import { DailyReportCard } from "@/components/reports/daily-report-card";
 import { getSessionDetail, getCheckinSettings, getMyName } from "@/lib/data/queries";
+import { getSessionDraftTypes } from "@/actions/report-drafts";
 
 export default async function SessionPage({
   params,
@@ -13,12 +15,14 @@ export default async function SessionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [session, checkinCfg, myName] = await Promise.all([
+  const [session, checkinCfg, myName, draftTypes] = await Promise.all([
     getSessionDetail(id),
     getCheckinSettings(),
     getMyName(),
+    getSessionDraftTypes(id),
   ]);
   if (!session) notFound();
+  const drafts = new Set(draftTypes);
 
   const remaining = Math.max(session.courseTotal - session.courseUsed, 0);
   const coursePct = session.courseTotal
@@ -103,15 +107,15 @@ export default async function SessionPage({
         <div className="grid grid-cols-2 gap-2">
           {(session.kind === "assessment"
             ? [
-                { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
-                { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
-                { href: `/app/session/${session.id}/report/assessment-report`, label: "รายงานประเมินแรกรับ" },
+                { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function", type: "assessment_hand" },
+                { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing", type: "assessment_swallow" },
+                { href: `/app/session/${session.id}/report/assessment-report`, label: "รายงานประเมินแรกรับ", type: "assessment_report" },
               ]
             : [
-                { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing" },
-                { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function" },
-                { href: `/app/session/${session.id}/report/assessment-report`, label: "รายงานประเมินแรกรับ" },
-                { href: `/app/session/${session.id}/report/summary`, label: "รายงานความก้าวหน้ารายเดือน" },
+                { href: `/app/session/${session.id}/report/swallowing`, label: "ประเมินแรกรับ · Swallowing", type: "assessment_swallow" },
+                { href: `/app/session/${session.id}/report/hand`, label: "ประเมินแรกรับ · Hand Function", type: "assessment_hand" },
+                { href: `/app/session/${session.id}/report/assessment-report`, label: "รายงานประเมินแรกรับ", type: "assessment_report" },
+                { href: `/app/session/${session.id}/report/summary`, label: "รายงานความก้าวหน้ารายเดือน", type: "summary" },
               ]
           ).map((r) => (
             <Link
@@ -120,10 +124,17 @@ export default async function SessionPage({
               className="rounded-md border border-border bg-surface px-3 py-3 text-sm font-medium text-navy hover:bg-surface-tint"
             >
               {r.label}
+              {/* An unfiled draft is otherwise invisible — flag where work is waiting. */}
+              {drafts.has(r.type) && <Badge tone="late" className="ml-2 align-middle">ร่าง</Badge>}
             </Link>
           ))}
           {session.kind !== "assessment" && (
-            <DailyReportCard sessionId={session.id} patientName={session.patientName} otName={myName} />
+            <DailyReportCard
+              sessionId={session.id}
+              patientName={session.patientName}
+              otName={myName}
+              hasDraft={drafts.has("followup")}
+            />
           )}
         </div>
       </section>

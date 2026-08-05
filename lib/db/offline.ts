@@ -32,6 +32,8 @@ export interface QueuedReport {
   patientId?: string | undefined;
   sessionId?: string | undefined;
   checkInUuid?: string | undefined;
+  /** Draft this filing supersedes, so the flush retires it too. */
+  draftId?: string | undefined;
   payload: unknown;
   syncState: "pending" | "syncing" | "synced" | "conflict" | "failed";
   attempts: number;

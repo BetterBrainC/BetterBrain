@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { writeAudit } from "@/lib/audit/log";
+import { bangkokToday } from "@/lib/data/queries";
 
 export interface ActionResult {
   ok?: boolean;
@@ -69,6 +70,7 @@ export async function saveReport(input: {
   reportType: ReportType;
   payload: Record<string, unknown>;
   reportId?: string | null;
+  draftId?: string | null;
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -99,8 +101,7 @@ export async function saveReport(input: {
     if (!checkInId) return { error: "ต้องเช็คอินก่อนจึงจะบันทึกได้" };
   }
 
-  const row = {
-    ...(input.reportId ? { id: input.reportId } : {}),
+  const fields = {
     report_type: input.reportType,
     patient_id: s.patient_id,
     course_id: s.course_id,
@@ -109,13 +110,47 @@ export async function saveReport(input: {
     check_in_id: checkInId,
     status: "completed" as const,
     completed_at: new Date().toISOString(),
+    // Stamped explicitly (Asia/Bangkok): a report filed from a draft started days
+    // earlier is dated the day it was FILED, not the day the draft was opened.
+    report_date: bangkokToday(),
     payload: input.payload as never,
   };
-  // A client-supplied reportId makes an offline-queued report idempotent on flush.
-  const { error } = input.reportId
-    ? await supabase.from("reports").upsert(row, { onConflict: "id", ignoreDuplicates: true })
-    : await supabase.from("reports").insert(row);
-  if (error) return { error: error.message };
+  const row = { ...(input.reportId ? { id: input.reportId } : {}), ...fields };
+
+  // Filing a report the employee had drafted promotes that very row, so the draft
+  // does not survive alongside the filed copy. If it is gone (already filed from
+  // another device), fall through and file normally rather than losing the work.
+  let filed = false;
+  if (input.draftId) {
+    const { data: promoted, error: promoteError } = await supabase
+      .from("reports")
+      .update(fields)
+      .eq("id", input.draftId)
+      .eq("status", "draft")
+      .select("id")
+      .maybeSingle();
+    if (promoteError) return { error: promoteError.message };
+    filed = promoted != null;
+    if (!filed) {
+      // Nothing to promote: either the draft is gone, or a previous attempt
+      // already filed it and only the response was lost (offline retry). The
+      // latter must not insert a second copy.
+      const { data: existing } = await supabase
+        .from("reports")
+        .select("status")
+        .eq("id", input.draftId)
+        .maybeSingle();
+      if ((existing as { status?: string } | null)?.status) return { ok: true };
+    }
+  }
+
+  if (!filed) {
+    // A client-supplied reportId makes an offline-queued report idempotent on flush.
+    const { error } = input.reportId
+      ? await supabase.from("reports").upsert(row, { onConflict: "id", ignoreDuplicates: true })
+      : await supabase.from("reports").insert(row);
+    if (error) return { error: error.message };
+  }
   await writeAudit({
     action: "create",
     entity: "report",

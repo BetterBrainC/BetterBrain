@@ -2,12 +2,19 @@
 
 import { Fragment } from "react";
 import { ReportFormShell, ReportSection, CheckRow, RadioRow, SubLabel } from "@/components/reports/report-shell";
+import type { ReportDraft } from "@/actions/report-drafts";
 import { ReportPhotoUpload } from "@/components/reports/report-photo-upload";
 import { Field, TextInput, Textarea, Select } from "@/components/ui/field";
 import { ThaiDateInput } from "@/components/ui/thai-date-input";
 import { FOIS_LABEL } from "@/lib/i18n/th";
 
-type FormProps = { patientName: string; backHref: string; sessionId: string };
+type FormProps = {
+  patientName: string;
+  backHref: string;
+  sessionId: string;
+  /** The author's saved draft for this report, restored into the form on mount. */
+  draft?: ReportDraft | null;
+};
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -103,13 +110,14 @@ const SWALLOW_EVAL = [
 ];
 
 // ── Swallowing Assessment ─────────────────────────────────────────────────
-export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) {
+export function SwallowingForm({ patientName, backHref, sessionId, draft }: FormProps) {
   return (
     <ReportFormShell
       title="Swallowing Assessment"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}
+      draft={draft}
       reportType="assessment_swallow"
       requiresCheckin
     >
@@ -179,13 +187,14 @@ export function SwallowingForm({ patientName, backHref, sessionId }: FormProps) 
 }
 
 // ── Hand Function Assessment ──────────────────────────────────────────────
-export function HandForm({ patientName, backHref, sessionId }: FormProps) {
+export function HandForm({ patientName, backHref, sessionId, draft }: FormProps) {
   return (
     <ReportFormShell
       title="Hand Function Assessment"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}
+      draft={draft}
       reportType="assessment_hand"
       requiresCheckin
     >
@@ -322,13 +331,14 @@ const ABILITY_FIELDS: { name: string; label: string }[] = [
   { name: "ability_swallow_esophageal", label: "5.2 ความสามารถด้านการกลืน · ระยะหลอดอาหาร (Esophageal phase)" },
 ];
 
-export function AssessmentReportForm({ patientName, backHref, sessionId }: FormProps) {
+export function AssessmentReportForm({ patientName, backHref, sessionId, draft }: FormProps) {
   return (
     <ReportFormShell
       title="รายงานประเมินแรกรับ"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}
+      draft={draft}
       reportType="assessment_report"
       submitLabel="บันทึก"
     >
@@ -401,13 +411,14 @@ function RatingRows({ rows, levels }: { rows: { name: string; label: string }[];
   );
 }
 
-export function SummaryReportForm({ patientName, backHref, sessionId }: FormProps) {
+export function SummaryReportForm({ patientName, backHref, sessionId, draft }: FormProps) {
   return (
     <ReportFormShell
       title="รายงานความก้าวหน้ารายเดือน"
       patientName={patientName}
       backHref={backHref}
       sessionId={sessionId}
+      draft={draft}
       reportType="summary"
       submitLabel="บันทึก"
     >

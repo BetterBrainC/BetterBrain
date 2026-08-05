@@ -8,9 +8,36 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThaiDate } from "@/components/ui/thai-date";
 import { saveReport } from "@/actions/reports";
+import { saveReportDraft, type ReportDraft } from "@/actions/report-drafts";
 import { enqueueReport } from "@/lib/sync/checkin-sync";
 
 type ReportType = "assessment_swallow" | "assessment_hand" | "summary" | "assessment_report";
+
+/**
+ * Photo paths carried by a restored draft. `ReportPhotoUpload` sits deep inside
+ * each form and owns its own hidden inputs, so the paths reach it by context
+ * instead of being threaded through every form's props.
+ */
+const DraftPhotosContext = React.createContext<string[]>([]);
+
+export function useDraftPhotos(): string[] {
+  return React.useContext(DraftPhotosContext);
+}
+
+/** `photos` out of a saved payload — one value serializes as a string, many as an array. */
+function draftPhotos(payload: Record<string, unknown> | undefined): string[] {
+  const raw = payload?.photos;
+  if (typeof raw === "string") return [raw];
+  if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === "string");
+  return [];
+}
+
+/** Clock time (Asia/Bangkok) for the "บันทึกร่างแล้ว · HH:MM" line. */
+function bangkokTime(iso: string): string {
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date(iso));
+}
 
 /** Serialize a form into a plain object; repeated names (checkbox groups) → arrays. */
 function serializeForm(form: HTMLFormElement): Record<string, unknown> {
@@ -40,7 +67,8 @@ function restoreForm(form: HTMLFormElement, data: Record<string, unknown>) {
 }
 
 /** Shared wrapper for the clinical report forms: header, check-in gate note,
- *  submit → persists to `reports` as completed (vanish-on-save). */
+ *  "บันทึกร่าง" (keep working on it later) and submit → persists to `reports` as
+ *  completed (vanish-on-save). */
 export function ReportFormShell({
   title,
   patientName,
@@ -49,6 +77,7 @@ export function ReportFormShell({
   reportType,
   requiresCheckin = false,
   submitLabel = "บันทึก & จบเคส",
+  draft = null,
   children,
 }: {
   title: string;
@@ -58,6 +87,7 @@ export function ReportFormShell({
   reportType: ReportType;
   requiresCheckin?: boolean;
   submitLabel?: string;
+  draft?: ReportDraft | null;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -66,11 +96,20 @@ export function ReportFormShell({
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [restored, setRestored] = React.useState(false);
+  const [draftId, setDraftId] = React.useState<string | null>(draft?.id ?? null);
+  const [draftSaving, setDraftSaving] = React.useState(false);
+  const [draftNote, setDraftNote] = React.useState<string | null>(
+    draft ? `กู้ร่างที่บันทึกไว้ ${bangkokTime(draft.savedAtISO)} น. กลับมาแล้ว` : null,
+  );
   const draftKey = `tpm:report-draft:${sessionId}:${reportType}`;
+  const photos = React.useMemo(() => draftPhotos(draft?.payload), [draft]);
 
-  // Restore an in-progress draft on mount (survives a dropped connection).
+  // Restore the saved draft on mount: the server copy first (it survives a lost
+  // phone), then any local autosave on top — that one is newer by construction,
+  // since saving a draft clears it.
   React.useEffect(() => {
     if (!formRef.current) return;
+    if (draft) restoreForm(formRef.current, draft.payload);
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
@@ -103,6 +142,37 @@ export function ReportFormShell({
     }
   }
 
+  /**
+   * "บันทึกร่าง" — park a half-filled form server-side and carry on later. No
+   * HTML5 validation (that is the point of a draft) and no course side effects;
+   * offline it stays in the local autosave, which is honest about where it is.
+   */
+  async function onSaveDraft() {
+    if (!formRef.current) return;
+    const payload = serializeForm(formRef.current);
+    setDraftSaving(true);
+    setError(null);
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      onChange();
+      setDraftSaving(false);
+      setDraftNote("ออฟไลน์อยู่ — เก็บร่างไว้ในเครื่องนี้ก่อน จะบันทึกขึ้นระบบเมื่อกลับมาออนไลน์");
+      return;
+    }
+    try {
+      const res = await saveReportDraft({ sessionId, reportType, payload, draftId });
+      setDraftSaving(false);
+      if (res.error) return setError(res.error);
+      if (res.id) setDraftId(res.id);
+      clearDraft();
+      setRestored(false);
+      setDraftNote(`บันทึกร่างแล้ว ${bangkokTime(new Date().toISOString())} น. · ยังไม่ส่งบันทึกจริง`);
+    } catch {
+      onChange();
+      setDraftSaving(false);
+      setDraftNote("บันทึกร่างขึ้นระบบไม่สำเร็จ — เก็บไว้ในเครื่องนี้ให้แล้ว");
+    }
+  }
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const payload = serializeForm(e.currentTarget);
@@ -112,18 +182,18 @@ export function ReportFormShell({
     // Offline (e.g. at the patient's home): queue + flush on reconnect. Idempotent
     // via the client report id; assessments flush AFTER their check-in.
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType, sessionId, payload });
+      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType, sessionId, payload, draftId: draftId ?? undefined });
       setSaving(false);
       clearDraft();
       setDone(true);
       return;
     }
     try {
-      const res = await saveReport({ sessionId, reportType, payload });
+      const res = await saveReport({ sessionId, reportType, payload, draftId });
       setSaving(false);
       if (res.error) return setError(res.error);
     } catch {
-      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType, sessionId, payload });
+      await enqueueReport({ clientUuid: crypto.randomUUID(), reportType, sessionId, payload, draftId: draftId ?? undefined });
       setSaving(false);
       clearDraft();
       setDone(true);
@@ -155,20 +225,38 @@ export function ReportFormShell({
         <p className="text-sm text-muted">
           {patientName} · <ThaiDate value={new Date()} />
         </p>
-        {requiresCheckin && (
-          <Badge tone="info">ต้องเช็คอินก่อนจึงจะบันทึกได้</Badge>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {requiresCheckin && (
+            <Badge tone="info">ต้องเช็คอินก่อนจึงจะบันทึกได้</Badge>
+          )}
+          {draftId && <Badge tone="late">ร่าง</Badge>}
+        </div>
       </header>
-      <form ref={formRef} onSubmit={onSubmit} onChange={onChange} className="space-y-4 pb-8">
-        {children}
-        {restored && (
-          <p className="text-xs text-muted">กู้ร่างที่กรอกค้างไว้กลับมาแล้ว · ระบบบันทึกร่างอัตโนมัติ</p>
-        )}
-        {error && <p className="text-sm text-[var(--danger-fg)]">{error}</p>}
-        <Button type="submit" size="lg" className="w-full" disabled={saving}>
-          {saving ? "กำลังบันทึก…" : submitLabel}
-        </Button>
-      </form>
+      <DraftPhotosContext.Provider value={photos}>
+        <form ref={formRef} onSubmit={onSubmit} onChange={onChange} className="space-y-4 pb-8">
+          {children}
+          {restored && (
+            <p className="text-xs text-muted">กู้ข้อมูลที่กรอกค้างไว้ในเครื่องกลับมาแล้ว</p>
+          )}
+          {draftNote && <p className="text-xs text-muted">{draftNote}</p>}
+          {error && <p className="text-sm text-[var(--danger-fg)]">{error}</p>}
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="flex-1"
+              onClick={onSaveDraft}
+              disabled={saving || draftSaving}
+            >
+              {draftSaving ? "กำลังบันทึกร่าง…" : "บันทึกร่าง"}
+            </Button>
+            <Button type="submit" size="lg" className="flex-1" disabled={saving || draftSaving}>
+              {saving ? "กำลังบันทึก…" : submitLabel}
+            </Button>
+          </div>
+        </form>
+      </DraftPhotosContext.Provider>
     </div>
   );
 }

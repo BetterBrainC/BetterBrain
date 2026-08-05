@@ -20,6 +20,14 @@ function one<T>(data: unknown): T | null {
   return (data ?? null) as T | null;
 }
 
+/**
+ * Report statuses that are NOT a filed report — used as `.not("status","in",…)`.
+ * A draft belongs to its author until they file it, so staff lists, per-recipient
+ * bundles and exports show only what has actually been submitted (client
+ * 5 ส.ค. 2569 added drafts: "อยากให้เพิ่มระบบดราฟ ก่อนส่งบันทึกจริง").
+ */
+const FILED_ONLY = "(draft,discarded)";
+
 /** Today's date as a Bangkok-local YYYY-MM-DD string. */
 export function bangkokToday(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -360,6 +368,7 @@ export async function getPatientDetail(id: string): Promise<{
     .from("reports")
     .select("id, report_type, report_date, status")
     .eq("patient_id", id)
+    .not("status", "in", FILED_ONLY)
     .order("report_date", { ascending: false });
 
   const { data: sData } = await supabase
@@ -1652,6 +1661,7 @@ export async function getReports(): Promise<ReportRow[]> {
   const { data } = await supabase
     .from("reports")
     .select("id, report_type, report_date, status, patients(full_name, hn), author:profiles!reports_author_id_fkey(full_name)")
+    .not("status", "in", FILED_ONLY)
     .order("report_date", { ascending: false })
     .limit(200);
   return rows<{
@@ -1737,6 +1747,7 @@ export async function getReportDetail(id: string): Promise<ReportDetail | null> 
       .select("report_date")
       .eq("patient_id", r.patient_id)
       .in("report_type", ["assessment_swallow", "assessment_hand"])
+      .not("status", "in", FILED_ONLY)
       .order("report_date", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -1801,6 +1812,7 @@ export async function getRelativeReportDetail(
     .select("report_date")
     .eq("patient_id", r.patient_id!)
     .in("report_type", ["assessment_swallow", "assessment_hand"])
+    .not("status", "in", FILED_ONLY)
     .order("report_date", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -1842,6 +1854,7 @@ export async function getReportPatients(): Promise<ReportPatientRow[]> {
   const { data } = await supabase
     .from("reports")
     .select("report_type, report_date, status, patient_id, patients(full_name, hn)")
+    .not("status", "in", FILED_ONLY)
     .order("report_date", { ascending: false })
     .limit(1000);
   const raw = rows<{
@@ -1900,6 +1913,7 @@ export async function getPatientAssessmentHistory(patientId: string): Promise<Pa
     .from("reports")
     .select("id, report_type, report_date, status, payload, created_at")
     .eq("patient_id", patientId)
+    .not("status", "in", FILED_ONLY)
     // Newest saved report always first — created_at breaks same-day ties
     // (client 30 ก.ค. 2569: "บันทึกล่าสุดให้แสดงบนสุดเสมอ").
     .order("report_date", { ascending: false })
