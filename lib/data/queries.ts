@@ -125,6 +125,7 @@ export interface SessionDetail {
   courseTotal: number;
   status: SessionStatus;
   kind: "assessment" | "treatment";
+  hasCheckOut: boolean;
 }
 
 /** Current user's display name — prefills "OT Name" on the daily report. */
@@ -161,6 +162,15 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
   }>(data);
   if (!s) return null;
 
+  // Has this visit been checked out? The daily report may not close the case
+  // before it has (see the card on the session page).
+  const { data: co } = await supabase
+    .from("check_ins")
+    .select("id")
+    .eq("session_id", id)
+    .eq("kind", "check_out")
+    .maybeSingle();
+
   let used = 0;
   let total = 0;
   if (s.course_id) {
@@ -189,6 +199,7 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
     courseTotal: total,
     status: s.status,
     kind: s.kind,
+    hasCheckOut: co != null,
   };
 }
 
@@ -532,6 +543,34 @@ export interface EmployeeWorkSummary {
   workHours: number;    // Σ(check_out − check_in) เป็นชั่วโมง (ทศนิยม 1 ตำแหน่ง)
 }
 
+/**
+ * Sessions that count as worked. `no_checkin` / `งด` / `cancelled` never do, and
+ * anything still upcoming has not happened yet.
+ */
+const SERVED_STATUSES: ReadonlySet<string> = new Set(["completed", "attended", "late"]);
+
+/**
+ * Work hours for ONE session = its booked slot (Asia/Bangkok), not
+ * check_out − check_in.
+ *
+ * The clock-pair version was wrong in both directions (client 5 ส.ค. 2569 —
+ * "ข้อมูลที่แสดงไม่ถูกต้อง"): therapists who filed the daily report without pressing
+ * "เช็คเอาท์" scored 0 h across 10 completed cases, while those who did press it hours
+ * later — three cases checked out together at 22:00 — scored 6–11 h for a 1-hour
+ * visit. The booked slot is what the recipient is scheduled for, so it is the
+ * number that holds regardless of when the button gets pressed.
+ */
+function sessionWorkMs(status: string, startISO: string | null, endISO: string | null): number {
+  if (!SERVED_STATUSES.has(status) || !startISO || !endISO) return 0;
+  const ms = new Date(endISO).getTime() - new Date(startISO).getTime();
+  return ms > 0 ? ms : 0;
+}
+
+/** Milliseconds → hours with one decimal, the display unit everywhere. */
+function msToHours(ms: number): number {
+  return Math.round(ms / 360_000) / 10;
+}
+
 export type WorkPeriod = "day" | "month" | "year" | "all";
 
 /** Bangkok-local [from,to] (inclusive) for the work-summary period tabs. */
@@ -562,13 +601,13 @@ export async function getEmployeeWorkSummary(
   const supabase = await createClient();
   let q = supabase
     .from("schedule_sessions")
-    .select("status, kind, patient_id, is_special_case, special_amount, substituted_from, employee:profiles!schedule_sessions_employee_id_fkey(id, full_name)")
+    .select("status, kind, patient_id, scheduled_start, scheduled_end, is_special_case, special_amount, substituted_from, employee:profiles!schedule_sessions_employee_id_fkey(id, full_name)")
     .limit(5000);
   if (range?.from) q = q.gte("scheduled_date", range.from);
   if (range?.to) q = q.lte("scheduled_date", range.to);
 
-  // check-in/out events in the same Bangkok-local window → real work hours +
-  // early-leave counts per employee (sessions don't store the timestamps).
+  // check-in/out events in the same Bangkok-local window → early-leave counts
+  // (work hours come from the booked slot, see sessionWorkMs).
   let cq = supabase
     .from("check_ins")
     .select("employee_id, session_id, kind, is_early, client_event_at")
@@ -579,12 +618,14 @@ export async function getEmployeeWorkSummary(
   const [{ data }, { data: cData }] = await Promise.all([q, cq]);
   const evs = rows<{
     status: SessionStatus; kind: "assessment" | "treatment";
-    patient_id: string | null; is_special_case: boolean | null;
+    patient_id: string | null; scheduled_start: string | null; scheduled_end: string | null;
+    is_special_case: boolean | null;
     special_amount: number | null; substituted_from: string | null;
     employee: { id: string; full_name: string | null } | null;
   }>(data);
   const map = new Map<string, EmployeeWorkSummary>();
   const patientsOf = new Map<string, Set<string>>();
+  const msOf = new Map<string, number>();
   const blank = (id: string, name: string): EmployeeWorkSummary => ({
     employeeId: id, name, total: 0, treatment: 0, assessment: 0, passed: 0,
     upcoming: 0, absent: 0, late: 0, skipped: 0, rescheduled: 0, cancelled: 0,
@@ -614,6 +655,8 @@ export async function getEmployeeWorkSummary(
       e.specialAmount += r.special_amount ?? 0;
     }
     if (r.substituted_from) e.substituted += 1;
+    const ms = sessionWorkMs(r.status, r.scheduled_start, r.scheduled_end);
+    if (ms > 0) msOf.set(id, (msOf.get(id) ?? 0) + ms);
     if (r.patient_id) {
       const set = patientsOf.get(id) ?? new Set<string>();
       set.add(r.patient_id);
@@ -621,73 +664,50 @@ export async function getEmployeeWorkSummary(
     }
   }
 
-  // Pair check_in/check_out per session → hours; count early check-outs.
+  // Early check-outs still come from the events — that IS a clock fact.
   const cEvs = rows<{
     employee_id: string; session_id: string; kind: string;
     is_early: boolean | null; client_event_at: string;
   }>(cData);
-  const pair = new Map<string, { emp: string; in?: string; out?: string }>();
   for (const c of cEvs) {
-    const p = pair.get(c.session_id) ?? { emp: c.employee_id };
-    if (c.kind === "check_in") p.in = c.client_event_at;
-    else if (c.kind === "check_out") {
-      p.out = c.client_event_at;
-      if (c.is_early) {
-        const e = map.get(c.employee_id) ?? blank(c.employee_id, "—");
-        map.set(c.employee_id, e);
-        e.earlyLeave += 1;
-      }
-    }
-    pair.set(c.session_id, p);
-  }
-  const msOf = new Map<string, number>();
-  for (const p of pair.values()) {
-    if (p.in && p.out) {
-      const ms = new Date(p.out).getTime() - new Date(p.in).getTime();
-      if (ms > 0) msOf.set(p.emp, (msOf.get(p.emp) ?? 0) + ms);
-    }
+    if (c.kind !== "check_out" || !c.is_early) continue;
+    const e = map.get(c.employee_id) ?? blank(c.employee_id, "—");
+    map.set(c.employee_id, e);
+    e.earlyLeave += 1;
   }
   for (const [id, e] of map) {
     e.patientCount = patientsOf.get(id)?.size ?? 0;
-    e.workHours = Math.round((msOf.get(id) ?? 0) / 360_000) / 10;
+    e.workHours = msToHours(msOf.get(id) ?? 0);
   }
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
 
 /**
- * Work hours for an employee this month = Σ(check_out − check_in) per session,
- * in Asia/Bangkok. no_checkin/งด sessions have no check-in pair so are excluded.
+ * Work hours for an employee this month = Σ booked slot of the sessions they
+ * served (Asia/Bangkok). Same rule as the สรุปการทำงาน table — see sessionWorkMs
+ * for why this is not check_out − check_in.
  */
 export async function getEmployeeWorkHours(
   employeeId: string,
 ): Promise<{ totalHours: number; sessionCount: number }> {
   const supabase = await createClient();
-  const monthStart = `${bangkokToday().slice(0, 8)}01T00:00:00+07:00`;
+  const monthStart = `${bangkokToday().slice(0, 8)}01`;
   const { data } = await supabase
-    .from("check_ins")
-    .select("session_id, kind, client_event_at")
+    .from("schedule_sessions")
+    .select("status, scheduled_start, scheduled_end")
     .eq("employee_id", employeeId)
-    .gte("client_event_at", monthStart);
-  const evs = rows<{ session_id: string; kind: string; client_event_at: string }>(data);
-  const bySession = new Map<string, { in?: string; out?: string }>();
-  for (const r of evs) {
-    const e = bySession.get(r.session_id) ?? {};
-    if (r.kind === "check_in") e.in = r.client_event_at;
-    else if (r.kind === "check_out") e.out = r.client_event_at;
-    bySession.set(r.session_id, e);
-  }
+    .gte("scheduled_date", monthStart);
+  const evs = rows<{ status: string; scheduled_start: string | null; scheduled_end: string | null }>(data);
   let totalMs = 0;
   let sessionCount = 0;
-  for (const e of bySession.values()) {
-    if (e.in && e.out) {
-      const ms = new Date(e.out).getTime() - new Date(e.in).getTime();
-      if (ms > 0) {
-        totalMs += ms;
-        sessionCount += 1;
-      }
+  for (const s of evs) {
+    const ms = sessionWorkMs(s.status, s.scheduled_start, s.scheduled_end);
+    if (ms > 0) {
+      totalMs += ms;
+      sessionCount += 1;
     }
   }
-  return { totalHours: Math.round(totalMs / 360_000) / 10, sessionCount };
+  return { totalHours: msToHours(totalMs), sessionCount };
 }
 
 export type BookingLite = {

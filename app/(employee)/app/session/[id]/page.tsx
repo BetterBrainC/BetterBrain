@@ -134,6 +134,7 @@ export default async function SessionPage({
               patientName={session.patientName}
               otName={myName}
               hasDraft={drafts.has("followup")}
+              hasCheckOut={session.hasCheckOut}
             />
           )}
         </div>
