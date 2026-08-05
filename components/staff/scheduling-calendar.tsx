@@ -670,11 +670,16 @@ function Agenda({
   );
 }
 
-/** Sessions bucketed per therapist, therapists A→Z (Thai), each list by time. */
+/**
+ * Sessions bucketed per therapist, therapists A→Z (Thai), each list by time.
+ * Groups are headed by the FULL name ("กบ.จิรวดี โพธิ"); the surname alone was
+ * ambiguous once two therapists shared one (client 5 ส.ค. 2569). Month chips
+ * keep the short form — there is no room for more there.
+ */
 function groupByEmployee(sessions: CalendarSession[]): [string, CalendarSession[]][] {
   const groups = new Map<string, CalendarSession[]>();
   for (const s of sessions) {
-    const key = s.employee || "— ยังไม่ระบุพนักงาน —";
+    const key = s.employeeFull?.trim() || "— ยังไม่ระบุพนักงาน —";
     const list = groups.get(key);
     if (list) list.push(s);
     else groups.set(key, [s]);
