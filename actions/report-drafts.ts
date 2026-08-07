@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 
 export interface DraftResult {
@@ -68,6 +69,16 @@ export async function loadReportDraft(
     .maybeSingle();
   const row = data as { id: string; payload: unknown; updated_at: string } | null;
   if (!row) return null;
+
+  // Report already filed → the draft is spent; do not reopen it as unfinished work.
+  const { count: filedCount } = await createAdminClient()
+    .from("reports")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .eq("report_type", reportType)
+    .in("status", ["completed", "corrected"]);
+  if ((filedCount ?? 0) > 0) return null;
+
   return {
     id: row.id,
     payload: (row.payload && typeof row.payload === "object" ? row.payload : {}) as Record<string, unknown>,
@@ -75,18 +86,32 @@ export async function loadReportDraft(
   };
 }
 
-/** Report types that currently have a draft on this session (for the "ร่าง" badge). */
+/**
+ * Report types that currently have a draft on this session (for the "ร่าง" badge).
+ * A draft whose report has since been filed does not count — the case must not
+ * look unfinished once the work is in (client 6 ส.ค. 2569).
+ */
 export async function getSessionDraftTypes(sessionId: string): Promise<string[]> {
   const guard = await requireEnabledUser();
   if (!guard.ok) return [];
-  const supabase = await createClient();
-  const { data } = await supabase
+  // Service-role read: a filed report is invisible to its author by design
+  // (vanish-on-save), so RLS alone cannot tell "still unfinished" from "already
+  // filed". Only the caller's own draft TYPES leave this function.
+  const { data } = await createAdminClient()
     .from("reports")
-    .select("report_type")
-    .eq("session_id", sessionId)
-    .eq("author_id", guard.id)
-    .eq("status", "draft");
-  return (Array.isArray(data) ? data : []).map((r) => (r as { report_type: string }).report_type);
+    .select("report_type, status, author_id")
+    .eq("session_id", sessionId);
+  const all = (Array.isArray(data) ? data : []) as { report_type: string; status: string; author_id: string }[];
+  const filed = new Set(
+    all.filter((r) => r.status === "completed" || r.status === "corrected").map((r) => r.report_type),
+  );
+  return [
+    ...new Set(
+      all
+        .filter((r) => r.status === "draft" && r.author_id === guard.id && !filed.has(r.report_type))
+        .map((r) => r.report_type),
+    ),
+  ];
 }
 
 /**
@@ -171,16 +196,35 @@ export async function saveReportDraft(input: {
  * Retire a draft that has been superseded by a filed report. Employees cannot
  * DELETE reports (director-only in RLS), so the row is parked as `discarded` —
  * which also keeps the trail of what was drafted.
+ *
+ * The status change goes through the service-role client: `reports_update_employee`
+ * lets an author edit their draft's CONTENT but its WITH CHECK pins the row to
+ * `status = 'draft'`, so the author cannot move it out of draft at all. That is why
+ * filed follow-ups kept showing "ร่าง" on the case (client 6 ส.ค. 2569). Ownership is
+ * therefore proved here, in the action, before the privileged write — the pattern
+ * CLAUDE.md §10 prescribes: getUser → authorize → write.
  */
 export async function discardReportDraft(draftId: string): Promise<DraftResult> {
   const guard = await requireEnabledUser();
   if (!guard.ok) return { error: guard.error };
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data } = await supabase
+    .from("reports")
+    .select("id, author_id, status, session_id")
+    .eq("id", draftId)
+    .maybeSingle();
+  const row = data as { author_id: string; status: string; session_id: string | null } | null;
+  if (!row) return { ok: true }; // already gone — nothing to retire
+  if (row.author_id !== guard.id) return { error: "ไม่มีสิทธิ์ในร่างนี้" };
+  if (row.status !== "draft") return { ok: true }; // already filed/retired
+
+  const { error } = await createAdminClient()
     .from("reports")
     .update({ status: "discarded" as const, discarded_at: new Date().toISOString() })
     .eq("id", draftId)
+    .eq("author_id", guard.id)
     .eq("status", "draft");
   if (error) return { error: error.message };
+  if (row.session_id) revalidatePath(`/app/session/${row.session_id}`);
   return { ok: true };
 }

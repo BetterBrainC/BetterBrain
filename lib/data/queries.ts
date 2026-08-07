@@ -126,6 +126,7 @@ export interface SessionDetail {
   status: SessionStatus;
   kind: "assessment" | "treatment";
   hasCheckOut: boolean;
+  hasFiledFollowup: boolean;
 }
 
 /** Current user's display name — prefills "OT Name" on the daily report. */
@@ -171,6 +172,17 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
     .eq("kind", "check_out")
     .maybeSingle();
 
+  // Is the daily report already filed? Its author cannot see it any more
+  // (vanish-on-save), so this needs the service-role read — without it the form
+  // reopens blank and files a second copy. One visit collected four that way
+  // (client 6 ส.ค. 2569).
+  const { count: followupCount } = await createAdminClient()
+    .from("reports")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", id)
+    .eq("report_type", "followup")
+    .in("status", ["completed", "corrected"]);
+
   let used = 0;
   let total = 0;
   if (s.course_id) {
@@ -200,6 +212,7 @@ export async function getSessionDetail(id: string): Promise<SessionDetail | null
     status: s.status,
     kind: s.kind,
     hasCheckOut: co != null,
+    hasFiledFollowup: (followupCount ?? 0) > 0,
   };
 }
 

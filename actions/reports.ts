@@ -120,27 +120,35 @@ export async function saveReport(input: {
   // Filing a report the employee had drafted promotes that very row, so the draft
   // does not survive alongside the filed copy. If it is gone (already filed from
   // another device), fall through and file normally rather than losing the work.
+  //
+  // Service-role write: `reports_update_employee` pins the author's own row to
+  // status='draft' in its WITH CHECK, so the author cannot file it themselves —
+  // the draft would linger and the case keep showing "ร่าง" (client 6 ส.ค. 2569).
+  // Ownership is proved here first.
   let filed = false;
   if (input.draftId) {
-    const { data: promoted, error: promoteError } = await supabase
+    const { data: current } = await supabase
       .from("reports")
-      .update(fields)
+      .select("author_id, status")
       .eq("id", input.draftId)
-      .eq("status", "draft")
-      .select("id")
       .maybeSingle();
-    if (promoteError) return { error: promoteError.message };
-    filed = promoted != null;
-    if (!filed) {
-      // Nothing to promote: either the draft is gone, or a previous attempt
-      // already filed it and only the response was lost (offline retry). The
-      // latter must not insert a second copy.
-      const { data: existing } = await supabase
+    const draft = current as { author_id: string; status: string } | null;
+    if (draft && draft.author_id !== user.id) return { error: "ไม่มีสิทธิ์ในร่างนี้" };
+    // Already filed — a previous attempt landed and only the response was lost
+    // (offline retry). Must not insert a second copy.
+    if (draft && draft.status !== "draft") return { ok: true };
+
+    if (draft) {
+      const { data: promoted, error: promoteError } = await createAdminClient()
         .from("reports")
-        .select("status")
+        .update(fields)
         .eq("id", input.draftId)
+        .eq("author_id", user.id)
+        .eq("status", "draft")
+        .select("id")
         .maybeSingle();
-      if ((existing as { status?: string } | null)?.status) return { ok: true };
+      if (promoteError) return { error: promoteError.message };
+      filed = promoted != null;
     }
   }
 

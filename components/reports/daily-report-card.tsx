@@ -21,15 +21,30 @@ export function DailyReportCard({
   otName,
   hasDraft = false,
   hasCheckOut = true,
+  hasFiled = false,
 }: {
   sessionId: string;
   patientName: string;
   otName?: string;
   hasDraft?: boolean;
   hasCheckOut?: boolean;
+  hasFiled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+
+  // Filed already: the author cannot see it any more, so reopening the form would
+  // only file a duplicate. One visit collected four (client 6 ส.ค. 2569).
+  if (hasFiled) {
+    return (
+      <div className="rounded-md border border-border bg-surface px-3 py-3 text-sm">
+        <p className="flex items-center gap-2 font-medium text-navy">
+          <ClipboardList className="h-4 w-4 shrink-0 text-muted" /> รายงานประจำวัน
+          <Badge tone="completed">บันทึกแล้ว</Badge>
+        </p>
+      </div>
+    );
+  }
 
   if (!hasCheckOut) {
     return (

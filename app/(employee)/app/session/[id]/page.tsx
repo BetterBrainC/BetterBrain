@@ -135,6 +135,7 @@ export default async function SessionPage({
               otName={myName}
               hasDraft={drafts.has("followup")}
               hasCheckOut={session.hasCheckOut}
+              hasFiled={session.hasFiledFollowup}
             />
           )}
         </div>
